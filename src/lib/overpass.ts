@@ -14,6 +14,12 @@ export type OsmBuildingFootprint = {
   heightMeters: number | null;
   /** Building name from OSM (`name` tag), if present. */
   osmName: string | null;
+  /**
+   * True when our stored lat/lon actually falls inside this polygon. False
+   * means we fell back to the nearest building within the search radius, so the
+   * outline may well belong to a neighbour — say so in the UI, don't pretend.
+   */
+  containsPoint: boolean;
 };
 
 const OVERPASS_ENDPOINTS = [
@@ -22,7 +28,7 @@ const OVERPASS_ENDPOINTS = [
 ];
 
 const FOOTPRINT_CACHE_PREFIX = "room-tba:osm-building-footprint:";
-const FOOTPRINT_CACHE_VERSION = 1;
+const FOOTPRINT_CACHE_VERSION = 2;
 const FOOTPRINT_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 
 const cache = new Map<string, Promise<OsmBuildingFootprint | null>>();
@@ -253,6 +259,7 @@ export async function fetchBuildingFootprint(
       levels: parseLevels(chosen.way.tags),
       heightMeters: parseHeight(chosen.way.tags),
       osmName: chosen.way.tags?.name ?? null,
+      containsPoint: containing !== undefined,
     };
 
     storeFootprint(key, footprint);

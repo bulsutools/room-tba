@@ -288,6 +288,8 @@ export const roomPositionsTable = pgTable(
     posY: numeric("pos_y").notNull(),
     updatedAt: timestamp("updated_at", { mode: "string" }).notNull(),
     roomId: integer("room_id").notNull(),
+    /** 'manual' = an editor placed it; 'inferred' = accepted from room-code inference. */
+    source: varchar({ length: 16 }).default("manual").notNull(),
   },
   (table) => [
     foreignKey({

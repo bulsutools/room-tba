@@ -502,6 +502,8 @@ export async function createRoom(
 
 // ── Room positions ──
 
+export type RoomPositionSource = "manual" | "inferred";
+
 export type RoomPosition = {
   id: number;
   floor: number;
@@ -509,6 +511,7 @@ export type RoomPosition = {
   posY: string;
   updatedAt: string;
   roomId: number;
+  source: string;
 };
 
 export async function getRoomPosition(
@@ -526,6 +529,8 @@ export type RoomPositionUpdateInput = {
   floor: number;
   posX: string;
   posY: string;
+  /** Defaults to 'manual' — only the inference assist sends 'inferred'. */
+  source?: RoomPositionSource;
 };
 
 function serializeRoomPosition(position: RoomPosition | null) {
@@ -536,6 +541,7 @@ function serializeRoomPosition(position: RoomPosition | null) {
     posY: position.posY,
     updatedAt: position.updatedAt,
     roomId: position.roomId,
+    source: position.source,
   };
 }
 
@@ -549,6 +555,14 @@ export async function updateRoomPosition(
   if (!before) return null;
 
   const beforePosition = await getRoomPosition(roomId);
+  const source: RoomPositionSource = input.source ?? "manual";
+
+  // A suggestion never overwrites a position a human dragged into place, and
+  // never bumps the room version to say it tried.
+  if (source === "inferred" && beforePosition?.source === "manual") {
+    return before;
+  }
+
   const updatedAt = new Date().toISOString();
 
   await db.transaction(async (tx) => {
@@ -587,6 +601,7 @@ export async function updateRoomPosition(
           posX: input.posX,
           posY: input.posY,
           updatedAt,
+          source,
         })
         .where(eq(roomPositionsTable.id, existing[0].id));
     } else {
@@ -596,6 +611,7 @@ export async function updateRoomPosition(
         posY: input.posY,
         updatedAt,
         roomId,
+        source,
       });
     }
   });

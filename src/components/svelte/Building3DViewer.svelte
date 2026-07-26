@@ -21,12 +21,18 @@
   import { fetchBasemap } from "@lib/osm-basemap";
   import {
     footprintToLocalPolygon,
-    mockPlaceRooms,
+    placeRooms,
+    approximateFootprint,
     defaultFloorCount,
     maxInferredFloor,
     type LocalPolygonData,
     type RoomPlacement,
   } from "@lib/building-3d";
+  import {
+    inferBuildingPlacements,
+    type InferredPlacement,
+    type RoomPlacementInput,
+  } from "@lib/room-placement";
 
   const appData = getAppData();
   const buildings = $derived(appData().loaded ? appData().buildings : []);
@@ -62,6 +68,12 @@
   let activeRoomCode = $state<string | null>(null);
   let hoveredRoomCode = $state<string | null>(null);
   let footprintNote = $state<string | null>(null);
+  /** True when OSM had no building here and we drew a stand-in box instead. */
+  let footprintApproximate = $state(false);
+  /** True when the OSM polygon we found does not contain this building's point. */
+  let footprintUncertain = $state(false);
+  let footprintOsmName = $state<string | null>(null);
+  let acceptingSuggestions = $state(false);
 
   // Editor state
   let editMode = $state(false);
@@ -104,13 +116,33 @@
     buildings.find((b) => b.buildingName === name) ?? null,
   );
 
-  const roomCodes = $derived(buildingRooms.map((r) => r.code));
+  const roomInputs = $derived(
+    buildingRooms.map<RoomPlacementInput>((r) => ({
+      roomCode: r.code,
+      buildingName: name,
+      directions: r.directions,
+    })),
+  );
 
   const placements = $derived(
     polygon
-      ? mockPlaceRooms(roomCodes, polygon, totalFloors, savedOverrides)
+      ? placeRooms(roomInputs, polygon, totalFloors, savedOverrides)
       : ([] as RoomPlacement[]),
   );
+
+  /**
+   * Rooms the inference can place that nobody has saved a position for yet.
+   * These are exactly the pins an editor can accept into `room_positions`.
+   */
+  const suggestions = $derived.by(() => {
+    if (!polygon) return new Map<string, InferredPlacement>();
+    return inferBuildingPlacements(
+      roomInputs,
+      polygon,
+      totalFloors,
+      new Set(savedOverrides.keys()),
+    );
+  });
 
   let polygon: LocalPolygonData | null = $state(null);
 
@@ -191,30 +223,37 @@
         }
       }
 
-      const footprint = await fetchBuildingFootprint(
+      // When OSM has nothing here we fall back to a plain square around the
+      // building's own coordinates so rooms can still be placed and browsed.
+      // It is labelled as approximate everywhere it shows up — see
+      // `footprintApproximate`.
+      const osmFootprint = await fetchBuildingFootprint(
         buildingMeta.lat,
         buildingMeta.lon,
       );
-
-      if (!footprint) {
-        errorMsg =
-          "Could not pull a building footprint from OpenStreetMap. The building may not be mapped yet.";
-        loading = false;
-        return;
-      }
+      footprintApproximate = osmFootprint === null;
+      // OSM had *a* building nearby, but not one containing our coordinates —
+      // the outline probably belongs to a neighbour.
+      footprintUncertain = osmFootprint !== null && !osmFootprint.containsPoint;
+      footprintOsmName = osmFootprint?.osmName ?? null;
+      const footprint =
+        osmFootprint ??
+        approximateFootprint(buildingMeta.lat, buildingMeta.lon);
 
       const localPoly = footprintToLocalPolygon(footprint);
       polygon = localPoly;
 
-      const inferred = maxInferredFloor(roomCodes);
+      const inferred = maxInferredFloor(roomInputs);
       const floors = defaultFloorCount(footprint, inferred);
       totalFloors = floors;
 
-      footprintNote = footprint.levels
-        ? `OSM has \`building:levels=${footprint.levels}\`.`
-        : footprint.heightMeters
-          ? `Floor count estimated from OSM height (~${footprint.heightMeters.toFixed(0)} m).`
-          : null;
+      footprintNote = footprintApproximate
+        ? `Floor count estimated from the room codes (${floors}).`
+        : footprint.levels
+          ? `OSM has \`building:levels=${footprint.levels}\`.`
+          : footprint.heightMeters
+            ? `Floor count estimated from OSM height (~${footprint.heightMeters.toFixed(0)} m).`
+            : null;
 
       // === Scene setup ===
       scene = new THREE.Scene();
@@ -807,10 +846,41 @@
     return map;
   }
 
+  /**
+   * Accept one inferred position into `room_positions`. It goes through the
+   * same versioned endpoint as a drag, tagged `source: "inferred"` so the
+   * server refuses to overwrite anything a human placed.
+   */
+  async function acceptSuggestion(code: string, placement: InferredPlacement) {
+    const next = {
+      floor: placement.floor,
+      x: placement.posX,
+      y: placement.posY,
+    };
+    await autosaveRoomPosition(code, next, next, "inferred");
+  }
+
+  async function acceptAllSuggestions() {
+    if (acceptingSuggestions) return;
+    acceptingSuggestions = true;
+    // Snapshot: `suggestions` shrinks as each save lands in savedOverrides.
+    const entries = [...suggestions];
+    for (const [code, placement] of entries) {
+      await acceptSuggestion(code, placement);
+    }
+    const saved = entries.filter(([code]) => savedOverrides.has(code)).length;
+    acceptingSuggestions = false;
+    editorStatus = {
+      type: saved === entries.length ? "success" : "error",
+      message: `Saved ${saved} of ${entries.length} suggested positions.`,
+    };
+  }
+
   async function autosaveRoomPosition(
     roomCode: string,
     next: RoomPositionDraft,
     previous: RoomPositionDraft,
+    source: "manual" | "inferred" = "manual",
   ) {
     const room = buildingRooms.find((candidate) => candidate.code === roomCode);
     if (!room) return;
@@ -833,6 +903,7 @@
             floor: next.floor,
             posX: String(next.x),
             posY: String(next.y),
+            source,
           },
         }),
       });
@@ -1101,6 +1172,55 @@
                   Drag a room cylinder or change its floor. Changes autosave to
                   the server with a version check.
                 </p>
+                {#if suggestions.size > 0}
+                  <div class="suggest-block">
+                    <p class="editor-hint">
+                      {suggestions.size} unsaved room{suggestions.size === 1
+                        ? ""
+                        : "s"} can be placed from their room code. Floors are read
+                      from the code or directions; the spot on the floor is a corridor
+                      estimate — check them before saving.
+                    </p>
+                    <button
+                      class="suggest-accept-all"
+                      type="button"
+                      disabled={acceptingSuggestions}
+                      onclick={acceptAllSuggestions}
+                    >
+                      {acceptingSuggestions
+                        ? "Saving…"
+                        : `Save all ${suggestions.size}`}
+                    </button>
+                    <ul class="suggest-list">
+                      {#each [...suggestions] as [code, placement] (code)}
+                        <li class="suggest-item">
+                          <div class="suggest-row">
+                            <span class="suggest-code" title={code}>{code}</span
+                            >
+                            <span class="suggest-floor">F{placement.floor}</span
+                            >
+                            <span
+                              class="suggest-confidence"
+                              class:high={placement.confidence === "high"}
+                              class:medium={placement.confidence === "medium"}
+                              class:low={placement.confidence === "low"}
+                              >{placement.confidence}</span
+                            >
+                            <button
+                              class="suggest-accept"
+                              type="button"
+                              disabled={acceptingSuggestions ||
+                                savingRoomCodes.has(code)}
+                              onclick={() => acceptSuggestion(code, placement)}
+                              >Save</button
+                            >
+                          </div>
+                          <p class="suggest-reason">{placement.reason}</p>
+                        </li>
+                      {/each}
+                    </ul>
+                  </div>
+                {/if}
                 <p
                   class="editor-status"
                   class:error={editorStatus?.type === "error"}
@@ -1124,6 +1244,29 @@
         {/if}
         {#if errorMsg}
           <div class="viewer-status error">{errorMsg}</div>
+        {/if}
+        {#if (footprintApproximate || footprintUncertain) && !errorMsg}
+          <div class="viewer-provisional">
+            <span>
+              {#if footprintApproximate}
+                Approximate shape. OpenStreetMap has no footprint for this
+                building yet, so this is a stand-in box around its coordinates —
+                the outline is not the real building.
+              {:else}
+                This outline may belong to a neighbouring building: the closest
+                OpenStreetMap footprint{footprintOsmName
+                  ? ` ("${footprintOsmName}")`
+                  : ""} does not contain this building's coordinates.
+              {/if}
+            </span>
+            {#if buildingMeta}
+              <a
+                href={`https://www.openstreetmap.org/edit#map=19/${buildingMeta.lat}/${buildingMeta.lon}`}
+                target="_blank"
+                rel="noreferrer">Fix it in OpenStreetMap</a
+              >
+            {/if}
+          </div>
         {/if}
         <div bind:this={canvasContainer} class="viewer-canvas"></div>
         <div bind:this={labelContainer} class="viewer-labels"></div>
@@ -1503,6 +1646,129 @@
     font-size: 0.6875rem;
     line-height: 1.35;
     color: hsl(217, 72%, 30%);
+  }
+
+  .suggest-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+  .suggest-accept-all {
+    align-self: flex-start;
+    max-width: 100%;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 0.3rem 0.6rem;
+    border-radius: 0.5rem;
+    border: 1px solid hsl(217, 60%, 70%);
+    background-color: hsl(217, 91%, 97%);
+    color: hsl(217, 72%, 30%);
+    cursor: pointer;
+  }
+  .suggest-accept-all:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  .suggest-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    max-height: 14rem;
+    overflow-y: auto;
+  }
+  .suggest-item {
+    border: 1px solid hsl(0, 0%, 90%);
+    border-radius: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    min-width: 0;
+  }
+  .suggest-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+  .suggest-code {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .suggest-floor {
+    font-size: 0.625rem;
+    color: hsl(0, 0%, 40%);
+  }
+  .suggest-confidence {
+    font-size: 0.5625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    padding: 0.1rem 0.3rem;
+    border-radius: 999px;
+  }
+  .suggest-confidence.high {
+    background-color: hsl(145, 60%, 94%);
+    color: hsl(145, 55%, 25%);
+  }
+  .suggest-confidence.medium {
+    background-color: hsl(45, 90%, 93%);
+    color: hsl(35, 70%, 28%);
+  }
+  .suggest-confidence.low {
+    background-color: hsl(5, 80%, 95%);
+    color: hsl(5, 60%, 34%);
+  }
+  .suggest-accept {
+    font-size: 0.625rem;
+    font-weight: 600;
+    padding: 0.2rem 0.45rem;
+    border-radius: 0.4rem;
+    border: 1px solid hsl(0, 0%, 82%);
+    background-color: white;
+    cursor: pointer;
+  }
+  .suggest-accept:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .suggest-reason {
+    margin: 0.25rem 0 0;
+    font-size: 0.625rem;
+    line-height: 1.35;
+    color: hsl(0, 0%, 45%);
+  }
+
+  .viewer-provisional {
+    position: absolute;
+    top: 0.75rem;
+    left: 50%;
+    translate: -50% 0;
+    max-width: min(32rem, calc(100% - 1.5rem));
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.375rem;
+    background-color: hsl(45, 90%, 96%);
+    border: 1px solid hsl(45, 92%, 84%);
+    color: hsl(35, 60%, 24%);
+    border-radius: 0.625rem;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    z-index: 5;
+  }
+  .viewer-provisional a {
+    color: hsl(217, 72%, 36%);
+    text-decoration: underline;
+    white-space: nowrap;
   }
   .editor-status.success {
     color: hsl(145, 55%, 28%);

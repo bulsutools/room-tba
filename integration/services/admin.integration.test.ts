@@ -27,6 +27,54 @@ describeIntegration("admin building service integration", () => {
     await client?.end();
   });
 
+  test("an inferred room position never overwrites a manual one", async () => {
+    const { updateRoomPosition } = await import("@lib/services/admin-service");
+    const { rows: roomRows } = await client.query<{
+      id: number;
+      version: number;
+    }>(`SELECT id, version FROM rooms WHERE room_code = 'E2E-101' LIMIT 1`);
+    const roomId = roomRows[0]?.id ?? 0;
+    expect(roomId).toBeGreaterThan(0);
+
+    const version = async () => {
+      const { rows } = await client.query<{ version: number }>(
+        "SELECT version FROM rooms WHERE id = $1",
+        [roomId],
+      );
+      return rows[0]?.version ?? 1;
+    };
+
+    try {
+      await updateRoomPosition(
+        roomId,
+        { floor: 2, posX: "1", posY: "2", source: "manual" },
+        await version(),
+        "e2e-admin",
+      );
+      const afterManual = await version();
+
+      await updateRoomPosition(
+        roomId,
+        { floor: 5, posX: "9", posY: "9", source: "inferred" },
+        afterManual,
+        "e2e-admin",
+      );
+
+      const { rows } = await client.query<{ floor: number; source: string }>(
+        "SELECT floor, source FROM room_positions WHERE room_id = $1",
+        [roomId],
+      );
+      expect(rows[0]?.floor).toBe(2);
+      expect(rows[0]?.source).toBe("manual");
+      // A refused write must not pretend it happened.
+      expect(await version()).toBe(afterManual);
+    } finally {
+      await client.query("DELETE FROM room_positions WHERE room_id = $1", [
+        roomId,
+      ]);
+    }
+  });
+
   test("updateBuilding bumps version", async () => {
     const { updateBuilding } = await import("@lib/services/admin-service");
     const before = await client.query<{ version: number; lat: number }>(

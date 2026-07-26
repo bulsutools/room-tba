@@ -75,6 +75,7 @@ const E2E_MIGRATION_FILES = [
   "0038_sponsor_impressions.sql",
   "0039_classes_keyset_index.sql",
   "0040_pre_drizzle_schema_backfill.sql",
+  "0042_room_position_source.sql",
 ] as const;
 
 /**

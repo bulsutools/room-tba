@@ -64,6 +64,15 @@ const reportIssueUrl = `${GITHUB_ROOM_TBA_URL}/issues/new/choose`;
             <li>
               Room dots on the model are placement markers aligned to the
               footprint. They are <strong>not</strong> official floor plans.
+              Where an editor has not placed a room by hand, the marker's floor
+              is read from the room code (<code>PS B-203</code> → floor 2) and
+              its spot on that floor is an estimate along the corridor.
+            </li>
+            <li>
+              If OSM has no footprint for a building, the viewer draws a
+              clearly-labelled approximate box around its coordinates instead of
+              showing nothing. The label stays until the building is mapped in
+              OSM.
             </li>
             <li>
               Ground texture uses OSM-based map tiles. Map and building data ©

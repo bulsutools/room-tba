@@ -194,13 +194,15 @@ CREATE TABLE IF NOT EXISTS "room_positions" (
   "pos_x" numeric NOT NULL,
   "pos_y" numeric NOT NULL,
   "updated_at" text NOT NULL,
-  "room_id" integer NOT NULL
+  "room_id" integer NOT NULL,
+  "source" varchar(16) DEFAULT 'manual' NOT NULL
 );
 ALTER TABLE "room_positions" ADD COLUMN IF NOT EXISTS "floor" integer;
 ALTER TABLE "room_positions" ADD COLUMN IF NOT EXISTS "pos_x" numeric;
 ALTER TABLE "room_positions" ADD COLUMN IF NOT EXISTS "pos_y" numeric;
 ALTER TABLE "room_positions" ADD COLUMN IF NOT EXISTS "updated_at" text;
 ALTER TABLE "room_positions" ADD COLUMN IF NOT EXISTS "room_id" integer;
+ALTER TABLE "room_positions" ADD COLUMN IF NOT EXISTS "source" varchar(16) DEFAULT 'manual' NOT NULL;
 CREATE TABLE IF NOT EXISTS "divisions" (
   "id" integer PRIMARY KEY,
   "division_name" varchar(100) NOT NULL,
