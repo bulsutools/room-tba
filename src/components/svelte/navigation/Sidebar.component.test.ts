@@ -28,6 +28,17 @@ describe("Sidebar", () => {
     expect(screen.getByText("Settings")).toBeInTheDocument();
   });
 
+  test("keeps the rail toggle in the header row, not the destination list", () => {
+    render(Sidebar);
+
+    const toggle = screen.getByRole("button", { name: "Expand menu" });
+    // Sits beside the wordmark; it is chrome, not a place you can go.
+    expect(toggle.closest(".sidebar-header")).not.toBeNull();
+    expect(toggle.closest(".categories")).toBeNull();
+    // Icon-only: it must never render its label as an inline nav row again.
+    expect(toggle).not.toHaveClass("nav-link--expanded");
+  });
+
   test("links to the dedicated Wiki without expanding the rail", () => {
     render(Sidebar);
 
