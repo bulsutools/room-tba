@@ -4,7 +4,10 @@
   import { jeepneyStore, modalStore, transitStore } from "@lib/store.svelte";
   import {
     JEEPNEY_FARE_NOTE,
+    resolveRouteGeometry,
+    type StoredRouteGeometry,
   } from "@constants/jeepney-routes";
+  import jeepneyGeometries from "@constants/jeepney-geometries.json";
   import { getJeepneyRouteShareUrl } from "@lib/share-links";
   import EntityShareCopyLink from "../controls/EntityShareCopyLink.svelte";
   import TransitStopEditor from "../controls/TransitStopEditor.svelte";
@@ -18,6 +21,17 @@
 
   const route = $derived(
     transitStore.getRoute(routeId ?? jeepneyStore.modalRouteId),
+  );
+
+  // Say so when the drawn line is inferred rather than traced from the
+  // operator's mapped route; riders plan around these lines.
+  const geometryNote = $derived(
+    route
+      ? resolveRouteGeometry(
+          route,
+          jeepneyGeometries as Record<string, StoredRouteGeometry>,
+        ).caveat
+      : null,
   );
 
   function viewOnMap() {
@@ -62,6 +76,10 @@
         </div>
       </dl>
       <p class="jeepney-modal__fare-note">{JEEPNEY_FARE_NOTE}</p>
+
+      {#if geometryNote}
+        <p class="jeepney-modal__geometry-note">{geometryNote}</p>
+      {/if}
 
       <h3 class="jeepney-modal__stops-title">
         Stops <span>({route.stops.length})</span>
@@ -196,6 +214,15 @@
   .jeepney-modal__fare-note {
     margin: 0;
     font-size: 0.75rem;
+    color: hsl(0, 0%, 32%);
+  }
+
+  .jeepney-modal__geometry-note {
+    margin: 0;
+    padding-left: 0.5rem;
+    border-left: 2px solid hsl(0, 0%, 78%);
+    font-size: 0.75rem;
+    line-height: 1.45;
     color: hsl(0, 0%, 32%);
   }
 

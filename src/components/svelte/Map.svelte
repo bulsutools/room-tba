@@ -70,9 +70,12 @@
   import { isStudentOrganization } from "@constants/org-categories";
   import { isLandmarkPlaceCategory } from "@constants/place-categories";
   import {
-    deriveRouteLineFromStops,
+    resolveRouteGeometry,
     type JeepneyRoute,
     type JeepneyStop,
+    type ResolvedRouteGeometry,
+    type RouteGeometrySource,
+    type StoredRouteGeometry,
   } from "@constants/jeepney-routes";
   import jeepneyGeometries from "@constants/jeepney-geometries.json";
   import {
@@ -314,7 +317,9 @@
   const JEEPNEY_ROUTE_SOURCE_ID = "jeepney-route-line";
   const JEEPNEY_ROUTE_LAYER_ID = "jeepney-route-line";
   const JEEPNEY_ROUTE_LAYER_CASING_ID = "jeepney-route-line-casing";
-  const jeepneyRouteGeometryCache = new Map<string, LineString>();
+  const JEEPNEY_ROUTE_WIDTH = 5;
+  const JEEPNEY_ROUTE_CASING_WIDTH = 8;
+  const jeepneyRouteGeometryCache = new Map<string, ResolvedRouteGeometry>();
   const EVENT_ROUTE_SOURCE_ID = "event-route-line";
   const EVENT_ROUTE_LAYER_ID = "event-route-line";
   const EVENT_ROUTE_LAYER_CASING_ID = "event-route-line-casing";
@@ -355,23 +360,37 @@
   const undoMove = $derived(undoStack.at(-1) ?? null);
   const redoMove = $derived(redoStack.at(-1) ?? null);
 
-  function resolveRouteGeometry(route: JeepneyRoute): LineString | null {
+  function routeGeometry(route: JeepneyRoute) {
     const cached = jeepneyRouteGeometryCache.get(route.id);
     if (cached) return cached;
-
-    const geometry = (jeepneyGeometries as Record<string, LineString | null>)[
-      route.id
-    ];
-    if (geometry) {
-      jeepneyRouteGeometryCache.set(route.id, geometry);
-      return geometry;
+    const resolved = resolveRouteGeometry(
+      route,
+      jeepneyGeometries as Record<string, StoredRouteGeometry>,
+    );
+    // Only sourced lines are cacheable: a stops-only line is derived from stops
+    // the editor can move, so it has to be recomputed each draw.
+    if (resolved.source !== "stops-only") {
+      jeepneyRouteGeometryCache.set(route.id, resolved);
     }
-
-    // No road-snapped geometry for this route: connect its stops directly.
-    return deriveRouteLineFromStops(route.stops);
+    return resolved;
   }
 
-  function ensureJeepneyRouteLayers(map: mapGl.MapLibreMap, color: string) {
+  function ensureJeepneyRouteLayers(
+    map: mapGl.MapLibreMap,
+    color: string,
+    source: RouteGeometrySource,
+  ) {
+    // A stops-only line is not a road path, so it must not look like one:
+    // dashed and faded reads as provisional instead of confidently wrong.
+    const provisional = source === "stops-only";
+    // `undefined` restores the style default (solid). MapLibre dash lengths are
+    // multiples of line-width, so the casing's dash is rescaled by the width
+    // ratio; otherwise the white halo fills the gaps it should leave open.
+    const dash = provisional ? [1.5, 1.5] : undefined;
+    const casingDash = dash?.map(
+      (n) => (n * JEEPNEY_ROUTE_WIDTH) / JEEPNEY_ROUTE_CASING_WIDTH,
+    );
+    const opacity = provisional ? 0.55 : 0.95;
     if (!map.getSource(JEEPNEY_ROUTE_SOURCE_ID)) {
       map.addSource(JEEPNEY_ROUTE_SOURCE_ID, {
         type: "geojson",
@@ -390,7 +409,7 @@
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": "#ffffff",
-          "line-width": 8,
+          "line-width": JEEPNEY_ROUTE_CASING_WIDTH,
           "line-opacity": 0.95,
         },
       });
@@ -404,13 +423,23 @@
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": color,
-          "line-width": 5,
+          "line-width": JEEPNEY_ROUTE_WIDTH,
           "line-opacity": 0.95,
         },
       });
-    } else {
-      map.setPaintProperty(JEEPNEY_ROUTE_LAYER_ID, "line-color", color);
     }
+
+    // Layers outlive a single route, so provenance styling is applied on every
+    // draw, not only when the layer is first created.
+    map.setPaintProperty(JEEPNEY_ROUTE_LAYER_ID, "line-color", color);
+    map.setPaintProperty(JEEPNEY_ROUTE_LAYER_ID, "line-opacity", opacity);
+    map.setPaintProperty(JEEPNEY_ROUTE_LAYER_ID, "line-dasharray", dash);
+    map.setPaintProperty(JEEPNEY_ROUTE_LAYER_CASING_ID, "line-opacity", opacity);
+    map.setPaintProperty(
+      JEEPNEY_ROUTE_LAYER_CASING_ID,
+      "line-dasharray",
+      casingDash,
+    );
   }
 
   function clearJeepneyRouteLayers(map: mapGl.MapLibreMap) {
@@ -2035,16 +2064,22 @@
     // gating on either deadlocks and the polyline never draws. addSource /
     // addLayer only throw before the initial style load; try now and retry on
     // "styledata" until one attempt succeeds.
-    const geometry = resolveRouteGeometry(route);
+    const { line, source: geometrySource } = routeGeometry(route);
     const draw = () => {
-      ensureJeepneyRouteLayers(map, route.color);
+      ensureJeepneyRouteLayers(map, route.color, geometrySource);
       const source = map.getSource(JEEPNEY_ROUTE_SOURCE_ID) as
         | mapGl.GeoJSONSource
         | undefined;
       source?.setData({
         type: "FeatureCollection",
-        features: geometry
-          ? [{ type: "Feature", geometry, properties: { routeId: route.id } }]
+        features: line
+          ? [
+              {
+                type: "Feature",
+                geometry: line,
+                properties: { routeId: route.id, geometrySource },
+              },
+            ]
           : [],
       });
       fitMapToRoute(map, route);

@@ -47,6 +47,7 @@ server/**/*
 data/AMIS subjects.json
 data/amis-*.json
 data/final-exams-*.json
+data/transit-geometry-cache/
 !data/final-exams-sample.json
 .vercel
 .env*.local
