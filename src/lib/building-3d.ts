@@ -269,3 +269,65 @@ export function defaultFloorCount(
   if (inferredMax && inferredMax > 0) return inferredMax;
   return 3;
 }
+
+/** A label's screen-space box, in CSS pixels. */
+export type LabelBox = {
+  /** Centre of the label on screen. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /**
+   * Lower wins the space when two labels collide. The viewer uses 0 for floor
+   * markers, 1 for room pins and -1 for the active/hovered room.
+   */
+  rank: number;
+  /** Distance from the camera; nearer labels win ties. */
+  depth: number;
+};
+
+/**
+ * Greedy screen-space label declutter: walk the labels best-first and keep one
+ * only if its box misses everything already kept.
+ *
+ * The 3D viewer draws one label per room, so a building with a few dozen rooms
+ * painted an illegible pile (Physical Sciences: 33 labels, 415 overlapping
+ * pairs at 320px). Returns the indices to keep, in input order.
+ *
+ * ponytail: O(n²) against the kept set. Fine for the tens of labels a building
+ * has; swap in a grid index if one ever has hundreds.
+ */
+export function pickNonOverlappingLabels(labels: LabelBox[]): number[] {
+  const order = labels
+    .map((label, index) => ({ label, index }))
+    .sort(
+      (a, b) =>
+        a.label.rank - b.label.rank ||
+        a.label.depth - b.label.depth ||
+        a.index - b.index,
+    );
+
+  const kept: Array<{ l: number; r: number; t: number; b: number }> = [];
+  const keptIndices: number[] = [];
+
+  for (const { label, index } of order) {
+    const box = {
+      l: label.x - label.width / 2,
+      r: label.x + label.width / 2,
+      t: label.y - label.height / 2,
+      b: label.y + label.height / 2,
+    };
+    const clashes = kept.some(
+      (other) =>
+        box.l < other.r &&
+        other.l < box.r &&
+        box.t < other.b &&
+        other.t < box.b,
+    );
+    if (clashes) continue;
+    kept.push(box);
+    keptIndices.push(index);
+  }
+
+  return keptIndices.sort((a, b) => a - b);
+}
