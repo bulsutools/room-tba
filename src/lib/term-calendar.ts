@@ -52,9 +52,11 @@ export const TERM_CALENDAR_WINDOWS: Record<
 export const CHANGE_OF_MATRICULATION_ENDS: Record<number, string> = {};
 
 // AYs with a machine-readable registrar calendar PDF come straight from
-// scripts/extract-academic-calendar-pdf.ts output.
+// scripts/extract-academic-calendar-pdf.ts output. AY 2025-2026 is missing
+// here on purpose: its PDF is an image-only scan with no text layer, so its
+// windows stay in the hand-kept constants above and it has no milestones.
 for (const calendar of [academicCalendar2024, academicCalendar2026]) {
-  for (const [termId, window] of Object.entries(calendar)) {
+  for (const [termId, window] of Object.entries(calendar.terms)) {
     TERM_CALENDAR_WINDOWS[Number(termId)] = {
       startsOn: window.startsOn,
       endsOn: window.endsOn,
@@ -228,7 +230,8 @@ export function formatTermDateRange(term: Pick<Term, "startsOn" | "endsOn">) {
   return `${startLabel} – ${endLabel}`;
 }
 
-function formatShortDate(isoDate: string) {
+/** "Oct 28" for a date-only key, rendered in the campus calendar's own zone. */
+export function formatShortDate(isoDate: string) {
   const [year, month, day] = isoDate.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
   return date.toLocaleDateString("en-PH", {

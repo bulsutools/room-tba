@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import {
+  buildEventTimeline,
   buildYearTimeline,
   currentAcademicYearTerms,
+  EVENT_MARKER_STEP_PCT,
   resolveTermWindow,
   termWindowStatus,
 } from "./academic-calendar";
@@ -122,6 +124,109 @@ describe("buildYearTimeline", () => {
     expect(
       buildYearTimeline([term(9999)], manilaNoon("2026-02-01")),
     ).toBeNull();
+  });
+});
+
+describe("buildEventTimeline", () => {
+  // Aug 1 → Dec 31 2026 = 153 days, the strip AY 2026-2027 1st sem produces.
+  const strip = { rangeStart: "2026-08-01", rangeEnd: "2026-12-31" };
+  const entry = (label: string, startsOn: string, endsOn = startsOn) => ({
+    label,
+    startsOn,
+    endsOn,
+  });
+
+  it("places one entry per grid cell at the cell center", () => {
+    const { markers } = buildEventTimeline(strip, [
+      entry("a", "2026-08-01"),
+      entry("b", "2026-12-31"),
+    ]);
+    expect(markers.map((marker) => marker.leftPct)).toEqual([2.5, 97.5]);
+  });
+
+  it("clusters same-cell entries into one marker with a count", () => {
+    // A 5% cell is ~7.6 days on this strip; Sep 2/5/8 share one.
+    const { markers } = buildEventTimeline(strip, [
+      entry("first", "2026-09-02"),
+      entry("second", "2026-09-05"),
+      entry("third", "2026-09-08"),
+      entry("later", "2026-11-20"),
+    ]);
+    expect(markers).toHaveLength(2);
+    expect(markers[0]?.events.map((event) => event.label)).toEqual([
+      "first",
+      "second",
+      "third",
+    ]);
+  });
+
+  it("keeps every marker a full grid step apart, even at 60 entries", () => {
+    const dense = Array.from({ length: 60 }, (_, index) =>
+      entry(
+        `e${index}`,
+        `2026-09-${String((index % 30) + 1).padStart(2, "0")}`,
+      ),
+    );
+    const { markers } = buildEventTimeline(strip, dense);
+    expect(markers.length).toBeGreaterThan(1);
+    for (const [index, marker] of markers.entries()) {
+      expect(marker.leftPct).toBeGreaterThanOrEqual(EVENT_MARKER_STEP_PCT / 2);
+      expect(marker.leftPct).toBeLessThanOrEqual(
+        100 - EVENT_MARKER_STEP_PCT / 2,
+      );
+      const previous = markers[index - 1];
+      if (previous) {
+        expect(marker.leftPct - previous.leftPct).toBeGreaterThanOrEqual(
+          EVENT_MARKER_STEP_PCT,
+        );
+      }
+    }
+    expect(
+      dense.every((item) =>
+        markers.some((marker) => marker.events.includes(item)),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps entries that overlap the strip and pins them to its first day", () => {
+    const { markers, months, outOfRangeCount } = buildEventTimeline(strip, [
+      entry("summer-long", "2026-06-01", "2026-09-30"),
+    ]);
+    expect(outOfRangeCount).toBe(0);
+    expect(markers[0]?.leftPct).toBe(2.5);
+    expect(months[0]?.label).toBe("Aug 2026");
+  });
+
+  it("counts entries outside the strip instead of dropping them silently", () => {
+    const { markers, months, outOfRangeCount } = buildEventTimeline(strip, [
+      entry("before", "2026-07-04"),
+      entry("after", "2027-02-14"),
+      entry("inside", "2026-10-05"),
+    ]);
+    expect(outOfRangeCount).toBe(2);
+    expect(markers).toHaveLength(1);
+    expect(months.map((group) => group.label)).toEqual(["Oct 2026"]);
+  });
+
+  it("groups the list by month in calendar order", () => {
+    const { months } = buildEventTimeline(strip, [
+      entry("dec", "2026-12-15"),
+      entry("aug-late", "2026-08-28"),
+      entry("aug-early", "2026-08-03"),
+    ]);
+    expect(months.map((group) => group.key)).toEqual(["2026-08", "2026-12"]);
+    expect(months[0]?.events.map((event) => event.label)).toEqual([
+      "aug-early",
+      "aug-late",
+    ]);
+  });
+
+  it("returns empty groups when nothing falls in the year", () => {
+    expect(buildEventTimeline(strip, [])).toEqual({
+      markers: [],
+      months: [],
+      outOfRangeCount: 0,
+    });
   });
 });
 

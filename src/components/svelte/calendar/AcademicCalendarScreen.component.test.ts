@@ -1,6 +1,11 @@
 import { render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, test } from "vitest";
 import AcademicCalendarScreen from "@ui/calendar/AcademicCalendarScreen.svelte";
+import {
+  expectNoHorizontalOverflow,
+  mountAtWidth,
+} from "@test/layout-assertions";
+import { EVENT_MARKER_STEP_PCT } from "@lib/academic-calendar";
 import { termStore } from "@lib/store.svelte";
 import type { TermWithCount } from "@lib/types";
 
@@ -92,5 +97,99 @@ describe("AcademicCalendarScreen", () => {
     expect(screen.getByRole("note").textContent).toContain(
       "official UPLB academic calendar",
     );
+  });
+
+  test("says so plainly for an AY with no published registrar calendar", () => {
+    // AY 2030-2031 has no registrar PDF and no holidays on file, which is also
+    // the AY 2025-2026 situation (image-only scan, nothing extractable).
+    termStore.terms = [
+      term(1301, {
+        schoolYear: "2030-2031",
+        semester: "1",
+        startsOn: "2030-08-05",
+        endsOn: "2030-12-10",
+      }),
+    ];
+    render(AcademicCalendarScreen);
+    expect(document.querySelectorAll(".acal-dot")).toHaveLength(0);
+    expect(document.querySelector(".acal-milestones")?.textContent).toContain(
+      "No registrar calendar published",
+    );
+  });
+
+  describe("with the real AY 2026-2027 registrar calendar", () => {
+    beforeEach(() => {
+      termStore.terms = [
+        term(1261, {
+          schoolYear: "2026-2027",
+          semester: "1",
+          startsOn: "2026-08-03",
+          endsOn: "2026-12-07",
+          classCount: 12876,
+        }),
+      ];
+      termStore.loaded = true;
+    });
+
+    test("lists the student-planning milestones, not the staff rows", () => {
+      render(AcademicCalendarScreen);
+      const labels = [
+        ...document.querySelectorAll(".acal-milestone__label"),
+      ].map((node) => node.textContent);
+
+      expect(labels).toContain("Start of classes");
+      expect(labels).toContain("Dropping deadline");
+      expect(labels).toContain("Final examinations");
+      expect(labels).toContain("Ninoy Aquino Day");
+      expect(labels).not.toContain(
+        "University Council Executive Committee Meeting",
+      );
+    });
+
+    test("marks each milestone on the strip without overlap", () => {
+      render(AcademicCalendarScreen);
+      const dots = [...document.querySelectorAll<HTMLElement>(".acal-dot")];
+      expect(dots.length).toBeGreaterThan(3);
+
+      const lefts = dots
+        .map((dot) => Number.parseFloat(dot.style.left))
+        .sort((a, b) => a - b);
+      for (const [index, left] of lefts.entries()) {
+        expect(left).toBeGreaterThanOrEqual(EVENT_MARKER_STEP_PCT / 2);
+        expect(left).toBeLessThanOrEqual(100 - EVENT_MARKER_STEP_PCT / 2);
+        const previous = lefts[index - 1];
+        if (previous !== undefined) {
+          expect(left - previous).toBeGreaterThanOrEqual(EVENT_MARKER_STEP_PCT);
+        }
+      }
+    });
+
+    test("shows the date range for a period and a single date for a deadline", () => {
+      render(AcademicCalendarScreen);
+      const rowFor = (label: string) =>
+        [...document.querySelectorAll(".acal-milestone")].find((row) =>
+          row
+            .querySelector(".acal-milestone__label")
+            ?.textContent?.includes(label),
+        );
+
+      expect(rowFor("Final examinations")?.textContent).toContain(
+        "Dec 1 – Dec 7",
+      );
+      expect(rowFor("Dropping deadline")?.textContent).toContain("Oct 28");
+      expect(
+        rowFor("Dropping deadline")?.classList.contains(
+          "acal-milestone--deadline",
+        ),
+      ).toBe(true);
+    });
+
+    test("@320px: no horizontal overflow with the full milestone list", () => {
+      mountAtWidth(320);
+      const { container } = render(AcademicCalendarScreen);
+      expectNoHorizontalOverflow(container);
+      const screenEl = container.querySelector<HTMLElement>(".acal-screen");
+      if (screenEl) expectNoHorizontalOverflow(screenEl);
+    });
   });
 });

@@ -6,13 +6,24 @@
   import { fullScreenReveal } from "@lib/motion";
   import { sidebarStore, termStore } from "@lib/store.svelte";
   import {
+    buildEventTimeline,
     buildYearTimeline,
     currentAcademicYearTerms,
     resolveTermWindow,
     termWindowStatus,
     type TermStatus,
   } from "@lib/academic-calendar";
-  import { formatTermDateRange } from "@lib/term-calendar";
+  import {
+    holidaysWithin,
+    milestonesForTerms,
+    type CalendarMilestone,
+    type MilestoneKind,
+  } from "@lib/academic-milestones";
+  import {
+    formatShortDate,
+    formatTermDateRange,
+    toManilaDateKey,
+  } from "@lib/term-calendar";
   import { termChipLabel, termFullLabel } from "@lib/term-label";
 
   const reducedMotion = new MediaQuery("(prefers-reduced-motion: reduce)");
@@ -67,6 +78,49 @@
       return { term, window, status };
     }),
   );
+
+  const KIND_LABEL: Record<MilestoneKind, string> = {
+    deadline: "Deadline",
+    period: "Period",
+    milestone: "Milestone",
+    holiday: "Holiday",
+  };
+
+  const todayKey = toManilaDateKey(today);
+
+  // Registrar milestones for the terms on the strip, plus the official
+  // holidays that fall inside it.
+  const milestones = $derived(
+    timeline
+      ? [
+          ...milestonesForTerms(yearTerms.map((term) => term.id)),
+          ...holidaysWithin(timeline.rangeStart, timeline.rangeEnd),
+        ]
+      : [],
+  );
+
+  const milestoneTimeline = $derived(
+    timeline ? buildEventTimeline(timeline, milestones) : null,
+  );
+
+  function isPast(milestone: CalendarMilestone) {
+    return milestone.endsOn < todayKey;
+  }
+
+  function dateLabel(milestone: CalendarMilestone) {
+    return milestone.startsOn === milestone.endsOn
+      ? formatShortDate(milestone.startsOn)
+      : formatTermDateRange({
+          startsOn: milestone.startsOn,
+          endsOn: milestone.endsOn,
+        });
+  }
+
+  function markerTitle(entries: CalendarMilestone[]) {
+    return entries
+      .map((entry) => `${entry.label} — ${dateLabel(entry)}`)
+      .join("\n");
+  }
 </script>
 
 <div
@@ -92,9 +146,10 @@
   </header>
 
   <p class="acal-note" role="note">
-    Community-maintained instructional windows per CRS term. Dates may differ
-    from the official UPLB academic calendar — verify with the Office of the
-    University Registrar.
+    Term windows are community-maintained per CRS term and may differ from the
+    official UPLB academic calendar; the dated rows below are read from the
+    Office of the University Registrar's published calendar. Verify anything
+    you are relying on with the Registrar.
   </p>
 
   <div class="acal-body">
@@ -123,6 +178,18 @@
                 <span class="acal-seg__label">{termChipLabel(segment.term)}</span>
               </div>
             {/each}
+            {#each milestoneTimeline?.markers ?? [] as marker (marker.leftPct)}
+              <span
+                class="acal-dot acal-dot--{marker.events[0]?.kind ??
+                  'milestone'}"
+                class:acal-dot--past={marker.events.every(isPast)}
+                style="left: {marker.leftPct}%"
+                title={markerTitle(marker.events)}
+                aria-hidden="true"
+              >
+                {#if marker.events.length > 1}{marker.events.length}{/if}
+              </span>
+            {/each}
             {#if timeline.todayPct !== null}
               <div
                 class="acal-today"
@@ -132,6 +199,42 @@
             {/if}
           </div>
           <p class="acal-caption">Today: {todayLabel} (Asia/Manila)</p>
+        </section>
+
+        <section
+          class="acal-milestones"
+          aria-label="Registrar calendar for {timelineHeading}"
+        >
+          <h2 class="acal-year__heading">
+            Registrar calendar for {timelineHeading}
+          </h2>
+          {#each milestoneTimeline?.months ?? [] as group (group.key)}
+            <h3 class="acal-milestones__month">{group.label}</h3>
+            <ul class="acal-milestones__list">
+              {#each group.events as milestone (`${milestone.termId}-${milestone.label}-${milestone.startsOn}`)}
+                <li
+                  class="acal-milestone acal-milestone--{milestone.kind}"
+                  class:acal-milestone--past={isPast(milestone)}
+                >
+                  <span class="acal-milestone__date">{dateLabel(milestone)}</span
+                  >
+                  <span class="acal-milestone__label">{milestone.label}</span>
+                  <span class="acal-milestone__kind"
+                    >{KIND_LABEL[milestone.kind]}</span
+                  >
+                </li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="acal-status">
+              No registrar calendar published for {timelineHeading} yet.
+            </p>
+          {/each}
+          <p class="acal-milestones__note">
+            From the Office of the University Registrar's academic calendar for
+            {timelineHeading}. Staff-only rows (faculty, University Council and
+            BOR meetings) are omitted.
+          </p>
         </section>
       {/if}
 
@@ -303,6 +406,46 @@
     padding: 0 0.25rem;
   }
 
+  /* Markers snap to a 5% grid (EVENT_MARKER_STEP_PCT), so this dot must stay
+     narrower than 5% of the strip at 320px (~15px) or clusters can touch. */
+  .acal-dot {
+    position: absolute;
+    top: 0.9rem;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 999px;
+    font-size: 0.5rem;
+    font-weight: 800;
+    line-height: 1;
+    color: white;
+    background: hsl(5, 53%, 32%);
+  }
+
+  /* A missed deadline costs money, so deadlines read loudest. */
+  .acal-dot--deadline {
+    background: hsl(5, 72%, 42%);
+  }
+
+  .acal-dot--period {
+    background: white;
+    color: hsl(5, 53%, 32%);
+    box-shadow: inset 0 0 0 2px hsl(5, 53%, 32%);
+  }
+
+  .acal-dot--holiday {
+    background: hsl(210, 45%, 55%);
+  }
+
+  .acal-dot--past {
+    background: hsl(0, 0%, 62%);
+    color: white;
+    box-shadow: none;
+  }
+
   .acal-today {
     position: absolute;
     top: 0;
@@ -316,6 +459,86 @@
     font-size: 0.6875rem;
     font-weight: 600;
     color: hsl(210, 60%, 35%);
+  }
+
+  .acal-milestones {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    max-width: 52rem;
+  }
+
+  .acal-milestones__month {
+    margin: 0.25rem 0 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: hsl(0, 0%, 45%);
+  }
+
+  .acal-milestones__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .acal-milestone {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    padding: 0.4375rem 0.75rem;
+    border: 1px solid hsl(0, 0%, 88%);
+    border-radius: 0.625rem;
+    background: white;
+  }
+
+  .acal-milestone--deadline {
+    border-color: hsl(5, 45%, 78%);
+    background: hsl(5, 60%, 98%);
+  }
+
+  /* Past dates stay on the calendar, just quieter than what is still ahead. */
+  .acal-milestone--past {
+    border-color: hsl(0, 0%, 90%);
+    background: hsl(0, 0%, 97%);
+  }
+
+  .acal-milestone__date {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: hsl(0, 0%, 30%);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .acal-milestone--past .acal-milestone__date,
+  .acal-milestone--past .acal-milestone__label {
+    color: hsl(0, 0%, 48%);
+  }
+
+  .acal-milestone__label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: hsl(0, 0%, 16%);
+    overflow-wrap: anywhere;
+  }
+
+  .acal-milestone__kind {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: hsl(0, 0%, 52%);
+  }
+
+  .acal-milestones__note {
+    margin: 0.25rem 0 0;
+    font-size: 0.6875rem;
+    color: hsl(0, 0%, 45%);
   }
 
   .acal-terms {
@@ -400,6 +623,15 @@
   @media (max-width: 30rem) {
     .acal-month:nth-child(even) {
       font-size: 0;
+    }
+
+    /* Three columns do not fit; date over label, kind badge on the date row. */
+    .acal-milestone {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .acal-milestone__label {
+      grid-column: 1 / -1;
     }
   }
 </style>
