@@ -103,7 +103,7 @@ const shareTitle = ogTitle ?? title;
 
     <!-- #716: desktop/mobile split is viewport-based (not User-Agent), so the
          same check works for every render path (SSR and prerendered) without
-         varying cached HTML per request — CDN/ISR caching stays untouched.
+         varying cached HTML per request. CDN/ISR caching stays untouched.
          Synchronous in <head>, before paint: no flash, and the change
          listener keeps it live across resizes (devtools/QA responsive mode). -->
     <script is:inline define:vars={{ desktopOnlyUrl }}>

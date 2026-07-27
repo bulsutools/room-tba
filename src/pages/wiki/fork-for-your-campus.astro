@@ -30,13 +30,13 @@ const structuredData = jsonLd(
       <h1 class="wiki-title">Fork this for your campus</h1>
       <p class="wiki-lede">
         Room TBA is built for UPLB. The license (MIT) lets you fork it. This is
-        not a "swap the logo and ship" kind of fork. A lot of the app is UPLB
+        not a “swap the logo and ship” kind of fork. A lot of the app is UPLB
         data and UPLB-specific glue. Here is what you actually replace, in the
         order that matters, with the real file paths.
       </p>
       <p class="article-meta">
         Current as of v2.1.x. If the repo has moved, the file paths below are
-        still the map — re-check them.
+        still the map. Re-check them.
       </p>
       <WikiProvenance sourcePath="src/pages/wiki/fork-for-your-campus.astro" />
     </header>
@@ -62,7 +62,7 @@ const structuredData = jsonLd(
       </p>
       <ul>
         <li>The map UI, search bar, side panel, and pin flyouts.</li>
-        <li>PGlite offline cache (the app answers "where is this room" with no signal).</li>
+        <li>PGlite offline cache (the app answers “where is this room” with no signal).</li>
         <li>The editor and the suggest-an-edit review queue.</li>
         <li>The course planner and the personal-schedule routing.</li>
         <li>Events on the map, alias synonym matching, share links.</li>
@@ -83,7 +83,7 @@ const structuredData = jsonLd(
             <tr><td><code>src/constants/community-links.ts</code> + <code>status-bar-links.ts</code></td><td>UPLB Tools, Discord, and Messenger links.</td></tr>
             <tr><td><code>public/room_info.json</code></td><td>UPLB buildings, aliases, and walking directions. Seed file for aliases.</td></tr>
             <tr><td><code>src/constants/jeepney-routes.ts</code> + <code>jeepney-geometries.json</code></td><td>UPLB jeepney routes. Delete if your campus has no equivalent.</td></tr>
-            <tr><td><code>scripts/import-amis-classes.ts</code></td><td>AMIS is UPLB's course system. You do not have AMIS.</td></tr>
+            <tr><td><code>scripts/import-amis-classes.ts</code></td><td>AMIS is UPLB’s course system. You do not have AMIS.</td></tr>
             <tr><td><code>scripts/import-final-exams.ts</code></td><td>Reads UPLB OUR finals JSON.</td></tr>
             <tr><td><code>scripts/import-osa-orgs.ts</code> + <code>import-campus-offices.ts</code></td><td>UPLB org and office directories.</td></tr>
             <tr><td><code>astro.config.mjs</code> <code>site</code></td><td>Hardcoded to <code>room-tba.uplbtools.me</code>.</td></tr>
@@ -124,7 +124,7 @@ cp .env.example .env.local</code></pre>
         Create a project. In SQL settings, copy the <strong>session pooler</strong>
         connection string (the one ending in <code>*.pooler.supabase.com</code>).
         Paste it as <code>DATABASE_URL</code> in <code>.env.local</code>. Set
-        <code>ADMIN_PASSWORD</code> to something long and random — you need it
+        <code>ADMIN_PASSWORD</code> to something long and random. You need it
         to log into the editor.
       </p>
 
@@ -137,7 +137,7 @@ bunx drizzle-kit push</code></pre>
         with an empty campus.
       </p>
 
-      <h3>4. Edit <code>src/campus.config.ts</code> — the single config file</h3>
+      <h3>4. Edit <code>src/campus.config.ts</code>, the single config file</h3>
       <p>
         This is the one file for campus-specific config. It holds the site
         name, URL, title, description, the map center / bounds / camera, and
@@ -148,16 +148,16 @@ bunx drizzle-kit push</code></pre>
         rebrand.
       </p>
       <ul>
-        <li><code>campusSite</code> — <code>url</code>, <code>name</code>, <code>title</code>, <code>description</code>.</li>
-        <li><code>campusMap</code> — <code>maxBounds</code> (the lng/lat box that keeps the camera on your campus) and <code>defaultCamera</code> (<code>center: [lng, lat]</code>, <code>zoom</code>, <code>pitch</code>, <code>bearing</code>).</li>
-        <li><code>campusCommunity</code> — your org, GitHub, Discord, and Messenger links. Delete entries you do not have.</li>
+        <li><code>campusSite</code>: <code>url</code>, <code>name</code>, <code>title</code>, <code>description</code>.</li>
+        <li><code>campusMap</code>: <code>maxBounds</code> (the lng/lat box that keeps the camera on your campus) and <code>defaultCamera</code> (<code>center: [lng, lat]</code>, <code>zoom</code>, <code>pitch</code>, <code>bearing</code>).</li>
+        <li><code>campusCommunity</code>: your org, GitHub, Discord, and Messenger links. Delete entries you do not have.</li>
       </ul>
       <p>
         If your campus has no hill like Mt. Makiling, also disable the terrain
         source in <code>src/constants/map-terrain.ts</code>
         (<code>TERRAIN_SOURCE_ID</code>, <code>getTerrainTileJsonUrl</code>).
         The 3D toggle just turns off. The terrain IDs are not in
-        <code>campus.config.ts</code> yet — they are a follow-up.
+        <code>campus.config.ts</code> yet. That is a follow-up.
       </p>
 
       <h3>5. Delete or replace the UPLB data files</h3>
@@ -182,7 +182,7 @@ bunx drizzle-kit push</code></pre>
         (<code>uplb</code>, <code>uplbtools.me</code>, <code>AMIS</code>,
         <code>Makiling</code>, <code>PSLH</code>, the UPLB map center coords,
         Messenger invites, …). Reports file:line hits with hints. On a finished
-        fork it should report zero. Wire it into your fork's CI
+        fork it should report zero. Wire it into your fork’s CI
         (<code>--silent</code> for exit-code-only) so a stray UPLB string does
         not sneak back in on a merge from upstream.
       </p>
@@ -201,18 +201,18 @@ bunx drizzle-kit push</code></pre>
       </p>
       <p>
         <strong>A seed script.</strong> For a first bulk load (every building,
-        every room, every class), write a script that reads your registrar's
+        every room, every class), write a script that reads your registrar’s
         export and upserts into Postgres. Use
         <code>scripts/import-amis-classes.ts</code> as a <em>template for the
-        shape</em> — Drizzle upsert by natural key, term handling, the
-        class/room join — not the AMIS fetch. Your data source is different.
+        shape</em> (Drizzle upsert by natural key, term handling, the class/room
+        join), not the AMIS fetch. Your data source is different.
         The import scripts read from files under <code>data/</code> (gitignored)
         and write to <code>DATABASE_URL</code>; copy that pattern.
       </p>
       <p>
         Class schedules are the hard part. Room TBA pulls from AMIS, which is
-        UPLB's system. You do not have AMIS. You need whatever export your
-        registrar or SAIS equivalent gives you — CSV, JSON, a scraped portal,
+        UPLB’s system. You do not have AMIS. You need whatever export your
+        registrar or SAIS equivalent gives you: CSV, JSON, a scraped portal, or
         a PDF someone has to retype. Write one importer for it, point it at the
         <code>classes</code> table, and rerun it each term.
       </p>
@@ -230,11 +230,11 @@ bunx drizzle-kit push</code></pre>
         (Production and Preview):
       </p>
       <ul>
-        <li><code>DATABASE_URL</code> — your Supabase pooler URL.</li>
-        <li><code>ADMIN_PASSWORD</code> — same one you used locally.</li>
-        <li><code>ADMIN_SESSION_SECRET</code> — 32+ random chars, used to sign editor cookies.</li>
-        <li><code>ISR_BYPASS_TOKEN</code> — 32+ random chars, must match <code>bypassToken</code> in <code>astro.config.mjs</code>. Without it, editor publishes do not revalidate the SEO pages.</li>
-        <li><code>PUBLIC_MAPTILER_KEY</code> — your key.</li>
+        <li><code>DATABASE_URL</code>: your Supabase pooler URL.</li>
+        <li><code>ADMIN_PASSWORD</code>: same one you used locally.</li>
+        <li><code>ADMIN_SESSION_SECRET</code>: 32+ random chars, used to sign editor cookies.</li>
+        <li><code>ISR_BYPASS_TOKEN</code>: 32+ random chars, must match <code>bypassToken</code> in <code>astro.config.mjs</code>. Without it, editor publishes do not revalidate the SEO pages.</li>
+        <li><code>PUBLIC_MAPTILER_KEY</code>: your key.</li>
         <li><code>PUBLIC_APP_ENV=production</code> on your production deploy; <code>staging</code> on preview.</li>
       </ul>
       <p>
@@ -248,7 +248,7 @@ bunx drizzle-kit push</code></pre>
       <ul>
         <li>
           <strong>Class import is write-your-own.</strong> AMIS is UPLB-only.
-          Your registrar's export is the long pole. Budget time for it.
+          Your registrar’s export is the long pole. Budget time for it.
         </li>
         <li>
           <strong>Map tiles cost money at scale.</strong> MapTiler free tier is
