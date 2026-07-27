@@ -184,6 +184,50 @@ describe("AcademicCalendarScreen", () => {
       ).toBe(true);
     });
 
+    test("a term card opens to its own registrar dates", () => {
+      render(AcademicCalendarScreen);
+      const card = document.querySelector<HTMLDetailsElement>(".acal-card");
+
+      expect(card?.tagName).toBe("DETAILS");
+      // The in-session term starts open so the dates are not a click away.
+      expect(card?.querySelector(".acal-card__head")?.tagName).toBe("SUMMARY");
+
+      const labels = [
+        ...(card?.querySelectorAll(
+          ".acal-card__dates .acal-milestone__label",
+        ) ?? []),
+      ].map((node) => node.textContent);
+      expect(labels).toContain("Start of classes");
+      expect(labels).toContain("Final examinations");
+    });
+
+    test("a term card only lists its own term's dates", () => {
+      termStore.terms = [
+        term(1261, { schoolYear: "2026-2027", semester: "1" }),
+        term(1262, { schoolYear: "2026-2027", semester: "2" }),
+      ];
+      render(AcademicCalendarScreen);
+      const cards = document.querySelectorAll(".acal-card");
+      expect(cards.length).toBe(2);
+
+      // Both terms have a "Start of classes", on different dates: the second
+      // card must not repeat the first card's.
+      const datesIn = (card: Element) =>
+        [...card.querySelectorAll(".acal-card__dates .acal-milestone")]
+          .filter((row) =>
+            row
+              .querySelector(".acal-milestone__label")
+              ?.textContent?.includes("Start of classes"),
+          )
+          .map(
+            (row) => row.querySelector(".acal-milestone__date")?.textContent,
+          );
+
+      expect(datesIn(cards[0])).toHaveLength(1);
+      expect(datesIn(cards[1])).toHaveLength(1);
+      expect(datesIn(cards[0])).not.toEqual(datesIn(cards[1]));
+    });
+
     test("@320px: no horizontal overflow with the full milestone list", () => {
       mountAtWidth(320);
       const { container } = render(AcademicCalendarScreen);

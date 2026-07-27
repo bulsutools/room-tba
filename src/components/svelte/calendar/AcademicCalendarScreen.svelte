@@ -103,6 +103,21 @@
     timeline ? buildEventTimeline(timeline, milestones) : null,
   );
 
+  // Every card's own registrar dates, so a term can be opened on its own.
+  // Keyed off the cards rather than the year strip: a card can sit outside
+  // the strip's range and would otherwise open to nothing.
+  const milestonesByTerm = $derived.by(() => {
+    const byTerm = new Map<number, CalendarMilestone[]>();
+    for (const milestone of milestonesForTerms(
+      cards.map((card) => card.term.id),
+    )) {
+      const existing = byTerm.get(milestone.termId);
+      if (existing) existing.push(milestone);
+      else byTerm.set(milestone.termId, [milestone]);
+    }
+    return byTerm;
+  });
+
   function isPast(milestone: CalendarMilestone) {
     return milestone.endsOn < todayKey;
   }
@@ -240,16 +255,20 @@
 
       <section class="acal-terms" aria-label="Terms">
         {#each cards as card (card.term.id)}
-          <article
+          {@const termMilestones = milestonesByTerm.get(card.term.id) ?? []}
+          <!-- Native disclosure: keyboard support and open/close state for
+               free, no store needed. The term in session starts open. -->
+          <details
             class="acal-card"
             class:acal-card--current={card.status === "in-session"}
+            open={card.status === "in-session"}
           >
-            <div class="acal-card__head">
+            <summary class="acal-card__head">
               <h3 class="acal-card__label">{termFullLabel(card.term)}</h3>
               <span class="acal-badge acal-badge--{card.status}"
                 >{STATUS_LABEL[card.status]}</span
               >
-            </div>
+            </summary>
             <p class="acal-card__meta">
               <span>CRS {card.term.id}</span>
               {#if card.window}
@@ -258,8 +277,35 @@
               {#if card.term.classCount > 0}
                 <span>{card.term.classCount} classes campus-wide</span>
               {/if}
+              {#if termMilestones.length > 0}
+                <span class="acal-card__hint"
+                  >{termMilestones.length} registrar dates</span
+                >
+              {/if}
             </p>
-          </article>
+            {#if termMilestones.length > 0}
+              <ul class="acal-card__dates">
+                {#each termMilestones as milestone (`${milestone.label}-${milestone.startsOn}`)}
+                  <li
+                    class="acal-milestone acal-milestone--{milestone.kind}"
+                    class:acal-milestone--past={isPast(milestone)}
+                  >
+                    <span class="acal-milestone__date"
+                      >{dateLabel(milestone)}</span
+                    >
+                    <span class="acal-milestone__label">{milestone.label}</span>
+                    <span class="acal-milestone__kind"
+                      >{KIND_LABEL[milestone.kind]}</span
+                    >
+                  </li>
+                {/each}
+              </ul>
+            {:else}
+              <p class="acal-card__empty">
+                No registrar dates published for this term yet.
+              </p>
+            {/if}
+          </details>
         {/each}
       </section>
     {/if}
@@ -548,14 +594,63 @@
     max-width: 52rem;
   }
 
+  /* block, not flex: a flex <details> puts the disclosure box out of flow. */
   .acal-card {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    display: block;
     padding: 0.625rem 0.75rem;
     border: 1px solid hsl(0, 0%, 88%);
     border-radius: 0.625rem;
     background: white;
+  }
+
+  .acal-card__head {
+    cursor: pointer;
+    /* Both properties needed: Safari still uses the webkit marker. */
+    list-style: none;
+  }
+
+  .acal-card__head::-webkit-details-marker {
+    display: none;
+  }
+
+  /* Chevron stands in for the marker we just removed. */
+  .acal-card__head::after {
+    content: "";
+    flex: 0 0 auto;
+    width: 0.4375rem;
+    height: 0.4375rem;
+    margin-left: auto;
+    border-right: 2px solid hsl(0, 0%, 45%);
+    border-bottom: 2px solid hsl(0, 0%, 45%);
+    transform: rotate(45deg) translate(-0.125rem, -0.125rem);
+    transition: transform 120ms ease;
+  }
+
+  .acal-card[open] > .acal-card__head::after {
+    transform: rotate(-135deg) translate(-0.125rem, -0.125rem);
+  }
+
+  .acal-card__dates {
+    margin: 0.5rem 0 0;
+    padding: 0.5rem 0 0;
+    border-top: 1px solid hsl(0, 0%, 92%);
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .acal-card__hint {
+    font-weight: 650;
+    color: hsl(5, 53%, 32%);
+  }
+
+  .acal-card__empty {
+    margin: 0.5rem 0 0;
+    padding-top: 0.5rem;
+    border-top: 1px solid hsl(0, 0%, 92%);
+    font-size: 0.75rem;
+    color: hsl(0, 0%, 45%);
   }
 
   .acal-card--current {

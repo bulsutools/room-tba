@@ -1,6 +1,7 @@
 <script lang="ts">
   import CalendarClock from "@lucide/svelte/icons/calendar-clock";
   import CalendarDays from "@lucide/svelte/icons/calendar-days";
+  import CalendarRange from "@lucide/svelte/icons/calendar-range";
   import FileCheck from "@lucide/svelte/icons/file-check";
   import BookText from "@lucide/svelte/icons/book-text";
   import GraduationCap from "@lucide/svelte/icons/graduation-cap";
@@ -365,6 +366,17 @@
         tooltip="Final exams"
       >
         <FileCheck size={20} />
+      </NavLink>
+
+      <NavLink
+        onclick={() => {
+          sidebarStore.changeOpened("calendar");
+        }}
+        active={sidebarStore.panelOpen === "calendar"}
+        expanded={labeled}
+        tooltip="Academic calendar"
+      >
+        <CalendarRange size={20} />
       </NavLink>
 
       <NavLink href="/wiki" expanded={labeled} tooltip="Wiki">
