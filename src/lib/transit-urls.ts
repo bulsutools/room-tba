@@ -16,11 +16,7 @@ export function getTransitStopSlug(route: JeepneyRoute, stopIndex: number) {
   const stop = route.stops[stopIndex];
   if (!stop) return null;
 
-  // The common campus shorthand is more recognizable than the full stop name.
-  const base =
-    route.id === "kaliwa-kanan" && stop.name === "Carabao Park / DevCom"
-      ? "cpark-devcom"
-      : slugifySegment(stop.name);
+  const base = slugifySegment(stop.name);
   const duplicate = route.stops
     .slice(0, stopIndex)
     .filter(

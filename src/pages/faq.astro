@@ -3,17 +3,19 @@ export const prerender = true;
 import Layout from "@layouts/Layout.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import {
+  ORG_LABEL,
   UPLB_TOOLS_URL,
   GITHUB_ROOM_TBA_URL,
   DISCORD_URL,
 } from "@constants/community-links";
+import { PLACE_LABEL } from "@lib/site";
 
 const reportIssueUrl = `${GITHUB_ROOM_TBA_URL}/issues/new/choose`;
 ---
 
 <Layout
   title="FAQ | Room TBA"
-  description="Student FAQ for Room TBA: 3D building models, data sources, offline use, and how to report mistakes."
+  description={`Student FAQ for Room TBA at ${PLACE_LABEL}: map pins, 3D building models, offline use, and how to report mistakes.`}
   canonicalPath="/faq"
   showAppLoadingShell={false}
 >
@@ -26,22 +28,22 @@ const reportIssueUrl = `${GITHUB_ROOM_TBA_URL}/issues/new/choose`;
       <p class="eyebrow">Help</p>
       <h1>Student FAQ</h1>
       <p class="lede">
-        Short answers to questions students ask often. Room TBA is a
+        Short answers for {PLACE_LABEL}. Room TBA is a
         <a href={UPLB_TOOLS_URL} target="_blank" rel="noopener noreferrer"
-          >UPLB Tools</a
-        > volunteer project.
+          >{ORG_LABEL}</a
+        > volunteer project (fork of the upstream Room TBA map app).
       </p>
     </header>
 
     <article class="faq-body">
       <details class="faq-item" id="official" open>
-        <summary>Is Room TBA an official UPLB site?</summary>
+        <summary>Is Room TBA an official BulSU site?</summary>
         <div class="faq-answer">
           <p>
-            No. Room TBA is a student-run community tool under UPLB Tools. It is
-            not affiliated with, endorsed by, or operated by the University of
-            the Philippines Los Baños. For enrollment, grades, or official
-            announcements, use university channels.
+            No. Room TBA is a student-run community tool under {ORG_LABEL}. It
+            is not affiliated with, endorsed by, or operated by Bulacan State
+            University. For enrollment, grades, or official announcements, use
+            university channels.
           </p>
         </div>
       </details>
@@ -85,38 +87,26 @@ const reportIssueUrl = `${GITHUB_ROOM_TBA_URL}/issues/new/choose`;
         <summary>Where does class and room schedule data come from?</summary>
         <div class="faq-answer">
           <p>
-            Volunteers import class offerings from AMIS/CRS each term. Class
-            search can list lecture, lab, recitation, thesis, special problem,
-            and similar sections; sections without a room in AMIS show as
-            unassigned. Room schedules list lecture, lab, and similar sections
-            that have an assigned room. Thesis and special-problem style rows
-            usually have no facility in AMIS, so they often do not appear on a
-            room timetable.
-          </p>
-          <p>
-            Offerings can still change up to the last day of change of
-            matriculation. Always double-check with your instructor or
-            department when it matters.
+            This BulSU fork does not import registrar class schedules yet. The
+            seed file lists colleges; building and place pins are added in the
+            map editor. Class search and room timetables stay empty until a
+            BulSU schedule importer exists. Upstream Room TBA uses UPLB AMIS/CRS;
+            those scripts do not apply here.
           </p>
         </div>
       </details>
 
       <details class="faq-item" id="missing">
-        <summary>Why is my class or room missing?</summary>
+        <summary>Why is my building missing or in the wrong place?</summary>
         <div class="faq-answer">
           <p>Common reasons:</p>
           <ul>
             <li>
-              The section type is outside what room schedules show (for example
-              thesis or special problem with no facility in AMIS).
+              The pin is approximate seed data and has not been dragged to the
+              real spot yet.
             </li>
-            <li>
-              The AMIS facility string does not match our room codes yet (aliases
-              and typos). Volunteers track that as data work.
-            </li>
-            <li>
-              The building or room has not been added to the map database.
-            </li>
+            <li>The building has not been added to the seed or map database.</li>
+            <li>Campus 2 annex buildings may still be incomplete.</li>
           </ul>
           <p>
             See also how to
@@ -129,15 +119,13 @@ const reportIssueUrl = `${GITHUB_ROOM_TBA_URL}/issues/new/choose`;
         <summary>How do I report wrong data?</summary>
         <div class="faq-answer">
           <p>
-            Open a GitHub issue with the room code, building name, or class
-            section and what is wrong:
+            Open a GitHub issue with the building name and what is wrong:
             <a href={reportIssueUrl} target="_blank" rel="noopener noreferrer"
               >Report wrong data</a
-            >. You can also ask in
+            >. You can also ask via the
             <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer"
-              >Discord</a
-            >. Signed-in contributors can use <strong>Suggest an edit</strong> in
-            the app for many map fields.
+              >community link</a
+            >. Editors with a password can drag pins in map edit mode.
           </p>
         </div>
       </details>
@@ -148,8 +136,8 @@ const reportIssueUrl = `${GITHUB_ROOM_TBA_URL}/issues/new/choose`;
           <p>
             Yes, within limits. Room TBA is a PWA: after you visit online, campus
             data can stay cached in your browser (PGlite). Map tiles work offline
-            if you already loaded them or used the offline maps download. A first
-            visit with no signal will not have a full cache yet.
+            if you already loaded them. A first visit with no signal will not
+            have a full cache yet.
           </p>
         </div>
       </details>

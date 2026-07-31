@@ -2,16 +2,16 @@
 
 # Room TBA
 
-**Saan sa UPLB ang \___?**
+**Saan sa BulSU Malolos ang \___?**
 
-[![Live app](https://img.shields.io/badge/open-room, tba.uplb.tools-maroon?style=for-the-badge)](https://room-tba.uplb.tools)
+[![Live app](https://img.shields.io/badge/open-bulsu--room--tba.vercel.app-maroon?style=for-the-badge)](https://bulsu-room-tba.vercel.app)
 [![MIT](https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square)](LICENSE)
 [![Bun](https://img.shields.io/badge/bun-1.3+-black?style=flat-square&logo=bun)](https://bun.sh)
 [![Astro](https://img.shields.io/badge/Astro-7-BC52EE?style=flat-square&logo=astro)](https://astro.build)
 
-_Schedules, buildings, jeepney routes, and "where is PSLH 1?" on one campus map._
+_Buildings, colleges, and "where is Federizo?" on the BulSU Malolos Campus 1 + Campus 2 map._
 
-[Open the map](https://room-tba.uplb.tools) · [Wiki](https://room-tba.uplb.tools/wiki) · [FAQ](https://room-tba.uplb.tools/faq) · [Report wrong data](https://github.com/uplbtools/room-tba/issues/new/choose) · [Changelog](https://room-tba.uplb.tools/changelog)
+[Open the map](https://room-tba.vercel.app) · [Report wrong data](https://github.com/bulsutools/room-tba/issues/new/choose) · [Upstream Room TBA](https://github.com/uplbtools/room-tba)
 
 </div>
 
@@ -19,11 +19,11 @@ _Schedules, buildings, jeepney routes, and "where is PSLH 1?" on one campus map.
 
 ## What this is
 
-**Room TBA** is a map-first web app for [UPLB](https://uplb.edu.ph) students. You search a room code, building nickname, or course; the app puts it on an interactive campus map, shows schedules when we have them, and keeps working when the signal drops.
+**Room TBA** for [Bulacan State University](https://www.bulsu.edu.ph/) (Malolos **Campus 1** Guinhawa + **Campus 2** annex). Fork of [uplbtools/room-tba](https://github.com/uplbtools/room-tba). Search a building or college; the map flies to an approximate pin you can correct in the editor.
 
-No account needed to browse. Editors and contributors fix data in the same app (login popup on the map, not a separate admin site).
+No account needed to browse. Editors fix pins in the same app (`/?editor=login`).
 
-> **Data note:** Room and class listings are updated each term by volunteers. The active term follows the academic calendar (midyear Jun–Jul, 2nd sem Jan–May, etc.). **Class search** lists lecture, lab, thesis, special problem, and similar sections; ones without a room in AMIS show as unassigned. **Room schedules** list only lecture and lab sections with assigned rooms. Wrong schedule? [Open an issue](https://github.com/uplbtools/room-tba/issues/new/choose).
+> **Data note:** Seed file keeps **colleges only**. Building/place pins start empty — add them in the map editor. Room schedules need a registrar importer later (AMIS/UPLB scripts do not apply). Wrong data? [Open an issue](https://github.com/bulsutools/room-tba/issues/new/choose).
 
 ---
 
@@ -31,68 +31,26 @@ No account needed to browse. Editors and contributors fix data in the same app (
 
 | Goal | How |
 | ----------------------------- | ---------------------------------------------------------------- |
-| Find **PSLH 1** or **PhySci** | Search + aliases (`PhySci`, `HUM`, …) |
-| Room schedule this sem | Term filter + timetable |
-| Personal schedule route | Build a plan in Planner → Map tools → Schedule → pick a day, route stops |
-| Browse all classes | Status bar → Browse classes; search by course code |
-| Plan your classes | Planner view to build a draft schedule |
-| What do I have today | Today view (`/today`): your plan's classes for today, tomorrow, and the rest of the week |
-| Course Planner explainer | [Four-panel, screenshot-ready guide](https://room-tba.uplb.tools/pubmat/course-planner/) |
-| Final exam time & room | Search course code → finals panel; room panel during finals week |
-| Academic calendar | [/calendar](https://room-tba.uplb.tools/calendar) — term windows on a year timeline; also via the term picker |
+| Find **Federizo**, **COE Building 2**, **Mendoza** | Search + map pins |
 | Building location | Map, pins, directions, Google Maps |
-| Compare dorm listings | Verified dorms link to their Kubo listing when available |
-| Landmarks, services, orgs & offices | Sidebar directories, distinct map pins, and shareable detail links |
+| Landmarks (gates, under-construction hospital) | Places directory + map pins |
+| Jeepney / campus transit | UI ready; routes empty until contributors add Malolos data |
 | Offline / bad signal | PWA + local cache; tiles if already loaded |
-| Campus events | Events on map with routes |
-| Jeepney routes | Route overlays |
-| 3D view | Buildings + Makiling terrain (online) |
-| Common questions | [Student FAQ](https://room-tba.uplb.tools/faq) (3D models, data sources, offline) |
-| Understand section names | Wiki guide to the A–H / S–Z class time blocks |
+| Suggest edits | **Suggest an edit** → review queue (when configured) |
 
 <details>
 <summary><strong>Editor / contributor mode</strong> (password from the team)</summary>
 
 | Power | Where |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Move building & dorm pins | Map edit mode (pencil) |
-| Add or correct landmarks, services, organizations, offices & units | **Add something to the map** or the side-panel editor; pick the map pin |
-| Fix room/building/college copy | Side panel → Edit |
-| Suggest edits without publishing | **Suggest an edit** → admin review queue |
-| Upload event posters | Event editor + R2 image upload (when configured) |
-| Manage public credit | Account settings → optional HTTPS avatar/profile link; uncheck credits to opt out |
-| Undo a pin drag | Toolbar undo/redo (session); durable history tracked in [#202](https://github.com/uplbtools/room-tba/issues/202) |
+| Move building pins | Map edit mode (pencil) |
+| Add landmarks / services | **Add something to the map** or side-panel editor |
+| Fix building/college copy | Side panel → Edit |
+| Add jeepney routes | `src/constants/jeepney-routes.ts` + DB seed, or editor when wired |
 
-Login: **`/?editor=login`** or the shield / status bar in the app. `/admin` URLs redirect back into the map.
+Login: **`/?editor=login`**. First login with `ADMIN_PASSWORD` bootstraps user `admin`.
 
 </details>
-
----
-
-## How a search works
-
-```mermaid
-flowchart LR
-  subgraph browser [Your phone or laptop]
-    Search[Search bar]
-    PGlite[(PGlite offline cache)]
-    Map[Map + side panel]
-  end
-  subgraph cloud [When online]
-    API[Astro API routes]
-    DB[(Supabase Postgres)]
-  end
-  Search --> PGlite
-  PGlite -->|stale or empty| API
-  API --> DB
-  API --> Map
-  PGlite --> Map
-```
-
-1. **First visit online:** app syncs buildings, rooms, classes, aliases, and events into browser storage.
-2. **You search:** local data first; network when sync keys say something changed.
-3. **You pick a result:** map flies to the pin; side panel shows schedules, directions, and a share link.
-4. **You go offline:** last sync still answers "saan ang room na 'to?" (map tiles need a prior download or visit).
 
 ---
 
@@ -100,13 +58,12 @@ flowchart LR
 
 - [Astro 7](https://astro.build) + [Svelte 5](https://svelte.dev)
 - [Bun](https://bun.sh)
-- [Supabase](https://supabase.com) Postgres + [Drizzle](https://orm.drizzle.team) (`drizzle/`)
+- [Neon](https://neon.tech) Postgres (free tier) + [Drizzle](https://orm.drizzle.team) (`drizzle/`) via `DATABASE_URL`
 - [PGlite](https://pglite.dev) in the browser for offline data
 - [MapLibre GL](https://maplibre.org), OSM / MapTiler tiles
-- [Vercel](https://vercel.com) for SSR and API routes
-- Cloudflare R2 for event uploads (optional)
+- [Vercel](https://vercel.com) Hobby for SSR and API routes
 
-Contributor notes: [AGENTS.md](AGENTS.md)
+Campus branding + map center: [`src/campus.config.ts`](src/campus.config.ts)
 
 ---
 
@@ -115,176 +72,78 @@ Contributor notes: [AGENTS.md](AGENTS.md)
 ### You need
 
 - [Bun](https://bun.sh) 1.3+
-- A **Supabase** Postgres URL (`DATABASE_URL`); session pooler recommended for dev
-- `ADMIN_PASSWORD` if you want editor login locally
-- `ISR_BYPASS_TOKEN` (optional locally; **required on Vercel** for on-demand SEO page revalidation after editor publishes)
+- A **Neon** (or any Postgres) URL in `DATABASE_URL`
+- `ADMIN_PASSWORD` + `ADMIN_SESSION_SECRET` for editor login
+- `PUBLIC_MAPTILER_KEY` for vector/3D tiles (optional locally; flat raster fallback without it)
+- `ISR_BYPASS_TOKEN` on Vercel for on-demand revalidation after editor publishes
 
 ### Setup
 
 ```sh
-git clone https://github.com/uplbtools/room-tba.git
+git clone https://github.com/bulsutools/room-tba.git
 cd room-tba
 cp .env.example .env.local
-# Fill DATABASE_URL (staging pooler) and ADMIN_PASSWORD; see .env.example for prod/E2E URLs
+# Fill DATABASE_URL (Neon), ADMIN_PASSWORD, ADMIN_SESSION_SECRET, PUBLIC_MAPTILER_KEY
 
 bun install
-bun dev
+bun run setup:bulsu   # schema push if needed + seed colleges (pins empty)
+bunx astro dev --port 4331
 ```
 
-Open **http://localhost:4321**. Without `DATABASE_URL`, the dev server starts but pages that hit the DB will 500. That is expected.
+Open **http://localhost:4331**. Map should center near Guinhawa Campus 1 (`campus.config.ts`). Without `DATABASE_URL`, pages that hit the DB will 500.
 
-To test the optional Kubo dorm link, the CTA directory loads lazily from Kubo
-through Room TBA's cached proxy and starts empty, so no button appears until the
-API confirms a matching Room TBA dorm ID. Set `KUBO_ROOM_TBA_DIRECTORY_URL` to
-a local fixture server to test **Reserve on Kubo**, **Join waitlist on Kubo**,
-**View on Kubo**, and an unmapped dorm without Kubo production access.
+Re-seed only (idempotent by name): `bun run seed:bulsu`  
+Dry-run: `bun run seed:bulsu -- --dry-run`
 
-### Linting and formatting
+### Contrib surfaces (open for volunteers)
 
-This project uses [Biome](https://biomejs.dev/) for both formatting and linting (replacing Prettier and ESLint).
-
-```sh
-# Check format + lint (no writes):
-bun run lint
-
-# Auto-fix all safe issues:
-bun run lint:fix
-
-# Format only:
-bun run format
-```
-
-Install the [Biome VS Code extension](https://marketplace.visualstudio.com/items?itemName=biomejs.biome) for format-on-save support. The workspace settings in `.vscode/settings.json` configure this automatically.
+| Surface | Where |
+| --- | --- |
+| Building / place pins | Map editor (seed file leaves these empty on purpose) |
+| Jeepney routes | `src/constants/jeepney-routes.ts` (empty today) |
+| College / building copy | Side panel editor |
+| Photos | Event/image upload when R2 is configured |
+| Class schedules | Future registrar importer (not AMIS) |
 
 ### Commands worth knowing
 
 | Command | Does what |
 | --- | --- |
-| `bun dev` | Dev server |
-| `bun run build` | Production build (**needs** `DATABASE_URL`; entity SEO pages render on first request via Vercel ISR, not at build) |
-| `bun test src/lib src/constants` | Unit + store tests (no DB required) |
-| `bun run test:components` | Vitest component/layout tests |
-| `bun run test:integration` | API + DB integration (E2E DB; see `docs/testing.md`) |
-| `bun run e2e` | Playwright blocking suite (uses `serve:e2e`: node adapter build + preview) |
-| `bun run e2e:advisory` | Playwright advisory (non-blocking in CI) |
-| `bun run lint` | Biome check (format + lint) |
-| `bun run lint:fix` | Biome check with auto-fixes |
-| `bun run format` | Biome format write |
-| `bunx drizzle-kit studio` | Browse/edit Postgres visually |
-| `bun run seed:aliases` | Seed building aliases from `public/room_info.json` |
-| `bun run seed:deep-research` | Fill-only data-gap seed from the 2026-07 research report (`DATABASE_URL`; `--dry-run` supported) |
-| `bun run generate:pglite-schema` | Regenerate the offline PGlite init SQL from `drizzle/schema.ts` |
-| `bun run import:osa-orgs` | Add the current public OSA organization directory (`DATABASE_URL`; safe to rerun) |
-| `bun run import:campus-offices` | Add missing campus offices and units (`DATABASE_URL`; safe to rerun) |
-| `bun run import:amis-classes` | Upsert AMIS classes (`docs/amis-com-refresh-runbook.md`) |
-| `bun run import:final-exams` | Import OUR finals JSON into Postgres (`DATABASE_URL`; see `docs/final-exams-data-source.md`) |
+| `bun run setup:bulsu` | First-run: env check, schema push if needed, seed |
+| `bun run seed:bulsu` | Upsert from `data/bulsu-seed.json` (colleges today; buildings/places when filled) |
+| `bunx astro dev --port 4331` | Dev server (4321 often taken by other projects) |
+| `bun run build` | Production build (**needs** `DATABASE_URL`) |
+| `bun test src/lib src/constants` | Unit tests |
+| `bun run test:components` | Vitest component tests |
+| `bun run lint` | Biome check |
+| `bunx drizzle-kit push` | Apply schema to empty Neon DB |
+| `bunx drizzle-kit studio` | Browse Postgres |
 
-Legacy **`data/info.db`** SQLite is only for old seed/export scripts (`bun:sqlite`, not runtime). Production uses Supabase Postgres via `DATABASE_URL`. Archived SQLite migrations live in `drizzle-migrations/`: do not edit; active schema is `drizzle/`.
-
-Optional env vars (R2 uploads, Supabase Auth client): see [`.env.example`](.env.example). Staging vs production: set `PUBLIC_APP_ENV=staging` on Vercel Preview and local dev; production uses `production` (default) and hides the staging banner.
+Optional env vars: [`.env.example`](.env.example). Set `PUBLIC_APP_ENV=staging` locally and on Vercel Preview.
 
 ---
 
 ## Repo map
 
-```mermaid
-flowchart TB
-  root[room-tba]
-  root --> src
-  root --> drizzle["drizzle/ schema + migrations"]
-  root --> docs["docs/ QA and layout notes"]
-  root --> public["public/ static assets"]
-  root --> agents[AGENTS.md]
-  src --> pages["pages/ routes + /api"]
-  src --> components["components/ Svelte UI"]
-  src --> lib["lib/ stores, services, PGlite sync"]
+```
+room-tba/
+  src/campus.config.ts     BulSU site + map bounds
+  data/bulsu-seed.json     Colleges (+ empty buildings/places)
+  scripts/seed-bulsu-campus.ts
+  scripts/first-run-bulsu.ts
+  drizzle/                 schema + migrations
+  src/pages/               routes + /api
+  src/components/          Svelte UI
 ```
 
-Deep editor QA: [`docs/editor-foundation-test-plan.md`](docs/editor-foundation-test-plan.md) 
-PR checklist: [`docs/agentic-qa-process.md`](docs/agentic-qa-process.md)
-
----
-
-## Contributing
-
-See **[CONTRIBUTING.md](CONTRIBUTING.md)** for how to help:
-
-- **Report wrong data** or **campus QA:** no clone, no PR
-- **Write code:** branch off `staging`, PR to `staging` ([developer guide](docs/developer-guide.md))
-- **Maintainers / agents:** [AGENTS.md](AGENTS.md) · [agent tooling](docs/agent-tooling.md) (`bun run install:agent-tooling` + `install:agent-plugins` once per machine)
-
-[Good first issues](https://github.com/uplbtools/room-tba/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) · **Data:** label `data` · **QA:** label `qa`
-
-Implementers: [issue hygiene](docs/issue-hygiene.md) · [PR QA process](docs/agentic-qa-process.md)
-
----
-
-## Releases
-
-Version follows semver. Pushes to `main` run [semantic-release](https://semantic-release.gitbook.io/) (skip with `[skip ci]` in the commit message). The in-app status bar shows `vX.Y.Z` from `package.json`.
-
-Dry run: `bun run release:dry`
+Multi-campus / multi-tenant exploration (deferred): [docs/multi-campus-handoff.md](docs/multi-campus-handoff.md) on branch `docs/multi-campus-exploration`.
 
 ---
 
 ## Credits
 
-**Maintainer:** [Simonee Ezekiel Mariquit](https://stimmie.dev)
+Fork of [uplbtools/room-tba](https://github.com/uplbtools/room-tba) by [Simonee Ezekiel Mariquit](https://stimmie.dev) and contributors.
 
-**Built with help from:**
+This fork: [bulsutools](https://github.com/bulsutools) — campus tool, not an official BulSU product.
 
-| Person | Helped with |
-| ----------------------- | -------------------------------------- |
-| Ken Ramiscal | UI, offline support, map |
-| Kalinaw Lukas Aom Bebis | UI, bug fixes, map |
-| Niño Anthony Marmeto | Electrical Engineering building info |
-| Rosh Almario | Institute of Chemistry room directions |
-| Eunice Almeyda | Logo |
-| Mary Gwyneth Telmosa | UI design |
-
-Org: [uplbtools](https://github.com/uplbtools) · Campus tool, not an official UPLB product.
-
----
-
-## Sponsors
-
-Room TBA is funded by curated campus-relevant sponsors and one-time donations. Revenue supports core team incentives (40%), contributor payouts (30%), and operational expenses (30%).
-
-**[Donate](https://room-tba.uplb.tools/donate)** · **[Become a sponsor](https://room-tba.uplb.tools/sponsors)** · [Funding model](docs/funding-model.md) · [Ad policy](docs/ad-policy.md)
-
----
-
-## Fork this for your campus
-
-MIT lets you fork this and run it for a different school. This is not a "swap the logo and ship" fork — a lot of the app is UPLB data and UPLB-specific glue. You keep the engine (map UI, search, offline cache, editor, planner, the Drizzle schema) and replace the UPLB parts.
-
-Full guide with every file path and the painful parts: **[Fork this for your campus](https://room-tba.uplb.tools/wiki/fork-for-your-campus)** in the wiki.
-
-The short version of what you replace:
-
-| File | What to change |
-| --- | --- |
-| `src/campus.config.ts` | **The single config file.** Site name, URL, title, description, map center/bounds/camera, community links. The files below import from here. |
-| `src/constants/map-terrain.ts` | Terrain source (Makiling) — disable if your campus is flat. Bounds and camera come from `campus.config.ts`. |
-| `public/room_info.json` | UPLB building seed → your buildings |
-| `src/constants/jeepney-routes.ts` + geometries | Delete if no campus transit overlay |
-| `scripts/import-amis-classes.ts` and friends | UPLB data sources (AMIS, OUR finals, OSA). Write your own importer for your registrar's export. |
-| Supabase DB contents | Every row is UPLB. Schema stays; data goes. |
-
-The hard part is class schedules. Room TBA pulls from AMIS, which is UPLB's system. You do not have AMIS — you need an importer for whatever your registrar gives you, pointed at the `classes` table, rerun each term. The existing import scripts are a template for the shape, not the source.
-
-After you think you've replaced everything, run `bun run fork:check` — it scans for hardcoded UPLB strings you missed and reports file:line hits. Wire it into your fork's CI so a stray UPLB string does not sneak back in on a merge from upstream.
-
----
-
-## License
-
-[MIT](LICENSE). Use it, fork it, teach with it. If you deploy a fork for another campus, change the data, not just the logo. See the [fork guide](#fork-this-for-your-campus) above.
-
----
-
-<div align="center">
-
-**[room-tba.uplb.tools](https://room-tba.uplb.tools)**
-
-</div>
+Upstream license: [MIT](LICENSE).

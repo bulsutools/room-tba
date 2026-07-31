@@ -1,19 +1,23 @@
 /**
  * Single source of truth for campus-specific config.
  *
- * A fork changes this file (and the data — see /wiki/fork-for-your-campus).
- * Run `bun run fork:check` after editing to catch stray UPLB strings elsewhere.
+ * BulSU Malolos fork (Campus 1 + Campus 2). Multi-campus exploration is
+ * deferred — see docs/multi-campus-handoff.md on docs/multi-campus-exploration.
  *
  * Values are plain literals so astro.config.mjs can import this module at
  * config-eval time (no process.env reads at module top level).
  */
 
 export const campusSite = {
-  url: "https://room-tba.uplb.tools",
+  url: "https://bulsu-room-tba.vercel.app",
   name: "Room TBA",
-  title: "Room TBA | Find Rooms, Buildings, Colleges, and Divisions at UPLB",
+  /** Short place phrase for titles ("Building at BulSU Malolos"). */
+  placeLabel: "BulSU Malolos",
+  title: "Room TBA | Find rooms and buildings at BulSU Malolos",
   description:
-    "Room TBA helps UPLB students find rooms, buildings, colleges, and divisions across the Los Banos campus.",
+    "Room TBA helps Bulacan State University students find rooms, buildings, and colleges on the Malolos Campus 1 and Campus 2 map.",
+  /** Open Graph title without the site name prefix. */
+  ogTitle: "Find rooms and buildings at BulSU Malolos",
 } as const;
 
 export const campusMap: {
@@ -25,30 +29,51 @@ export const campusMap: {
     bearing: number;
   };
 } = {
-  /** [lng, lat] — west/south corner, then east/north corner. */
+  /** [lng, lat] — covers Guinhawa Campus 1 + Campus 2 annex (former PIA lot). */
   maxBounds: [
-    // West/south: Mt. Makiling foothills, BSP Jamboree site, National Arts Center corridor.
-    [121.168, 14.095],
-    [121.335, 14.215],
+    [120.805, 14.848],
+    [120.828, 14.868],
   ],
-  /** Default camera: center [lng, lat], zoom, pitch (0 = top-down, 60 = tilted 3D), bearing. */
+  /** Default camera on Campus 1 academic core. */
   defaultCamera: {
-    center: [121.24125948460573, 14.16323736946326],
-    zoom: 15.81,
-    pitch: 60,
-    bearing: -154.48,
+    center: [120.8141, 14.8578],
+    zoom: 16.2,
+    pitch: 45,
+    bearing: 0,
   },
 };
 
 export const campusCommunity = {
-  orgUrl: "https://uplb.tools",
-  githubUrl: "https://github.com/uplbtools/room-tba",
-  discordUrl: "https://discord.uplbtools.me",
-  osaOrganizationsUrl: "https://uplbosa.org/orgs",
-  /** Messenger group chat invites (targets for redirect workers). */
-  messengerContributeTarget: "https://m.me/j/Aba1V0prvQyLrafZ/",
-  messengerMaintainTarget: "https://m.me/j/AbZtqMU8UUTiwQfn/",
-  /** Short links on a community subdomain (Cloudflare Worker). Delete if unused. */
-  messengerShortContributeUrl: "https://messenger.uplbtools.me/contribute",
-  messengerShortMaintainUrl: "https://messenger.uplbtools.me/maintain",
+  orgLabel: "bulsutools",
+  orgUrl: "https://github.com/bulsutools",
+  /** owner/repo for GitHub API (contributors, stars). */
+  githubRepo: "bulsutools/room-tba",
+  githubUrl: "https://github.com/bulsutools/room-tba",
+  /** No Discord yet — point at the repo until a server exists. */
+  discordUrl: "https://github.com/bulsutools/room-tba",
+  osaOrganizationsUrl: "https://www.bulsu.edu.ph/",
+  messengerContributeTarget:
+    "https://github.com/bulsutools/room-tba/issues/new/choose",
+  messengerMaintainTarget:
+    "https://github.com/bulsutools/room-tba/issues/new/choose",
+  messengerShortContributeUrl: "",
+  messengerShortMaintainUrl: "",
 } as const;
+
+/** Feature flags for this fork (Makiling terrain/trail off; jeepney UI kept empty). */
+export const campusFeatures = {
+  terrain: false,
+  trail: false,
+  jeepney: true,
+} as const;
+
+export const campusSplashMessages = [
+  "Finding where you need to be",
+  "Crossing to Campus 2 for COE Building 2",
+  "Asking which hall is Federizo again",
+  "Looking for Mendoza Hall by CCJE",
+  "Checking if Valencia is open for orientation",
+  "Walking past Alvarado for CIT",
+  "Saving you a seat at the e-library",
+  "Herding classrooms into place",
+] as const;

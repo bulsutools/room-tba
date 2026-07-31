@@ -2,8 +2,10 @@ import { campusSite } from "../campus.config";
 
 export const SITE_URL = campusSite.url;
 export const SITE_NAME = campusSite.name;
+export const PLACE_LABEL = campusSite.placeLabel;
 export const DEFAULT_TITLE = campusSite.title;
 export const DEFAULT_DESCRIPTION = campusSite.description;
+export const DEFAULT_OG_TITLE = campusSite.ogTitle;
 export const DEFAULT_OG_IMAGE = "/og.png";
 export const OG_IMAGE_WIDTH = 1200;
 export const OG_IMAGE_HEIGHT = 630;

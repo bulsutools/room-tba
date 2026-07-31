@@ -25,10 +25,11 @@ function textContent(html: string) {
     .trim();
 }
 
-/** Extract the public organization profile links from OSA's rendered directory. */
+/** Extract public organization profile links from the configured directory host. */
 export function parseOsaOrganizations(html: string): OsaOrganization[] {
   const organizations = new Map<string, OsaOrganization>();
   const anchors = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
+  const directoryBase = new URL(UPLB_OSA_ORGANIZATIONS_URL);
 
   for (const match of html.matchAll(anchors)) {
     const attributes = match[1];
@@ -37,9 +38,9 @@ export function parseOsaOrganizations(html: string): OsaOrganization[] {
     const href = attributes.match(/\bhref\s*=\s*(["'])(.*?)\1/i)?.[2];
     if (!className.split(/\s+/).includes("orgText") || !href) continue;
 
-    const officialUrl = new URL(href, UPLB_OSA_ORGANIZATIONS_URL);
+    const officialUrl = new URL(href, directoryBase);
     if (
-      officialUrl.origin !== "https://uplbosa.org" ||
+      officialUrl.origin !== directoryBase.origin ||
       !officialUrl.pathname.startsWith("/orgs/")
     ) {
       continue;

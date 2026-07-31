@@ -8,8 +8,10 @@ import { campusCommunity, campusSite } from "../campus.config";
 /** Canonical production origin. */
 const ROOM_TBA_SITE_URL = campusSite.url;
 
+export const ORG_LABEL = campusCommunity.orgLabel;
 export const UPLB_TOOLS_URL = campusCommunity.orgUrl;
 export const GITHUB_ROOM_TBA_URL = campusCommunity.githubUrl;
+export const GITHUB_REPO = campusCommunity.githubRepo;
 export const DISCORD_URL = campusCommunity.discordUrl;
 export const UPLB_OSA_ORGANIZATIONS_URL = campusCommunity.osaOrganizationsUrl;
 
@@ -33,9 +35,9 @@ export const MESSENGER_MAINTAIN_URL = `${ROOM_TBA_SITE_URL}/messenger/maintain`;
 export const MESSENGER_URL = MESSENGER_CONTRIBUTE_URL;
 
 export const COMMUNITY_LINKS = [
-  { label: "UPLB Tools", href: UPLB_TOOLS_URL },
-  { label: "Discord", href: DISCORD_URL },
-  { label: "Messenger", href: MESSENGER_CONTRIBUTE_URL },
+  { label: ORG_LABEL, href: UPLB_TOOLS_URL },
+  { label: "GitHub", href: GITHUB_ROOM_TBA_URL },
+  { label: "Contribute", href: MESSENGER_CONTRIBUTE_URL },
 ] as const;
 
 export const LEGAL_LINKS = [

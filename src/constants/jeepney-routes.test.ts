@@ -34,8 +34,11 @@ describe("deriveRouteLineFromStops", () => {
 });
 
 describe("JEEPNEY_ROUTES data", () => {
-  test("every route has a real fare and a non-mock description", () => {
-    expect(JEEPNEY_ROUTES.length).toBeGreaterThan(0);
+  test("BulSU fork ships empty routes until contributors add Malolos transit", () => {
+    expect(JEEPNEY_ROUTES).toEqual([]);
+  });
+
+  test("every present route has a real fare and a non-mock description", () => {
     for (const route of JEEPNEY_ROUTES) {
       expect(route.fare.regular).toBeGreaterThan(0);
       expect(route.fare.discounted).toBeGreaterThan(0);

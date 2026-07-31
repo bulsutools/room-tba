@@ -3,15 +3,16 @@ import AppRoot from "@ui/AppRoot.svelte";
 import Layout from "@layouts/Layout.astro";
 import {
   breadcrumbSchema,
+  DEFAULT_DESCRIPTION,
+  DEFAULT_OG_TITLE,
+  DEFAULT_TITLE,
   jsonLd,
   webpageSchema,
   websiteSchema,
 } from "@lib/site";
 
-const title =
-  "Room TBA | Find Rooms, Dorms, Buildings, Colleges, and Divisions at UPLB";
-const description =
-  "Search rooms, dorms, and buildings at UPLB, then plan your classes. Campus data caches locally for spotty Wi-Fi.";
+const title = DEFAULT_TITLE;
+const description = DEFAULT_DESCRIPTION;
 const structuredData = jsonLd(
   websiteSchema(),
   webpageSchema({ title, description, path: "/" }),
@@ -21,7 +22,7 @@ const structuredData = jsonLd(
 
 <Layout
   title={title}
-  ogTitle="Find Rooms, Dorms, Buildings, Colleges, and Divisions at UPLB"
+  ogTitle={DEFAULT_OG_TITLE}
   description={description}
   canonicalPath="/"
   structuredData={structuredData}

@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "campus": "BulSU Malolos Campus 1 + Campus 2",
+    "note": "Colleges only. Building/place pins intentionally empty — add via map editor (wrong seed coords were wiped)."
+  },
+  "colleges": [
+    {
+      "collegeName": "College of Science",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Arts and Letters",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Architecture and Fine Arts",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Engineering",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Industrial Technology",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Information and Communications Technology",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Nursing",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Education",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "Laboratory High School",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Law",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Hospitality and Tourism Management",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Business Education and Accountancy",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Social Sciences and Philosophy",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Criminal Justice Education",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    },
+    {
+      "collegeName": "College of Sports, Exercise and Recreation",
+      "websiteLink": "https://www.bulsu.edu.ph/"
+    }
+  ],
+  "buildings": [],
+  "places": []
+}

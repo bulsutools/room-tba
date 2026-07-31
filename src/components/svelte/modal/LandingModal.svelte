@@ -3,10 +3,12 @@
   import { designers } from "@constants/contributors";
   import {
     UPLB_TOOLS_URL,
+    ORG_LABEL,
     DISCORD_URL,
+    GITHUB_ROOM_TBA_URL,
     MESSENGER_CONTRIBUTE_TARGET,
-    MESSENGER_MAINTAIN_TARGET,
   } from "@constants/community-links";
+  import { PLACE_LABEL } from "@lib/site";
   import CommunityPlatformLink from "@ui/community/CommunityPlatformLink.svelte";
   import {
     fetchGithubContributors,
@@ -18,7 +20,6 @@
   import LandingGuideSteps from "./LandingGuideSteps.svelte";
   import VisitorCounter from "@ui/VisitorCounter.svelte";
   import GithubStarLink from "@ui/GithubStarLink.svelte";
-  import { GITHUB_ROOM_TBA_URL } from "@constants/community-links";
   import Download from "@lucide/svelte/icons/download";
   import { untrack } from "svelte";
 
@@ -177,7 +178,8 @@
           </span>
         </h2>
         <p class="hero-tagline">
-          Find rooms, explore the map, and discover campus events at UPLB.
+          Find buildings and colleges on the {PLACE_LABEL} Campus 1 + Campus 2
+          map.
         </p>
         <ul class="hero-pitches">
           <li>No account needed. Search and browse without signing in.</li>
@@ -264,7 +266,7 @@
             Like the project? Support us by starring the repository!
           </p>
           <a
-            href="https://github.com/uplbtools/room-tba"
+            href={GITHUB_ROOM_TBA_URL}
             target="_blank"
             rel="noopener noreferrer"
             class="cta-button"
@@ -282,8 +284,8 @@
         <section class="community-block">
           <h3>Join the community</h3>
           <p class="section-note">
-            Suggest fixes in the map, or chat on Discord or Messenger if you
-            want to help verify data.
+            Suggest pin fixes in the map, or open a GitHub issue if you want to
+            help verify Campus 1 / Campus 2 data.
           </p>
           <ul class="community-links">
             <li>
@@ -291,28 +293,29 @@
                 href={UPLB_TOOLS_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="inline-link">UPLB Tools</a
+                class="inline-link">{ORG_LABEL}</a
+              >
+            </li>
+            <li>
+              <a
+                href={GITHUB_ROOM_TBA_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-link">GitHub</a
               >
             </li>
             <li>
               <CommunityPlatformLink
                 brand="discord"
                 href={DISCORD_URL}
-                label="Discord"
+                label="Community (repo for now)"
               />
             </li>
             <li>
               <CommunityPlatformLink
                 brand="messenger"
                 href={MESSENGER_CONTRIBUTE_TARGET}
-                label="Messenger (contribute)"
-              />
-            </li>
-            <li>
-              <CommunityPlatformLink
-                brand="messenger"
-                href={MESSENGER_MAINTAIN_TARGET}
-                label="Maintainer chat"
+                label="Report wrong data"
               />
             </li>
           </ul>
@@ -323,30 +326,21 @@
           <ul class="inspiration-links">
             <li>
               <a
+                href="https://room-tba.uplbtools.me"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-link">Room TBA (UPLB upstream)</a
+              >
+              by Simonee Ezekiel Mariquit and contributors
+            </li>
+            <li>
+              <a
                 href="https://upsked.com/"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="inline-link">Upsked.com</a
               >
               by John Paul Poliquit
-            </li>
-            <li>
-              <a
-                href="https://uplb-trail.vercel.app/"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="inline-link">UPLB Trail</a
-              >
-              by Bernard Jezua Tandang
-            </li>
-            <li>
-              <a
-                href="https://chromewebstore.google.com/detail/amissu/mkdgckblaojfigmbnknehcmnjpkcehcj"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="inline-link">AMISSU</a
-              >
-              by Garth Hendrich Lapitan
             </li>
           </ul>
         </section>

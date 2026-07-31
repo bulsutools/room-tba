@@ -2,6 +2,7 @@
 import {
   COMMUNITY_LINKS,
   LEGAL_LINKS,
+  ORG_LABEL,
   UPLB_TOOLS_URL,
   DONATE_URL,
 } from "@constants/community-links";
@@ -24,7 +25,7 @@ const externalCommunityLinks = COMMUNITY_LINKS.filter(
     <span class="site-footer__sep" aria-hidden="true">&middot;</span>
     <span class="site-footer__group">
       <a href={UPLB_TOOLS_URL} target="_blank" rel="noopener noreferrer">
-        UPLB Tools
+        {ORG_LABEL}
       </a>
       {
         externalCommunityLinks.map((link) => (
@@ -39,8 +40,9 @@ const externalCommunityLinks = COMMUNITY_LINKS.filter(
     Room TBA is a student-run project under <a
       href={UPLB_TOOLS_URL}
       target="_blank"
-      rel="noopener noreferrer">UPLB Tools</a
-    >. Not an official UPLB website.
+      rel="noopener noreferrer">{ORG_LABEL}</a
+    >. Not an official Bulacan State University website. Fork of the upstream
+    Room TBA map app.
   </p>
 </footer>
 
