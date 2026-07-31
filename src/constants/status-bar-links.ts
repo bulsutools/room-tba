@@ -1,6 +1,7 @@
 import {
   LEGAL_LINKS,
   MESSENGER_CONTRIBUTE_TARGET,
+  ORG_LABEL,
   UPLB_TOOLS_URL,
   DISCORD_URL,
 } from "@constants/community-links";
@@ -36,8 +37,8 @@ export const STATUS_BAR_COMMUNITY_GROUP: StatusBarNavGroup = {
   items: [
     {
       kind: "link",
-      id: "uplb-tools",
-      label: "UPLB Tools",
+      id: "org",
+      label: ORG_LABEL,
       href: UPLB_TOOLS_URL,
       external: true,
       icon: "external",
@@ -69,31 +70,23 @@ export const STATUS_BAR_APP_ACTIONS: StatusBarActionItem[] = [
   { kind: "action", id: "editor-login", label: "Editor sign in" },
 ];
 
-/** Similar campus map initiatives (#108). */
+/** Similar campus map initiatives. */
 export const STATUS_BAR_SIMILAR_PROJECTS_GROUP: StatusBarNavGroup = {
   id: "similar",
   items: [
     {
       kind: "link",
+      id: "upstream-room-tba",
+      label: "Room TBA (UPLB upstream)",
+      href: "https://room-tba.uplbtools.me",
+      external: true,
+      icon: "external",
+    },
+    {
+      kind: "link",
       id: "malayo-ba-yan",
       label: "Malayo Ba 'Yan?",
       href: "https://umap.openstreetmap.fr/en/map/ati-ntc-rh-malayo-ba-yan-maps-and-directions_1245231",
-      external: true,
-      icon: "external",
-    },
-    {
-      kind: "link",
-      id: "uplb-lower-campus",
-      label: "UPLB Lower Campus",
-      href: "https://umap.openstreetmap.fr/en/map/uplb-lower-campus_1180826",
-      external: true,
-      icon: "external",
-    },
-    {
-      kind: "link",
-      id: "uplb-scribblemaps",
-      label: "UPLB ScribbleMaps",
-      href: "https://www.scribblemaps.com/maps/view/UPLB-Map/8fmzCgyQ4y",
       external: true,
       icon: "external",
     },

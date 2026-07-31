@@ -12,7 +12,8 @@ describe("parseOsaOrganizations", () => {
     expect(organizations).toEqual([
       {
         name: "UP & Example",
-        officialUrl: "https://uplbosa.org/orgs/example",
+        // Resolved against campusCommunity.osaOrganizationsUrl (BulSU site today).
+        officialUrl: "https://www.bulsu.edu.ph/orgs/example",
       },
     ]);
   });

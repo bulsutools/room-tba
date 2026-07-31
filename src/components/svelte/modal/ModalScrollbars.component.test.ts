@@ -71,21 +71,19 @@ describe("modal scroll chrome", () => {
     render(LandingModal);
     await fireEvent.click(screen.getByRole("tab", { name: "Campus team" }));
     expect(screen.getByRole("heading", { name: /inspiration/i })).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Room TBA (UPLB upstream)" }),
+    ).toHaveAttribute("href", "https://room-tba.uplbtools.me");
+    expect(
+      screen.getByText(/Simonee Ezekiel Mariquit and contributors/),
+    ).toBeVisible();
     expect(screen.getByRole("link", { name: "Upsked.com" })).toHaveAttribute(
       "href",
       "https://upsked.com/",
     );
     expect(screen.getByText(/John Paul Poliquit/)).toBeVisible();
-    expect(screen.getByRole("link", { name: "UPLB Trail" })).toHaveAttribute(
-      "href",
-      "https://uplb-trail.vercel.app/",
-    );
-    expect(screen.getByText(/Bernard Jezua Tandang/)).toBeVisible();
-    expect(screen.getByRole("link", { name: "AMISSU" })).toHaveAttribute(
-      "href",
-      "https://chromewebstore.google.com/detail/amissu/mkdgckblaojfigmbnknehcmnjpkcehcj",
-    );
-    expect(screen.getByText(/Garth Hendrich Lapitan/)).toBeVisible();
+    expect(screen.queryByRole("link", { name: "UPLB Trail" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "AMISSU" })).toBeNull();
   });
 
   test("campus team renders live editor credits with optional profile links", async () => {

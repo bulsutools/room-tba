@@ -27,19 +27,25 @@
   import Dialog from "@ui/modal/Dialog.svelte";
   import "./map-chrome/map-chrome.css";
   import { MediaQuery } from "svelte/reactivity";
+  import { campusFeatures } from "../../campus.config";
 
   const mobile = new MediaQuery("max-width:48rem");
   // Transit moved to the sidebar's Jeepney routes browse panel; Map tools now
-  // mirrors the Settings modal sections.
-  const sections: { id: MapToolsSection; label: string }[] = [
+  // mirrors the Settings modal sections. Terrain/trail gated per campus fork.
+  const allSections: { id: MapToolsSection; label: string }[] = [
     { id: "view", label: "View" },
     { id: "legend", label: "Legend" },
     ...(TERRAIN_ENABLED
       ? [{ id: "terrain" as const, label: "Terrain" }]
       : []),
-    { id: "trail", label: "Makiling Trail" },
+    { id: "trail", label: "Campus trail" },
     { id: "schedule", label: "Schedule" },
   ];
+  const sections = allSections.filter((section) => {
+    if (section.id === "terrain") return campusFeatures.terrain;
+    if (section.id === "trail") return campusFeatures.trail;
+    return true;
+  });
 
   function toggleSection(id: MapToolsSection) {
     if (mobile.current) {

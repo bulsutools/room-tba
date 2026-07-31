@@ -2,40 +2,38 @@ import { describe, expect, test } from "bun:test";
 import {
   COMMUNITY_LINKS,
   DISCORD_URL,
-  FACEBOOK_URL,
-  INSTAGRAM_URL,
+  GITHUB_REPO,
+  GITHUB_ROOM_TBA_URL,
   MESSENGER_CONTRIBUTE_TARGET,
   MESSENGER_CONTRIBUTE_URL,
   MESSENGER_MAINTAIN_TARGET,
   MESSENGER_MAINTAIN_URL,
   MESSENGER_URL,
+  ORG_LABEL,
+  UPLB_TOOLS_URL,
 } from "./community-links.ts";
+import { SITE_URL } from "../lib/site.ts";
 
 describe("community-links", () => {
-  test("volunteer Messenger defaults to contribute short link", () => {
+  test("org + github point at bulsutools fork", () => {
+    expect(ORG_LABEL).toBe("bulsutools");
+    expect(UPLB_TOOLS_URL).toBe("https://github.com/bulsutools");
+    expect(GITHUB_ROOM_TBA_URL).toBe("https://github.com/bulsutools/room-tba");
+    expect(GITHUB_REPO).toBe("bulsutools/room-tba");
+  });
+
+  test("volunteer Messenger defaults to contribute app URL", () => {
     expect(MESSENGER_URL).toBe(MESSENGER_CONTRIBUTE_URL);
-    expect(MESSENGER_CONTRIBUTE_URL).toBe(
-      "https://room-tba.uplb.tools/messenger/contribute",
-    );
-    expect(MESSENGER_MAINTAIN_URL).toBe(
-      "https://room-tba.uplb.tools/messenger/maintain",
-    );
+    expect(MESSENGER_CONTRIBUTE_URL).toBe(`${SITE_URL}/messenger/contribute`);
+    expect(MESSENGER_MAINTAIN_URL).toBe(`${SITE_URL}/messenger/maintain`);
   });
 
-  test("Messenger targets are m.me group invites", () => {
-    expect(MESSENGER_CONTRIBUTE_TARGET).toMatch(/^https:\/\/m\.me\//);
-    expect(MESSENGER_MAINTAIN_TARGET).toMatch(/^https:\/\/m\.me\//);
-    expect(MESSENGER_CONTRIBUTE_TARGET).not.toBe(MESSENGER_MAINTAIN_TARGET);
+  test("contribute / maintain targets use GitHub issues until chats exist", () => {
+    expect(MESSENGER_CONTRIBUTE_TARGET).toContain("github.com/bulsutools");
+    expect(MESSENGER_MAINTAIN_TARGET).toContain("github.com/bulsutools");
   });
 
-  test("Discord short link unchanged", () => {
-    expect(DISCORD_URL).toBe("https://discord.gg/SrVDgfcrVt");
-  });
-  test("UPLB Tools socials are listed for the footer", () => {
-    expect(FACEBOOK_URL).toBe("https://facebook.com/uplb.tools");
-    expect(INSTAGRAM_URL).toBe("https://instagram.com/uplb.tools");
-    const labels = COMMUNITY_LINKS.map((link) => link.label);
-    expect(labels).toContain("Facebook");
-    expect(labels).toContain("Instagram");
+  test("Discord URL falls back to the fork repo", () => {
+    expect(DISCORD_URL).toBe(GITHUB_ROOM_TBA_URL);
   });
 });

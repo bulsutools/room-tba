@@ -20,6 +20,9 @@ pnpm-debug.log*
 .env.*
 !.env.example
 
+# Neon CLI local project metadata
+.neon
+
 # local database snapshots
 backups/
 

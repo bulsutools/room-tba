@@ -18,7 +18,7 @@ describe("StatusBarLinkGroups", () => {
       ".status-bar__nav-group",
     ) as HTMLElement;
     expect(group.scrollWidth).toBeLessThanOrEqual(group.clientWidth + 4);
-    expect(screen.getByRole("link", { name: /UPLB Tools/i })).toBeVisible();
+    expect(screen.getByRole("link", { name: /bulsutools/i })).toBeVisible();
     expect(screen.getByRole("link", { name: /Messenger/i })).toHaveAttribute(
       "href",
       MESSENGER_CONTRIBUTE_TARGET,
