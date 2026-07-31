@@ -135,7 +135,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       user = username ? await authenticateAdminUser(username, password) : null;
     }
 
-    if (!user && !username) {
+    // Empty DB bootstrap: password-only OR username "admin" + ADMIN_PASSWORD.
+    // (Typing "admin" used to skip this path and always 401 on a fresh fork.)
+    if (!user && (!username || username.toLowerCase() === "admin")) {
       user = await authenticateLegacyAdminPassword(password);
     }
 
