@@ -1,0 +1,3 @@
+[test]
+# Svelte 5 stores and component tests run in Vitest
+ignore = ["**/*.store.test.ts", "**/*.component.test.ts"]

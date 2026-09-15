@@ -97,8 +97,8 @@ export const campusCommunity = {
   githubUrl: "https://github.com/bulsutools/room-tba",
   /** No Discord yet — point at the repo until a server exists. */
   discordUrl: "https://github.com/bulsutools/room-tba",
-  facebookUrl: "",
-  instagramUrl: "",
+  facebookUrl: "https://facebook.com/bulsutools",
+  instagramUrl: "https://instagram.com/bulsutools",
   osaOrganizationsUrl: "https://www.bulsu.edu.ph/",
   messengerContributeTarget:
     "https://github.com/bulsutools/room-tba/issues/new/choose",

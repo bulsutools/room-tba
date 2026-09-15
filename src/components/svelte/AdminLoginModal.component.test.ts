@@ -7,6 +7,8 @@ import {
   mountAtWidth,
 } from "@test/layout-assertions";
 
+import { MESSENGER_MAINTAIN_TARGET } from "@constants/community-links";
+
 describe("AdminLoginModal", () => {
   beforeEach(() => {
     adminAuthStore.openLogin();
@@ -22,7 +24,7 @@ describe("AdminLoginModal", () => {
     expect(screen.getByLabelText("Password")).toBeVisible();
     expect(
       screen.getByRole("link", { name: /Message maintainers/i }),
-    ).toHaveAttribute("href", "https://m.me/j/AbZtqMU8UUTiwQfn/");
+    ).toHaveAttribute("href", MESSENGER_MAINTAIN_TARGET);
   });
 
   test('the "Sign up" toggle reveals the contributor signup form', async () => {

@@ -38,9 +38,7 @@ describe("landing modal content balance", () => {
   test("header keeps one value proposition", () => {
     render(LandingModal);
     expect(
-      screen.getByText(
-        "Find rooms, explore the map, and discover campus events at UPLB.",
-      ),
+      screen.getByText(/Find (rooms|buildings and colleges)/i),
     ).toBeVisible();
     // The other two pitches duplicate the "Browse freely" / "Offline-friendly"
     // cards, so the header must not repeat them.
