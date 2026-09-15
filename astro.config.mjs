@@ -164,7 +164,7 @@ export default defineConfig({
       manifest: {
         name: "Room TBA",
         description:
-          "An open-source website built to help UPLB students find their rooms across the Los Baños campus",
+          "An open-source website built to help BulSU students find their rooms across the Malolos campus",
         theme_color: "#a30e00",
         icons: [
           {
@@ -202,8 +202,8 @@ export default defineConfig({
   redirects: {
     "/contribute": "/?contribute=1",
     // The money report moved to the org site; keep both old paths alive.
-    "/wiki/transparency": "https://www.uplb.tools/transparency",
-    "/transparency": "https://www.uplb.tools/transparency",
+    "/wiki/transparency": "https://bulsu.tools/transparency",
+    "/transparency": "https://bulsu.tools/transparency",
     "/discord": campusCommunity.discordUrl,
     "/messenger": MESSENGER_CONTRIBUTE_TARGET,
     "/messenger/contribute": MESSENGER_CONTRIBUTE_TARGET,

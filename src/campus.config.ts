@@ -9,7 +9,7 @@
  */
 
 export const campusSite = {
-  url: "https://bulsu-room-tba.vercel.app",
+  url: "https://room-tba.bulsu.tools",
   name: "Room TBA",
   /** Short place phrase for titles ("Building at BulSU Malolos"). */
   placeLabel: "BulSU Malolos",
