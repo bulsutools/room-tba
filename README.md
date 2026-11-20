@@ -6,14 +6,14 @@
 
 **Saan sa BulSU Malolos ang \___?**
 
-[![Live app](https://img.shields.io/badge/open-bulsu--room--tba.vercel.app-maroon?style=for-the-badge)](https://bulsu-room-tba.vercel.app)
+[![Live app](https://img.shields.io/badge/open-room--tba.bulsu.tools-maroon?style=for-the-badge)](https://room-tba.bulsu.tools)
 [![MIT](https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square)](LICENSE)
 [![Bun](https://img.shields.io/badge/bun-1.3+-black?style=flat-square&logo=bun)](https://bun.sh)
 [![Astro](https://img.shields.io/badge/Astro-7-BC52EE?style=flat-square&logo=astro)](https://astro.build)
 
 _Buildings, colleges, and "where is Federizo?" on the BulSU Malolos Campus 1 + Campus 2 map._
 
-[Open the map](https://bulsu-room-tba.vercel.app) · [Report wrong data](https://github.com/bulsutools/room-tba/issues/new/choose) · [Upstream Room TBA](https://github.com/uplbtools/room-tba)
+[Open the map](https://room-tba.bulsu.tools) · [Report wrong data](https://github.com/bulsutools/room-tba/issues/new/choose) · [Upstream Room TBA](https://github.com/uplbtools/room-tba)
 
 </div>
 
