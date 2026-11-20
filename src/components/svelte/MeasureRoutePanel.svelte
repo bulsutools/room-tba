@@ -7,6 +7,12 @@
   import X from "@lucide/svelte/icons/x";
   import { measureRouteStore, type MeasureLeg } from "@lib/store.svelte";
   import { formatDistance, formatDuration } from "@lib/campus-route";
+  import { trackOverlay } from "@lib/track-overlay.svelte";
+
+  // Back closes measuring before it reaches anything under it.
+  trackOverlay("measure", () => measureRouteStore.active, () =>
+    measureRouteStore.disable(),
+  );
 
   const modes = [
     { id: "walk", label: "Walk", icon: Footprints },
@@ -66,7 +72,7 @@
     <p class="measure-panel__hint">
       {measureRouteStore.waypoints.length === 0
         ? "Tap the map to drop waypoints along your route."
-        : "Tap again to add the next stop; tap a numbered pin to remove it."}
+        : "Tap again to add the next stop, or tap a numbered pin to remove it."}
     </p>
   {:else}
     <div class="measure-panel__modes" role="group" aria-label="Travel mode">
@@ -93,7 +99,7 @@
         {formatDistance(activeTotal.meters)} over
         {measureRouteStore.waypoints.length} stops
       {:else}
-        No {measureRouteStore.mode === "drive" ? "drivable" : "ridable"} path
+        There's no {measureRouteStore.mode === "drive" ? "drivable" : "ridable"} path
         between some stops.
       {/if}
     </p>
@@ -107,7 +113,7 @@
               <span class="measure-panel__leg-name">{i + 1} → {i + 2}</span>
               <span>
                 {leg
-                  ? `${formatDistance(leg.meters)} · ${formatDuration(leg.seconds)}`
+                  ? `${formatDistance(leg.meters)}, ${formatDuration(leg.seconds)}`
                   : "no route"}
               </span>
             </li>
@@ -118,7 +124,7 @@
   {/if}
   {#if measureRouteStore.loadFailed}
     <p class="measure-panel__hint">
-      Could not load the path network. Check your connection and tap again.
+      Couldn't load the path network. Check your connection and tap again.
     </p>
   {/if}
   <p class="measure-panel__attribution">paths © OpenStreetMap contributors</p>
@@ -132,9 +138,9 @@
     width: min(20rem, calc(100vw - 1rem));
     align-self: flex-start;
     box-sizing: border-box;
-    border: 1px solid var(--map-chrome-border, hsl(5 10% 68%));
+    border: 1px solid var(--map-chrome-border, var(--theme-border-strong, hsl(5 10% 68%)));
     border-radius: var(--map-chrome-radius, 1rem);
-    background-color: var(--map-chrome-surface, hsl(5 20% 97%));
+    background-color: var(--map-chrome-surface, var(--theme-surface, hsl(5 20% 97%)));
     backdrop-filter: blur(10px);
     padding: 0.5rem 0.625rem;
     box-shadow: var(
@@ -182,11 +188,11 @@
   }
 
   .measure-panel__icon-btn:not(:disabled):hover {
-    background-color: hsl(5, 20%, 90%);
+    background-color: var(--theme-accent-soft, hsl(5, 20%, 90%));
   }
 
   .measure-panel__icon-btn:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
     outline-offset: 1px;
   }
 
@@ -194,7 +200,7 @@
     margin: 0;
     font-size: 0.8125rem;
     line-height: 1.35;
-    color: hsl(0, 0%, 28%);
+    color: var(--theme-text, hsl(0, 0%, 28%));
   }
 
   .measure-panel__modes {
@@ -209,7 +215,7 @@
     align-items: center;
     justify-content: center;
     gap: 0.25rem;
-    border: 1px solid var(--map-chrome-border, hsl(5 10% 68%));
+    border: 1px solid var(--map-chrome-border, var(--theme-border-strong, hsl(5 10% 68%)));
     border-radius: 999px;
     background: none;
     padding: 0.375rem 0.5rem;
@@ -221,13 +227,13 @@
   }
 
   .measure-panel__pill--selected {
-    border-color: hsl(5, 53%, 32%);
-    background-color: hsl(5, 53%, 32%);
+    border-color: var(--theme-accent-text, hsl(5, 53%, 32%));
+    background-color: var(--theme-accent-fill, hsl(5, 53%, 32%));
     color: white;
   }
 
   .measure-panel__pill:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
     outline-offset: 1px;
   }
 
@@ -247,7 +253,7 @@
 
   .measure-panel__legs summary {
     cursor: pointer;
-    color: hsl(5, 53%, 32%);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
   }
 
   .measure-panel__legs ol {
@@ -265,12 +271,12 @@
   }
 
   .measure-panel__leg-name {
-    color: hsl(0, 0%, 30%);
+    color: var(--theme-text, hsl(0, 0%, 30%));
   }
 
   .measure-panel__attribution {
     margin: 0;
     font-size: 0.6875rem;
-    color: hsl(0, 0%, 38%);
+    color: var(--theme-text-2, hsl(0, 0%, 38%));
   }
 </style>

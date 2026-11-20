@@ -39,6 +39,23 @@ describe("trapFocus", () => {
     release();
   });
 
+  it("leaves Escape to another open dialog that has focus", () => {
+    const container = dialogWithButtons();
+    const other = document.createElement("div");
+    other.setAttribute("role", "dialog");
+    const inside = document.createElement("button");
+    other.append(inside);
+    document.body.append(other);
+    let escaped = 0;
+    const release = trapFocus(container, { onEscape: () => escaped++ });
+
+    inside.focus();
+    pressEscape(inside);
+
+    expect(escaped).toBe(0);
+    release();
+  });
+
   it("routes Escape to the innermost trap only, and back after release", () => {
     const outerEl = dialogWithButtons();
     const innerEl = dialogWithButtons();
@@ -74,5 +91,34 @@ describe("trapFocus", () => {
     pressEscape();
     expect(escaped).toBe(0);
     expect(document.activeElement).toBe(outside);
+  });
+
+  it("wraps Shift+Tab to a summary, skipping links inside a collapsed details", async () => {
+    // The app menu ended in a closed <details>: the trap picked a hidden link
+    // as "last", focus() on it was a no-op, and Shift+Tab from the first item
+    // went nowhere.
+    const container = dialogWithButtons();
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = "More";
+    summary.tabIndex = 0; // browsers default summary to 0; happy-dom says -1
+    const hidden = document.createElement("a");
+    hidden.href = "/x";
+    details.append(summary, hidden);
+    container.append(details);
+    const release = trapFocus(container);
+    await Promise.resolve();
+    const first = container.querySelector("button")!;
+    expect(document.activeElement).toBe(first);
+
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Tab",
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+    expect(document.activeElement).toBe(summary);
+    release();
   });
 });

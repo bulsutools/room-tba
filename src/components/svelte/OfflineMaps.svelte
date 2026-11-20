@@ -7,6 +7,7 @@
   import { rafThrottle } from "@lib/layout-css-vars";
   import { trapFocus } from "@lib/focus-trap";
   import { portal } from "@lib/portal";
+  import { fmtBytes } from "@lib/local/offline-maps";
   import "./map-chrome/map-chrome.css";
 
   type Props = {
@@ -89,19 +90,23 @@
     closePopover();
   }
 
-  function fmtBytes(bytes: number | null): string {
-    if (bytes == null) return "—";
-    const mb = bytes / 1024 / 1024;
-    if (mb >= 1) return `${mb.toFixed(1)} MB`;
-    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  }
-
   function fmtSyncedAt(iso: string | null): string {
     if (!iso) return "Not downloaded";
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return "Downloaded";
     return `Updated ${date.toLocaleDateString()}`;
   }
+
+  // Same "status (size)" shape as the other two rows' "status" meta.
+  const mapMeta = $derived.by(() => {
+    if (offlineStore.status === "done") {
+      return `Saved (${fmtBytes(offlineStore.bytesDownloaded)})`;
+    }
+    if (offlineStore.status === "downloading") return "Downloading…";
+    return offlineStore.estimatedBytes > 0
+      ? `Not downloaded (~${fmtBytes(offlineStore.estimatedBytes)})`
+      : "Not downloaded";
+  });
 
   const mapPct = $derived(Math.round(offlineStore.progress * 100));
   const directoryPct = $derived(
@@ -155,9 +160,7 @@
           <h3 id="offline-map-heading" class="offline-category__title">
             Campus map
           </h3>
-          <span class="offline-category__meta">
-            ~{fmtBytes(offlineStore.estimatedBytes)}
-          </span>
+          <span class="offline-category__meta">{mapMeta}</span>
         </div>
 
         {#if offlineStore.status === "downloading"}
@@ -178,19 +181,19 @@
           </button>
         {:else if offlineStore.status === "done"}
           <p class="map-chrome-popover-sub">
-            Saved · {offlineStore.tilesTotal} tiles · {fmtBytes(
+            {offlineStore.tilesTotal} tiles saved, {fmtBytes(
               offlineStore.bytesDownloaded,
             )}
           </p>
           <button
-            class="offline-btn ghost"
+            class="offline-btn ghost danger"
             onclick={() => offlineStore.clear()}
           >
             Clear map tiles
           </button>
         {:else}
           <p class="map-chrome-popover-sub">
-            Map tiles for campus bounds ({offlineStore.tilesTotal} tiles).
+            This downloads {offlineStore.tilesTotal} map tiles for the campus bounds.
           </p>
           {#if offlineStore.status === "error" && offlineStore.error}
             <p class="offline-error">{offlineStore.error}</p>
@@ -232,25 +235,27 @@
         {:else if offlineStore.directoryStatus === "done"}
           <p class="map-chrome-popover-sub">
             Buildings, rooms, dorms, colleges, divisions, orgs &amp; offices,
-            landmarks &amp; establishments, and events saved for offline
+            landmarks &amp; establishments, and events are saved for offline
             search.
           </p>
-          <button
-            class="offline-btn ghost"
-            onclick={() => offlineStore.downloadCampusDirectory()}
-          >
-            Update directory
-          </button>
-          <button
-            class="offline-btn ghost"
-            onclick={() => offlineStore.clearCampusDirectory()}
-          >
-            Mark as not downloaded
-          </button>
+          <div class="offline-actions">
+            <button
+              class="offline-btn ghost"
+              onclick={() => offlineStore.downloadCampusDirectory()}
+            >
+              Update directory
+            </button>
+            <button
+              class="offline-btn ghost danger"
+              onclick={() => offlineStore.clearCampusDirectory()}
+            >
+              Mark as not downloaded
+            </button>
+          </div>
         {:else}
           <p class="map-chrome-popover-sub">
-            Buildings, rooms, dorms, colleges, divisions, orgs &amp; offices,
-            landmarks &amp; establishments, and events.
+            This covers buildings, rooms, dorms, colleges, divisions, orgs &amp;
+            offices, landmarks &amp; establishments, and events.
           </p>
           {#if offlineStore.directoryStatus === "error" && offlineStore.directoryError}
             <p class="offline-error">{offlineStore.directoryError}</p>
@@ -286,21 +291,23 @@
           <p class="map-chrome-popover-sub">
             {offlineStore.schedulesRowCount} classes saved for offline browse.
           </p>
-          <button
-            class="offline-btn ghost"
-            onclick={() => offlineStore.downloadClassSchedules()}
-          >
-            Update schedules
-          </button>
-          <button
-            class="offline-btn ghost"
-            onclick={() => offlineStore.clearClassSchedules()}
-          >
-            Mark as not downloaded
-          </button>
+          <div class="offline-actions">
+            <button
+              class="offline-btn ghost"
+              onclick={() => offlineStore.downloadClassSchedules()}
+            >
+              Update schedules
+            </button>
+            <button
+              class="offline-btn ghost danger"
+              onclick={() => offlineStore.clearClassSchedules()}
+            >
+              Mark as not downloaded
+            </button>
+          </div>
         {:else}
           <p class="map-chrome-popover-sub">
-            Active-term class list for offline class search.
+            Saves the active term's class list for offline class search.
           </p>
           {#if offlineStore.schedulesStatus === "error" && offlineStore.schedulesError}
             <p class="offline-error">{offlineStore.schedulesError}</p>
@@ -315,9 +322,14 @@
         {/if}
       </section>
 
-      <p class="map-chrome-popover-footnote">
-        On this device: {fmtBytes(offlineStore.storageUsed)}
-      </p>
+      {#if offlineStore.storageUsed != null}
+        <!-- The browser's figure covers the whole app (code, recently viewed
+             map areas, campus data), not just the downloads above. -->
+        <p class="map-chrome-popover-footnote">
+          Room TBA uses {fmtBytes(offlineStore.storageUsed)} on this device in
+          total, including app files and recently viewed map areas.
+        </p>
+      {/if}
     </div>
   {/if}
 </div>
@@ -347,7 +359,7 @@
     background-color: hsla(0, 0%, 0%, 0.1);
   }
   .offline-trigger:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
     outline-offset: -2px; /* status-bar badges row clips outward rings */
   }
 
@@ -409,7 +421,7 @@
     flex-direction: column;
     gap: 0.375rem;
     padding-top: 0.25rem;
-    border-top: 1px solid hsl(0, 0%, 88%);
+    border-top: 1px solid var(--theme-border, hsl(0, 0%, 88%));
   }
 
   .offline-category__head {
@@ -428,14 +440,14 @@
 
   .offline-category__meta {
     font-size: 0.6875rem;
-    color: hsl(0, 0%, 40%);
+    color: var(--theme-text-2, hsl(0, 0%, 40%));
     text-align: right;
   }
 
   .offline-error {
     margin: 0;
     font-size: 0.75rem;
-    color: hsl(5, 53%, 38%);
+    color: var(--theme-accent-text, hsl(5, 53%, 38%));
   }
 
   .offline-btn {
@@ -451,7 +463,7 @@
     border: none;
     border-radius: 0.5rem;
     padding: 0.4375rem 0.75rem;
-    background-color: hsl(5, 53%, 32%);
+    background-color: var(--theme-accent-fill, hsl(5, 53%, 32%));
     color: white;
     font: inherit;
     font-size: 0.8125rem;
@@ -465,18 +477,26 @@
     flex-shrink: 0;
   }
   .offline-btn:hover {
-    background-color: hsl(5, 53%, 40%);
+    background-color: var(--theme-accent-fill, hsl(5, 53%, 40%));
   }
   .offline-btn:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
     outline-offset: 2px;
   }
   .offline-btn.ghost {
-    background-color: white;
-    color: hsl(5, 53%, 32%);
-    border: 1px solid hsl(5, 53%, 75%);
+    background-color: var(--theme-surface, white);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
+    border: 1px solid var(--theme-accent-border, hsl(5, 53%, 75%));
   }
   .offline-btn.ghost:hover {
-    background-color: hsl(5, 53%, 97%);
+    background-color: var(--theme-accent-soft, hsl(5, 53%, 97%));
+  }
+  .offline-btn.danger {
+    color: var(--theme-danger-text, #b3261e);
+  }
+  .offline-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 </style>

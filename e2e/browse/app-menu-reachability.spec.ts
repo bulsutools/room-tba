@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { waitForAppBoot } from "../helpers/app";
+import { settleAnimations } from "../helpers/map-tools";
 
 // Today, the academic calendar and every App-menu destination lost their only
 // entry point when the rail Sidebar stopped rendering and AppMenu was commented
@@ -8,11 +9,12 @@ import { waitForAppBoot } from "../helpers/app";
 // geometry: #893 shipped a regression past a suite that only measured widths.
 
 async function openMenu(page: Page) {
-  const trigger = page.getByRole("button", { name: /^app menu$/i });
+  const trigger = page.getByRole("button", { name: "You", exact: true });
   await page.keyboard.press("Escape");
   await trigger.click({ force: true });
-  const panel = page.getByRole("dialog", { name: /^app menu$/i });
+  const panel = page.getByRole("dialog", { name: "You", exact: true });
   await expect(panel).toBeVisible();
+  await settleAnimations(panel);
   return panel;
 }
 
@@ -44,11 +46,37 @@ for (const viewport of [
     });
 
     test("reaches Today", async ({ page }) => {
-      const panel = await openMenu(page);
-      await panel.getByRole("button", { name: /^today$/i }).click();
+      // A primary tab on phones (so the menu leaves it out); a menu row on
+      // desktop, whose top bar has no Today tab.
+      const tab = page
+        .getByRole("navigation", { name: "Primary" })
+        .getByRole("button", { name: /^today$/i });
+      if (await tab.count()) {
+        await tab.click();
+      } else {
+        const panel = await openMenu(page);
+        await panel.getByRole("button", { name: /^today$/i }).click();
+      }
       await expect(page.getByRole("heading", { name: /^today$/i })).toBeVisible(
         { timeout: 10_000 },
       );
+      // The full-screen view must not cover the bottom nav: the menu stays
+      // one tap away on every screen.
+      await openMenu(page);
+    });
+
+    test("switches the theme from the top of the menu", async ({ page }) => {
+      const panel = await openMenu(page);
+      const appearance = panel.getByRole("group", { name: /^appearance$/i });
+      await appearance.getByRole("button", { name: /^dark$/i }).click();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+      await appearance.getByRole("button", { name: /^light$/i }).click();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+      const { scrollWidth, clientWidth } = await panel.evaluate((el) => ({
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+      }));
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
     });
 
     test("reaches the academic calendar", async ({ page }) => {
@@ -63,8 +91,6 @@ for (const viewport of [
       page,
     }) => {
       const panel = await openMenu(page);
-      // Leaderboard lives under the collapsed community disclosure now.
-      await panel.getByText("Community & project links").click();
       await expect(
         panel.getByRole("button", { name: /^leaderboard$/i }),
       ).toBeVisible();
@@ -77,10 +103,11 @@ for (const viewport of [
     });
 
     test("reaches sign in", async ({ page }) => {
-      const panel = await openMenu(page);
-      await expect(
-        panel.getByRole("button", { name: /contributor sign in/i }),
-      ).toBeVisible();
+      await openMenu(page);
+      // The You row on both layouts: exactly one either way.
+      const signIn = page.getByRole("button", { name: /^sign in$/i });
+      await expect(signIn).toHaveCount(1);
+      await expect(signIn).toBeVisible();
     });
   });
 }

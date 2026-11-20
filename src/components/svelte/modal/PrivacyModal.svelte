@@ -1,18 +1,18 @@
 <script lang="ts">
+  import ModalHeader from "./ModalHeader.svelte";
   import { DISCORD_URL, MESSENGER_CONTRIBUTE_TARGET } from "@constants/community-links";
 </script>
 
 <section class="privacy-modal">
-  <header>
-    <p class="privacy-modal__eyebrow">Legal</p>
-    <h2>Privacy Policy</h2>
-    <p>Last updated: June 29, 2026.</p>
-  </header>
+  <ModalHeader
+    title="Privacy Policy"
+    description="Last updated June 29, 2026."
+  />
 
   <div class="privacy-modal__scroll map-chrome-scroll">
     <p>
       Room TBA is a free UPLB campus map and schedule finder maintained by
-      volunteers. It is not an official University of the Philippines Los Baños
+      volunteers. It isn't an official University of the Philippines Los Baños
       website.
     </p>
 
@@ -34,14 +34,14 @@
       <p>
         Clear site data in your browser to remove local caches, and sign out on
         shared devices. Account settings let signed-in contributors manage their
-        details or delete their account; published edit history stays attributed
+        details or delete their account. Published edit history stays attributed
         to a deleted user so the audit trail remains intact.
       </p>
     </section>
 
     <section>
-      <h3>What we do not sell</h3>
-      <p>We do not sell personal information or run third-party ad networks.</p>
+      <h3>What we don't sell</h3>
+      <p>We don't sell personal information or run third-party ad networks.</p>
     </section>
 
     <p>
@@ -59,37 +59,12 @@
     flex: 1 1 auto;
     min-height: 0;
     flex-direction: column;
-    gap: 0.625rem;
-    padding: 0.5rem 0.5rem 0.25rem;
   }
 
-  header {
-    padding-right: 2.25rem;
-  }
-
-  h2,
   h3,
   p,
   ul {
     margin: 0;
-  }
-
-  h2 {
-    font-size: 1rem;
-    color: hsl(0 0% 15%);
-  }
-
-  header > p:last-child,
-  .privacy-modal__eyebrow {
-    color: hsl(0 0% 42%);
-    font-size: 0.75rem;
-  }
-
-  .privacy-modal__eyebrow {
-    margin-bottom: 0.125rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
   }
 
   .privacy-modal__scroll {
@@ -98,8 +73,8 @@
     flex-direction: column;
     gap: 0.875rem;
     overflow-y: auto;
-    padding-right: 0.375rem;
-    color: hsl(0 0% 22%);
+    padding: 0 1rem 0.5rem;
+    color: var(--theme-text, hsl(0 0% 22%));
     font-size: 0.875rem;
     line-height: 1.55;
   }
@@ -111,7 +86,7 @@
   }
 
   h3 {
-    color: hsl(5 53% 28%);
+    color: var(--theme-accent-text, hsl(5 53% 28%));
     font-size: 0.875rem;
   }
 
@@ -124,7 +99,7 @@
   }
 
   a {
-    color: hsl(5 53% 32%);
+    color: var(--theme-accent-text, hsl(5 53% 32%));
     font-weight: 600;
   }
 

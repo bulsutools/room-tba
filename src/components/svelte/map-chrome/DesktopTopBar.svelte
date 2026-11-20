@@ -1,32 +1,25 @@
 <script lang="ts">
-  import { adminAuthStore, sidebarStore } from "@lib/store.svelte";
+  import { sidebarStore } from "@lib/store.svelte";
   import AppMenu from "../status-bar/AppMenu.svelte";
+  import ThemeSwitch from "../ThemeSwitch.svelte";
 
   type NavId = "map" | "planner" | "finals";
 
   const links: { id: NavId; label: string }[] = [
     { id: "map", label: "Map" },
     { id: "planner", label: "Planner" },
-    { id: "finals", label: "Final Exams" },
+    { id: "finals", label: "Final exams" },
   ];
 
-  const active = $derived(sidebarStore.panelOpen);
+  const hostTabs = links.map((link) => link.id);
+  let menuOpen = $state(false);
+  /** The open menu is the one "you are here"; mute the tab under it. */
+  const active = $derived(menuOpen ? null : sidebarStore.panelOpen);
 
   function go(id: NavId) {
     sidebarStore.changeOpened(id);
   }
 
-  function handleSignIn() {
-    if (adminAuthStore.username) {
-      adminAuthStore.openAccountSettings();
-      return;
-    }
-    adminAuthStore.openLogin("signin");
-  }
-
-  const signInLabel = $derived(
-    adminAuthStore.username ? "Account" : "Contributor sign in",
-  );
 </script>
 
 <header class="desktop-top-bar" aria-label="App navigation">
@@ -59,15 +52,10 @@
         {link.label}
       </button>
     {/each}
-    <a href="/wiki" class="desktop-top-bar__link">Wiki</a>
-    <AppMenu />
-    <button
-      type="button"
-      class="desktop-top-bar__signin"
-      onclick={handleSignIn}
-    >
-      {signInLabel}
-    </button>
+    <!-- You: account, sign in and everything that is not a tab (the Wiki
+         sits under Help & feedback there), the same sheet the phone opens. -->
+    <ThemeSwitch variant="toggle" />
+    <AppMenu bind:open={menuOpen} {hostTabs} variant="avatar" />
   </nav>
 </header>
 
@@ -83,8 +71,8 @@
     width: 100%;
     height: var(--desktop-top-bar-height, 3.5625rem);
     padding: 0 clamp(0.75rem, 1.5vw, 1.25rem);
-    background: #f9f6f6;
-    border-bottom: 1px solid hsl(5 12% 88%);
+    background: var(--theme-accent-soft, #f9f6f6);
+    border-bottom: 1px solid var(--theme-accent-border, hsl(5 12% 88%));
     z-index: 1;
   }
 
@@ -107,11 +95,11 @@
   }
 
   .desktop-top-bar__title {
-    font-family: "DM Sans", Inter, system-ui, sans-serif;
+    font-family: "DM Sans", Figtree, system-ui, sans-serif;
     font-size: clamp(0.95rem, 1.15vw, 1.09rem);
     font-weight: 700;
     line-height: 1;
-    color: #7e272c;
+    color: var(--theme-accent-text, #7e272c);
   }
 
   .desktop-top-bar__nav {
@@ -129,7 +117,7 @@
     border: none;
     border-radius: 10px;
     background: transparent;
-    color: #332529;
+    color: var(--theme-text, #332529);
     font: inherit;
     font-size: clamp(0.8125rem, 0.95vw, 0.875rem);
     text-decoration: none;
@@ -137,22 +125,10 @@
   }
 
   .desktop-top-bar__link--active {
-    background: #feeaea;
+    background: var(--theme-accent-soft, #feeaea);
   }
 
   .desktop-top-bar__link:hover {
-    background: #feeaea;
-  }
-
-  .desktop-top-bar__signin {
-    margin: 0 0 0 4px;
-    padding: 0.45rem clamp(0.75rem, 1.2vw, 1rem);
-    border: none;
-    border-radius: 10px;
-    background: #8d1437;
-    color: #fff;
-    font: inherit;
-    font-size: clamp(0.8125rem, 0.95vw, 0.875rem);
-    cursor: pointer;
+    background: var(--theme-accent-soft, #feeaea);
   }
 </style>

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/svelte";
+import { render, screen } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { modalStore } from "@lib/store.svelte";
@@ -7,10 +7,7 @@ vi.mock("@lib/github-contributors", () => ({
   fetchGithubContributors: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock("@lib/github-stars", () => ({
-  fetchGithubStarCountCached: vi.fn().mockResolvedValue(0),
-}));
-
+import ContributorsModal from "./ContributorsModal.svelte";
 import LandingModal from "./LandingModal.svelte";
 import ScheduleModal from "./ScheduleModal.svelte";
 
@@ -45,31 +42,23 @@ describe("modal scroll chrome", () => {
 
   test("landing modal content uses shared scroll chrome", () => {
     render(LandingModal);
-    expect(document.querySelector(".scroll-region")).toHaveClass(
+    expect(document.querySelector(".landing__scroll")).toHaveClass(
       "map-chrome-scroll",
     );
   });
 
-  test("opens Campus team when callers request the campus landing tab", async () => {
-    modalStore.closeModal();
-    render(LandingModal);
-
-    modalStore.openModal("landing", { landingTab: "campus" });
+  test("contributors is its own screen, not a tab of the guide", async () => {
+    render(ContributorsModal);
     await tick();
-
-    expect(screen.getByRole("tab", { name: "Campus team" })).toHaveAttribute(
-      "aria-selected",
-      "true",
+    expect(screen.getByRole("heading", { name: "Contributors" })).toBeVisible();
+    expect(document.querySelector(".contributors__scroll")).toHaveClass(
+      "map-chrome-scroll",
     );
-    expect(screen.getByRole("tabpanel")).toHaveAttribute(
-      "id",
-      "landing-panel-campus",
-    );
+    expect(document.getElementById("landing-panel-welcome")).toBeNull();
   });
 
-  test("campus team credits inspiration tools with their authors", async () => {
-    render(LandingModal);
-    await fireEvent.click(screen.getByRole("tab", { name: "Campus team" }));
+  test("contributors credits inspiration tools with their authors", async () => {
+    render(ContributorsModal);
     expect(screen.getByRole("heading", { name: /inspiration/i })).toBeVisible();
     expect(
       screen.getByRole("link", { name: "Room TBA (UPLB upstream)" }),
@@ -86,9 +75,8 @@ describe("modal scroll chrome", () => {
     expect(screen.queryByRole("link", { name: "AMISSU" })).toBeNull();
   });
 
-  test("campus team renders live editor credits with optional profile links", async () => {
-    render(LandingModal);
-    await fireEvent.click(screen.getByRole("tab", { name: "Campus team" }));
+  test("contributors renders live editor credits with optional profile links", async () => {
+    render(ContributorsModal);
     const name = await screen.findByText("Live Editor");
     expect(name.closest("a")).toHaveAttribute(
       "href",

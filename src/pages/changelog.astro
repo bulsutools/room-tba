@@ -1,10 +1,18 @@
 ---
 export const prerender = true;
 import Layout from "@layouts/Layout.astro";
+import "../styles/static-page-dark.css";
 import SiteFooter from "../components/SiteFooter.astro";
 import FollowUpdates from "@ui/community/FollowUpdates.svelte";
 import * as changelog from "../../CHANGELOG.md";
 import releaseTimestamps from "../generated/release-timestamps.json";
+
+// release-please writes minor versions as "# x.y.0" and patches as "## x.y.z".
+// The page already owns the one h1, so every release becomes an h2 and the
+// "### Bug Fixes" groups sit one level under it.
+const entriesHtml = (await changelog.compiledContent())
+  .replace(/<h1(\s|>)/g, "<h2$1")
+  .replace(/<\/h1>/g, "</h2>");
 ---
 
 <Layout
@@ -17,15 +25,11 @@ import releaseTimestamps from "../generated/release-timestamps.json";
     <a href="/" class="back-link">Back to Room TBA</a>
 
     <header class="hero">
-      <p class="eyebrow">Release notes</p>
       <h1 class="changelog-page__title">Changelog</h1>
       <p class="hero__lede">
-        Room TBA is a living document and is updated regularly, especially every
-        term, to reflect latest changes in course offerings, room status, and
-        other relevant information. Aside from the data itself, the website also
-        undergoes improvements to provide a better user experience. Below are
-        the major updates and changes made to Room TBA since its initial
-        release.
+        Room TBA is updated every term to reflect changes in course offerings,
+        room status and other information, and the site gets improvements along
+        the way. Below are the major updates made since its initial release.
       </p>
       <div class="hero__follow">
         <FollowUpdates
@@ -34,7 +38,7 @@ import releaseTimestamps from "../generated/release-timestamps.json";
       </div>
     </header>
 
-    <div class="entries" set:html={changelog.compiledContent()} />
+    <div class="entries" set:html={entriesHtml} />
 
     <SiteFooter />
   </main>

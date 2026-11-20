@@ -1,4 +1,5 @@
 import type * as maplibre from "maplibre-gl";
+import { MAKILING_TRAIL_ID } from "../../constants/makiling-trail.js";
 import {
   DEFAULT_TERRAIN_EXAGGERATION,
   TERRAIN_ENABLED,
@@ -7,6 +8,8 @@ import { dismissEphemeralOverlays } from "../overlay-stack.js";
 import { deactivateMapModesExcept } from "./map-modes.js";
 import type { MapToolsSection, TerrainStatus } from "./store-types.js";
 import type { WaybackSnapshot } from "../wayback-imagery.js";
+
+const HIGHLIGHT_MY_BUILDINGS_KEY = "highlight-my-buildings";
 
 export class MapStore {
   mapInstance: maplibre.MapLibreMap | undefined = $state.raw();
@@ -18,8 +21,13 @@ export class MapViewStore {
   // map legend so users can declutter the map (#18b).
   showOrgs: boolean = $state(true);
   showPlaces: boolean = $state(true);
-  // Emphasize buildings hosting the user's planner classes; dim other pins.
-  highlightMyBuildings: boolean = $state(false);
+  // Mark the buildings hosting the user's planner classes. On by default so a
+  // planned class shows up on the map without a trip to settings; turning it
+  // off is remembered.
+  highlightMyBuildings: boolean = $state(
+    typeof localStorage === "undefined" ||
+      localStorage.getItem(HIGHLIGHT_MY_BUILDINGS_KEY) !== "false",
+  );
   /** Org/place pins are also zoom-gated in Map.svelte. The legend reads this
    * so its toggles cannot claim "Shown" while the gate is hiding them. */
   poiPinsZoomVisible: boolean = $state(true);
@@ -66,6 +74,14 @@ export class MapViewStore {
 
   toggleHighlightMyBuildings = () => {
     this.highlightMyBuildings = !this.highlightMyBuildings;
+    try {
+      localStorage.setItem(
+        HIGHLIGHT_MY_BUILDINGS_KEY,
+        String(this.highlightMyBuildings),
+      );
+    } catch {
+      // Private mode: the toggle still works for this session.
+    }
     // Events-only hides building pins entirely — pointless combined with a
     // building highlight, so leave that mode when highlighting.
     if (this.highlightMyBuildings) this.eventsOnly = false;
@@ -180,19 +196,87 @@ export class TerrainStore {
   };
 }
 
+const TRAIL_LAYER_KEY = "makiling-trail-layer";
+
+function readTrailLayerPref(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(TRAIL_LAYER_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Makiling trail (#716): the map layer (remembered across visits and carried
+ * in ?layers=trail), the trail sheet, and which stop it shows. Camera
+ * requests are nonces the trail map layer answers.
+ */
 export class TrailStore {
-  enabled: boolean = $state(false);
+  enabled: boolean = $state(readTrailLayerPref());
+  /** The trail the sheet and the map's stop dots show. */
+  trailId: string = $state(MAKILING_TRAIL_ID);
+  /** The trail sheet is open (overview, or a stop when one is selected). */
+  sheetOpen: boolean = $state(false);
+  selectedStopId: string | null = $state(null);
+  /** Bumped to fit the whole trail in the visible map. */
+  frameNonce: number = $state(0);
+  /** Bumped to fly to the selected stop. */
+  flyNonce: number = $state(0);
+
+  private setEnabled(on: boolean) {
+    this.enabled = on;
+    try {
+      globalThis.localStorage?.setItem(TRAIL_LAYER_KEY, String(on));
+    } catch {
+      // Private mode: the toggle still works for this session.
+    }
+  }
 
   toggle = () => {
-    this.enabled = !this.enabled;
+    if (this.enabled) this.disable();
+    else this.enable();
   };
 
   enable = () => {
-    this.enabled = true;
+    this.setEnabled(true);
   };
 
+  /** Hiding the trail closes its sheet too: it describes a line no longer drawn. */
   disable = () => {
-    this.enabled = false;
+    this.setEnabled(false);
+    this.closeSheet();
+  };
+
+  /** Show a trail and its sheet, at the overview or at one stop. */
+  openSheet = (stopId: string | null = null, trailId = this.trailId) => {
+    this.enable();
+    this.trailId = trailId;
+    this.sheetOpen = true;
+    this.selectedStopId = stopId;
+  };
+
+  closeSheet = () => {
+    this.sheetOpen = false;
+    this.selectedStopId = null;
+  };
+
+  selectTrail = (trailId: string) => {
+    this.trailId = trailId;
+    this.selectedStopId = null;
+  };
+
+  selectStop = (stopId: string | null) => {
+    this.selectedStopId = stopId;
+  };
+
+  requestFrame = () => {
+    this.enable();
+    this.frameNonce += 1;
+  };
+
+  flyToStop = (stopId: string) => {
+    this.selectedStopId = stopId;
+    this.flyNonce += 1;
   };
 }
 
@@ -208,7 +292,8 @@ export class TravelTimeStore {
 
   enable = () => {
     this.active = true;
-    deactivateMapModesExcept("travel-time");
+    // Measure route runs beside it: the heatmap stays while waypoints drop.
+    deactivateMapModesExcept("travel-time", "measure");
     dismissEphemeralOverlays();
   };
 
@@ -257,7 +342,7 @@ export class MeasureRouteStore {
 
   enable = () => {
     this.active = true;
-    deactivateMapModesExcept("measure");
+    deactivateMapModesExcept("measure", "travel-time");
     dismissEphemeralOverlays();
   };
 

@@ -8,7 +8,16 @@ export interface ModalStoreState {
   open: boolean;
   type: (typeof modalOptions)[number] | null;
   landingTab?: LandingModalTab;
+  /** Entity whose public edit history the "entity-history" modal shows. */
+  historyEntity?: HistoryEntityRef;
 }
+
+export type HistoryEntityRef = {
+  entityType: string;
+  entityId: number;
+  /** Shown under the title so the history says what it belongs to. */
+  name?: string;
+};
 
 export interface QueryStoreState {
   type: "query" | "result";
@@ -56,7 +65,8 @@ export type MapToolsSection =
   | "legend"
   | "terrain"
   | "trail"
-  | "jeepney";
+  | "jeepney"
+  | "schedule";
 
 export type MapProposalTarget = {
   type: "building" | "dorm" | "event";

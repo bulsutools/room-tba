@@ -90,12 +90,32 @@ describe("planJourneys", () => {
     );
     expect(ride?.boardStopName).toBe("Stop 0");
     expect(ride?.alightStopName).toBe("Stop 4");
+    // The itinerary lists the stops ridden through, board and alight included.
+    expect(ride?.stopNames[0]).toBe("Stop 0");
+    expect(ride?.stopNames.at(-1)).toBe("Stop 4");
+    expect(ride?.stopNames).toHaveLength(ride?.stopCount ?? -1);
+    // A one-way route has no Kaliwa/Kanan-style direction name.
+    expect(ride?.directionLabel).toBeNull();
     expect(ride?.waitSeconds).toBe(JEEPNEY_WAIT_SECONDS);
     // Boarding at the origin and alighting at the destination: no walking.
     expect(transit?.walkMeters).toBeCloseTo(0, 0);
     // 4 km at 14 km/h = ~1029s, plus the 300s wait.
     expect(transit?.seconds).toBeCloseTo(1029 + JEEPNEY_WAIT_SECONDS, -1);
     expect(transit?.seconds).toBeLessThan(journeys[0].seconds + 1);
+  });
+
+  test("names the direction of a two-way route ridden backwards", () => {
+    const { journeys } = planJourneys({
+      graph,
+      origin: nodeAt(4),
+      destination: nodeAt(0),
+      routes: [{ ...corridorRoute, id: "kaliwa-kanan" }],
+    });
+    const ride = journeys
+      .flatMap((j) => j.legs)
+      .find((leg): leg is RideLeg => leg.kind === "ride");
+    expect(ride?.boardStopName).toBe("Stop 4");
+    expect(ride?.directionLabel).toBe("Kaliwa");
   });
 
   test("suppresses a ride that barely beats walking", () => {
@@ -204,6 +224,73 @@ describe("planJourneys", () => {
     expect(plan.status).toBe("origin-off-network");
     expect(plan.journeys).toEqual([]);
     expect(PLAN_STATUS_NOTES[plan.status]).toContain("outside the mapped");
+  });
+
+  test("plans from a terminal off the network by walking straight to its stop", () => {
+    // Like Olivarez Plaza: the jeep's first stop is in town, ~1 km off the
+    // campus walk network, and the rider stands next to it.
+    const terminal = { lat: LAT, lng: 121.23 };
+    const townRoute: JeepneyRoute = {
+      ...corridorRoute,
+      id: "town",
+      stops: [
+        {
+          name: "Terminal",
+          description: "",
+          lat: terminal.lat,
+          lon: terminal.lng,
+        },
+        ...corridorRoute.stops.slice(1),
+      ],
+    };
+    const plan = planJourneys({
+      graph,
+      origin: { lat: terminal.lat + 0.0005, lng: terminal.lng },
+      destination: nodeAt(4),
+      routes: [townRoute],
+    });
+
+    expect(plan.status).toBe("ok");
+    const ride = plan.journeys[0]?.legs.find(
+      (leg): leg is RideLeg => leg.kind === "ride",
+    );
+    expect(ride?.boardStopName).toBe("Terminal");
+    // ~55 m straight, with the street detour, is a short walk.
+    expect(plan.journeys[0]?.legs[0]?.meters).toBeLessThan(100);
+  });
+
+  test("transfers from a town jeep to a campus jeep when starting off campus", () => {
+    // Olivarez Plaza → FOREHA: Kaliwa/Kanan into campus, then Forestry.
+    const terminal = { lat: LAT - 0.01, lng: 121.24 };
+    const townRoute: JeepneyRoute = {
+      ...corridorRoute,
+      id: "town-loop",
+      name: "Town Loop",
+      fare: { regular: 13, discounted: 11 },
+      stops: [
+        {
+          name: "Town Terminal",
+          description: "",
+          lat: terminal.lat,
+          lon: terminal.lng,
+        },
+        { name: "Stop 0", description: "", lat: nodeAt(0).lat, lon: 121.24 },
+      ],
+    };
+    const plan = planJourneys({
+      graph,
+      origin: terminal,
+      destination: nodeAt(4),
+      routes: [townRoute, corridorRoute],
+    });
+
+    expect(plan.status).toBe("ok");
+    const rides = plan.journeys[0]?.legs.filter(
+      (leg): leg is RideLeg => leg.kind === "ride",
+    );
+    expect(rides?.map((r) => r.routeId)).toEqual(["town-loop", "corridor"]);
+    // Town jeeps charge by distance, so no total is quoted for the trip.
+    expect(plan.journeys[0]?.fare).toBeNull();
   });
 
   test("refuses to plan to a point off the mapped network", () => {

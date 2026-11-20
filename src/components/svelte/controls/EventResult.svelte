@@ -380,7 +380,7 @@
       }
     } catch (error) {
       toastStore.show(
-        error instanceof Error ? error.message : "Failed to save event.",
+        error instanceof Error ? error.message : "Couldn't save the event.",
         "error",
       );
     } finally {
@@ -430,7 +430,7 @@
       toastStore.show(
         error instanceof Error
           ? error.message
-          : `Failed to save location for ${event.title}.`,
+          : `Couldn't save the location for ${event.title}.`,
         "error",
       );
     } finally {
@@ -493,7 +493,7 @@
       toastStore.show(
         error instanceof Error
           ? error.message
-          : `Failed to deactivate ${event.title}.`,
+          : `Couldn't deactivate ${event.title}.`,
         "error",
       );
     } finally {
@@ -608,7 +608,7 @@
       toastStore.show(
         error instanceof Error
           ? error.message
-          : "Failed to place event marker.",
+          : "Couldn't place the event marker.",
         "error",
       );
     } finally {
@@ -672,6 +672,7 @@
         updatedAt={event.updatedAt}
         entityType="event"
         entityId={event.id}
+        entityName={event.title}
       />
     </header>
 
@@ -821,6 +822,7 @@
               prefix={`events/${event.slug}`}
               bind:value={form.imageUrl}
               disabled={saving}
+              proposalId={activeProposalId}
             />
             <EntityEditorFormField
               label="Recurrence"
@@ -1084,7 +1086,7 @@
   }
 
   h3 {
-    color: #7b1113;
+    color: var(--theme-accent-text, #7b1113);
     font-size: 0.85rem;
   }
 
@@ -1092,13 +1094,13 @@
   li,
   label,
   .source-link {
-    color: #3f3f46;
+    color: var(--theme-text, #3f3f46);
     font-size: 0.85rem;
     line-height: 1.45;
   }
 
   .muted {
-    color: #71717a;
+    color: var(--theme-text-2, #71717a);
   }
 
   ul,
@@ -1116,21 +1118,21 @@
     gap: 0.35rem;
     width: max-content;
     padding: 0.35rem 0.65rem;
-    border: 1px solid #d8b9ba;
+    border: 1px solid var(--theme-accent-border, #d8b9ba);
     border-radius: 999px;
-    background: #fffafa;
-    color: #7b1113;
+    background: var(--theme-accent-soft, #fffafa);
+    color: var(--theme-accent-text, #7b1113);
     font-weight: 700;
     text-decoration: none;
   }
 
   .source-link:hover,
   .source-link:focus-visible {
-    background: #fdf3f3;
+    background: var(--theme-accent-soft, #fdf3f3);
   }
 
   .source-link:focus-visible {
-    outline: 2px solid #7b1113;
+    outline: 2px solid var(--theme-accent-text, #7b1113);
     outline-offset: -2px; /* panel scroll body clips outward rings */
   }
 </style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { LANDSCAPE_COMPACT_MEDIA } from "@lib/bottom-sheet-snap";
   import { MapLibre, Marker } from "svelte-maplibre";
   import * as maplibregl from "maplibre-gl";
   import { configureMaplibreWorker } from "@lib/maplibre-worker";
@@ -41,7 +42,7 @@
     plannerRoomCodes,
     directionsStore,
   } from "@lib/store.svelte";
-  import { untrack } from "svelte";
+  import { tick, untrack } from "svelte";
   import { onMount } from "svelte";
   import { getSponsoredPlacePins, loadSponsors } from "@lib/sponsors";
   import {
@@ -60,9 +61,12 @@
   import Redo2 from "@lucide/svelte/icons/redo-2";
   import PinGlyph from "./map/PinGlyph.svelte";
   import EventMapPin from "./map/EventMapPin.svelte";
+  import UserLocationMarker from "./map/UserLocationMarker.svelte";
+  import DroppedPinMarker from "./map/DroppedPinMarker.svelte";
   import ContributorDraftPinMarker from "./map/ContributorDraftPinMarker.svelte";
   import EventPlacementImageField from "./map-chrome/EventPlacementImageField.svelte";
   import MapEntityPin from "./map/MapEntityPin.svelte";
+  import { savedPlaces } from "@lib/saved-places.svelte";
   import { MediaQuery } from "svelte/reactivity";
   import { observeBlockHeight } from "@lib/layout-css-vars";
   import type { StyleSpecification } from "maplibre-gl";
@@ -78,6 +82,7 @@
   import { isStudentOrganization } from "@constants/org-categories";
   import { isLandmarkPlaceCategory } from "@constants/place-categories";
   import {
+    ROUTE_LINE_CODES,
     resolveRouteGeometry,
     type JeepneyRoute,
     type JeepneyStop,
@@ -86,19 +91,12 @@
     type StoredRouteGeometry,
   } from "@constants/jeepney-routes";
   import jeepneyGeometries from "@constants/jeepney-geometries.json";
-  import {
-    MAKILING_TRAIL_COLOR,
-    MAKILING_TRAIL_LAYER_CASING_ID,
-    MAKILING_TRAIL_LAYER_ID,
-    MAKILING_TRAIL_LINE,
-    MAKILING_TRAIL_STATIONS,
-    MAKILING_TRAIL_STATIONS_LAYER_ID,
-    MAKILING_TRAIL_STATIONS_SOURCE_ID,
-    MAKILING_TRAIL_SOURCE_ID,
-  } from "@constants/makiling-trail";
+  import { type Position, stopArrows } from "@lib/route-arrows";
+  import { reverseLine } from "@lib/transit-direction";
   import {
     CAMPUS_DEFAULT_CAMERA,
-    CAMPUS_MAX_BOUNDS,
+    MAP_REGION_MAX_BOUNDS,
+    MAP_REGION_MIN_ZOOM,
     TERRAIN_CAMERA,
     TERRAIN_MAX_BOUNDS,
     TERRAIN_SOURCE_BOUNDS,
@@ -121,8 +119,14 @@
     type TravelMode,
   } from "@lib/travel-graph/engine";
   import { loadTravelGraph } from "@lib/travel-graph/load";
-  import { applyBasemapPalette } from "@lib/map-basemap-palette";
+  import { syncBasemapPalette } from "@lib/map-basemap-palette";
+  import { getResolvedTheme, onThemeChange } from "@lib/theme";
   import { syncSatelliteLayer } from "@lib/map-satellite";
+  import {
+    measureVisibleMapPadding,
+    pointsBounds,
+    SIDE_PANEL_WIDTH_PX,
+  } from "@lib/map-fit";
   import { loadCampusMapStyle } from "@lib/maptiler-key";
   import { isMap2DPitch } from "@constants/map-dimension";
   import { syncBuildingLayersForDimension } from "@lib/map-dimension-layers";
@@ -165,6 +169,14 @@
   } from "@lib/entity-hover-preview.svelte";
   import { patchEventLocations, patchPosition } from "@lib/map-edit/patch-api";
   import { formatMinutes } from "@lib/schedule-import/day-stops";
+  import {
+    LABEL_ANCHORS,
+    placeLabels,
+    type LabelCandidate,
+    type LabelRect,
+  } from "@lib/map-label-declutter";
+  import { darkenForWhiteText } from "@lib/color-contrast";
+  import { isLoopRoute, transitStopNoun } from "@lib/transit-route-kind";
   import type {
     EditableCoords,
     EditableEntityType,
@@ -186,6 +198,16 @@
   const appActions = getAppActions();
   const { buildings, dorms, events, organizations, places, loaded } =
     $derived(data());
+  // `loaded` flips on at mount with empty arrays; this flips once campus rows
+  // are actually in, so a selection made before then can still fly.
+  const campusRowsReady = $derived(
+    loaded &&
+      (buildings.length > 0 ||
+        dorms.length > 0 ||
+        places.length > 0 ||
+        organizations.length > 0 ||
+        events.length > 0),
+  );
   // Refresh the set of buildings that host classes whenever the term changes
   // or an offline sync lands, so dual-role buildings (admin + class venue)
   // filter correctly.
@@ -197,14 +219,21 @@
 
   // Browsing a sidebar directory declutters the map to just that category's
   // pins; null means no browse filter (all pin kinds show).
+  // The class list (category "classes") filters like a browse tab: only the
+  // buildings that host classes this term.
   const browseTab = $derived(
-    queryStore.category === "browse" ? queryStore.queryValue : null,
+    queryStore.category === "browse"
+      ? queryStore.queryValue
+      : queryStore.category === "classes"
+        ? "classes"
+        : null,
   );
   const showBuildingPins = $derived(
     browseTab === null ||
       browseTab === "buildings" ||
       browseTab === "colleges" ||
-      browseTab === "divisions",
+      browseTab === "divisions" ||
+      browseTab === "classes",
   );
   const showDormPins = $derived(browseTab === null || browseTab === "dorms");
   const orgPinFilter = $derived.by((): "all" | "student" | "office" | "none" => {
@@ -227,7 +256,7 @@
     return buildings.filter((building) =>
       buildingMatchesTypeFilter(
         building,
-        buildingTypeFilter.value,
+        browseTab === "classes" ? "class-building" : buildingTypeFilter.value,
         classVenuesStore.buildingIdsWithClasses,
       ),
     );
@@ -280,6 +309,55 @@
     );
   });
 
+  // The Events chip filters the map like the pin-mode "Events only" toggle.
+  const showOnlyEvents = $derived(
+    mapViewStore.eventsOnly || queryStore.category === "events",
+  );
+
+  /** [lng, lat] of every pin the active category chip leaves on the map. */
+  function categoryPinPoints(category: string): [number, number][] {
+    if (category === "events") {
+      return eventMarkerGroups.map((group) => group.lngLat);
+    }
+    return [
+      ...filteredBuildings.map((b) => [b.lon, b.lat]),
+      ...filteredDorms.map((d) => [d.lon, d.lat]),
+      ...filteredPlaces.map((p) => [p.lon, p.lat]),
+      ...filteredOrganizations.map((o) => [o.lon, o.lat]),
+    ].filter((point): point is [number, number] =>
+      point.every((value) => typeof value === "number"),
+    );
+  }
+
+  // A category chip filters the map in place; frame what it left on screen,
+  // once per chip and after the data is in, the way a Google Maps category
+  // search fits its results. Transit has its own route framing.
+  let fittedCategory: string | null = null;
+  $effect(() => {
+    const map = mapStore.mapInstance;
+    const category = queryStore.category === "events" ? "events" : browseTab;
+    if (category === null) {
+      fittedCategory = null;
+      return;
+    }
+    if (!map || !loaded || category === fittedCategory) return;
+    if (category === "jeepney") return;
+    const bounds = pointsBounds(untrack(() => categoryPinPoints(category)));
+    fittedCategory = category;
+    if (!bounds) return;
+    // Two frames, like fitMapToRoute: the sheet's resting place is set on
+    // the first, and visibleMapPadding reads it.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        map.fitBounds(bounds, {
+          padding: visibleMapPadding(map),
+          maxZoom: 17.5,
+          duration: 900,
+        });
+      }),
+    );
+  });
+
   function isLandmarkPlace(place: PlaceData) {
     return isLandmarkPlaceCategory(place.category);
   }
@@ -289,9 +367,13 @@
     lon: number,
     label: string,
   ): boolean {
-    if (!directionsStore.addingStop) return false;
-    void directionsStore.addWaypoint({ lat, lng: lon, label });
-    return true;
+    // Measure mode: a pin tap is one more waypoint, never a place sheet.
+    if (measureRouteStore.active) {
+      measureRouteStore.addWaypoint(lat, lon);
+      return true;
+    }
+    // A start point, an end point or an extra stop, whichever is waiting.
+    return directionsStore.takePick({ lat, lng: lon, label });
   }
 
   function handlePlaceMarkerClick(place: PlaceData) {
@@ -359,7 +441,7 @@
       .catch((error) => {
         console.error("Failed to load campus map style", error);
         toastStore.show(
-          "Campus map tiles could not load. Check MapTiler configuration.",
+          "Campus map tiles couldn't load. Check MapTiler configuration.",
           "error",
         );
       });
@@ -368,6 +450,10 @@
   const JEEPNEY_ROUTE_SOURCE_ID = "jeepney-route-line";
   const JEEPNEY_ROUTE_LAYER_ID = "jeepney-route-line";
   const JEEPNEY_ROUTE_LAYER_CASING_ID = "jeepney-route-line-casing";
+  const JEEPNEY_ARROW_SOURCE_ID = "jeepney-route-arrows";
+  const JEEPNEY_ARROW_LAYER_ID = "jeepney-route-arrows";
+  const JEEPNEY_ARROW_IMAGE_ID = "jeepney-route-arrow";
+  const JEEPNEY_CODE_LAYER_ID = "jeepney-route-code";
   const USER_LOCATION_ACCURACY_SOURCE_ID = "user-location-accuracy";
   const USER_LOCATION_ACCURACY_FILL_ID = "user-location-accuracy-fill";
   const USER_LOCATION_ACCURACY_LINE_ID = "user-location-accuracy-line";
@@ -384,6 +470,9 @@
   const EXTERNAL_CAMPUSES_LABELS_LAYER_ID = "external-campuses-labels";
   let activeRouteId = $state<string | null>(null);
   let activeRouteStops = $state<JeepneyRoute["stops"]>([]);
+  /** Loop routes list the terminal again as the last stop; draw it once. */
+  let activeRouteIsLoop = $state(false);
+  let activeRouteStopNoun = $state("Jeepney stop");
   let activeRouteColor = $state<string>("#dc2626");
   let terrainModeWasEnabled = false;
   let selectedEditKey = $state<string | null>(null);
@@ -488,6 +577,67 @@
       });
     }
 
+    // Direction chevrons just past each stop. The icon is a signed distance
+    // field so one image can take the route colour.
+    if (!map.hasImage(JEEPNEY_ARROW_IMAGE_ID)) {
+      map.addImage(JEEPNEY_ARROW_IMAGE_ID, arrowImage(), { sdf: true });
+    }
+    if (!map.getSource(JEEPNEY_ARROW_SOURCE_ID)) {
+      map.addSource(JEEPNEY_ARROW_SOURCE_ID, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+    }
+    if (!map.getLayer(JEEPNEY_ARROW_LAYER_ID)) {
+      map.addLayer({
+        id: JEEPNEY_ARROW_LAYER_ID,
+        type: "symbol",
+        source: JEEPNEY_ARROW_SOURCE_ID,
+        layout: {
+          "icon-image": JEEPNEY_ARROW_IMAGE_ID,
+          "icon-size": 0.55,
+          "icon-rotate": ["get", "bearing"],
+          "icon-rotation-alignment": "map",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
+        paint: {
+          "icon-color": color,
+          "icon-halo-color": "#ffffff",
+          "icon-halo-width": 2,
+        },
+      });
+    }
+    map.setPaintProperty(JEEPNEY_ARROW_LAYER_ID, "icon-color", color);
+    map.setPaintProperty(JEEPNEY_ARROW_LAYER_ID, "icon-opacity", opacity);
+
+    // The stop-sign code (KN, FR, LOOP) along the line, like the printable map.
+    if (!map.getLayer(JEEPNEY_CODE_LAYER_ID)) {
+      map.addLayer({
+        id: JEEPNEY_CODE_LAYER_ID,
+        type: "symbol",
+        source: JEEPNEY_ROUTE_SOURCE_ID,
+        layout: {
+          "symbol-placement": "line",
+          "symbol-spacing": 360,
+          "text-field": ["get", "code"],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 12,
+          "text-letter-spacing": 0.08,
+        },
+        paint: {
+          "text-color": "#ffffff",
+          "text-halo-color": color,
+          "text-halo-width": 3,
+        },
+      });
+    }
+    map.setPaintProperty(
+      JEEPNEY_CODE_LAYER_ID,
+      "text-halo-color",
+      darkenForWhiteText(color),
+    );
+
     // Layers outlive a single route, so provenance styling is applied on every
     // draw, not only when the layer is first created.
     map.setPaintProperty(JEEPNEY_ROUTE_LAYER_ID, "line-color", color);
@@ -501,7 +651,36 @@
     );
   }
 
+  /** A filled chevron pointing up (north), drawn once as an SDF icon. */
+  function arrowImage() {
+    const size = 48;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#000";
+      ctx.beginPath();
+      ctx.moveTo(size / 2, 6);
+      ctx.lineTo(size - 8, size - 8);
+      ctx.lineTo(size / 2, size - 18);
+      ctx.lineTo(8, size - 8);
+      ctx.closePath();
+      ctx.fill();
+    }
+    return ctx?.getImageData(0, 0, size, size) ?? new ImageData(size, size);
+  }
+
   function clearJeepneyRouteLayers(map: mapGl.MapLibreMap) {
+    if (map.getLayer(JEEPNEY_CODE_LAYER_ID)) {
+      map.removeLayer(JEEPNEY_CODE_LAYER_ID);
+    }
+    if (map.getLayer(JEEPNEY_ARROW_LAYER_ID)) {
+      map.removeLayer(JEEPNEY_ARROW_LAYER_ID);
+    }
+    if (map.getSource(JEEPNEY_ARROW_SOURCE_ID)) {
+      map.removeSource(JEEPNEY_ARROW_SOURCE_ID);
+    }
     if (map.getLayer(JEEPNEY_ROUTE_LAYER_ID)) {
       map.removeLayer(JEEPNEY_ROUTE_LAYER_ID);
     }
@@ -618,6 +797,13 @@
   const JOURNEY_WALK_CASING_ID = "directions-journey-walk-casing";
   const JOURNEY_RIDE_LAYER_ID = "directions-journey-ride";
   const JOURNEY_RIDE_CASING_ID = "directions-journey-ride-casing";
+  /** Unselected options, drawn grey under the chosen one and tappable. */
+  const JOURNEY_ALT_SOURCE_ID = "directions-journey-alt";
+  const JOURNEY_ALT_CASING_ID = "directions-journey-alt-casing";
+  const JOURNEY_ALT_LAYER_ID = "directions-journey-alt";
+  /** Invisible fat line so a fingertip can hit a thin grey route. */
+  const JOURNEY_ALT_HIT_ID = "directions-journey-alt-hit";
+  const JOURNEY_ALT_COLOR = "#8e9aa8";
   /** Stock MapLibreGlDirections foot routeline (`layers.ts` routelineFoot). */
   const JOURNEY_WALK_COLOR = "#3665ff";
   /**
@@ -654,6 +840,60 @@
    * 0.85) so walk looks like the pre–multi-modal OSRM path; ride legs use
    * the jeepney route colour with the same widths.
    */
+  function ensureJourneyAltLayers(map: mapGl.MapLibreMap) {
+    if (!map.getSource(JOURNEY_ALT_SOURCE_ID)) {
+      map.addSource(JOURNEY_ALT_SOURCE_ID, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+    }
+    // Under the selected route, which is added after (or already sits above).
+    const before = map.getLayer(JOURNEY_RIDE_CASING_ID)
+      ? JOURNEY_RIDE_CASING_ID
+      : undefined;
+    if (!map.getLayer(JOURNEY_ALT_CASING_ID)) {
+      map.addLayer(
+        {
+          id: JOURNEY_ALT_CASING_ID,
+          type: "line",
+          source: JOURNEY_ALT_SOURCE_ID,
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-color": "#5f6b78",
+            "line-width": JOURNEY_CASING_WIDTH,
+            "line-opacity": 0.3,
+          },
+        },
+        before,
+      );
+    }
+    if (!map.getLayer(JOURNEY_ALT_LAYER_ID)) {
+      map.addLayer(
+        {
+          id: JOURNEY_ALT_LAYER_ID,
+          type: "line",
+          source: JOURNEY_ALT_SOURCE_ID,
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-color": JOURNEY_ALT_COLOR,
+            "line-width": JOURNEY_LINE_WIDTH,
+            "line-opacity": 0.9,
+          },
+        },
+        before,
+      );
+    }
+    if (!map.getLayer(JOURNEY_ALT_HIT_ID)) {
+      map.addLayer({
+        id: JOURNEY_ALT_HIT_ID,
+        type: "line",
+        source: JOURNEY_ALT_SOURCE_ID,
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#000", "line-width": 24, "line-opacity": 0 },
+      });
+    }
+  }
+
   function ensureJourneyLayers(map: mapGl.MapLibreMap) {
     if (!map.getSource(JOURNEY_SOURCE_ID)) {
       map.addSource(JOURNEY_SOURCE_ID, {
@@ -745,17 +985,22 @@
     if (map.getLayer(JOURNEY_WALK_LAYER_ID)) {
       map.setPaintProperty(JOURNEY_WALK_LAYER_ID, "line-color", JOURNEY_WALK_COLOR);
     }
-  }  function clearJourneyLayers(map: mapGl.MapLibreMap) {
+  }
+
+  function clearJourneyLayers(map: mapGl.MapLibreMap) {
     for (const id of [
       JOURNEY_WALK_LAYER_ID,
       JOURNEY_WALK_CASING_ID,
       JOURNEY_RIDE_LAYER_ID,
       JOURNEY_RIDE_CASING_ID,
+      JOURNEY_ALT_HIT_ID,
+      JOURNEY_ALT_LAYER_ID,
+      JOURNEY_ALT_CASING_ID,
     ]) {
       if (map.getLayer(id)) map.removeLayer(id);
     }
-    if (map.getSource(JOURNEY_SOURCE_ID)) {
-      map.removeSource(JOURNEY_SOURCE_ID);
+    for (const id of [JOURNEY_SOURCE_ID, JOURNEY_ALT_SOURCE_ID]) {
+      if (map.getSource(id)) map.removeSource(id);
     }
   }
   function ensureEventRouteLayers(map: mapGl.MapLibreMap) {
@@ -867,101 +1112,6 @@
     }
   }
 
-  function ensureTrailLayers(map: mapGl.MapLibreMap) {
-    // Trail line source + casing + line
-    if (!map.getSource(MAKILING_TRAIL_SOURCE_ID)) {
-      map.addSource(MAKILING_TRAIL_SOURCE_ID, {
-        type: "geojson",
-        data: {
-          type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: MAKILING_TRAIL_LINE,
-          },
-          properties: {},
-        },
-      });
-    }
-
-    if (!map.getLayer(MAKILING_TRAIL_LAYER_CASING_ID)) {
-      map.addLayer({
-        id: MAKILING_TRAIL_LAYER_CASING_ID,
-        type: "line",
-        source: MAKILING_TRAIL_SOURCE_ID,
-        layout: { "line-cap": "round", "line-join": "round" },
-        paint: {
-          "line-color": "#ffffff",
-          "line-width": 7,
-          "line-opacity": 0.9,
-        },
-      });
-    }
-
-    if (!map.getLayer(MAKILING_TRAIL_LAYER_ID)) {
-      map.addLayer({
-        id: MAKILING_TRAIL_LAYER_ID,
-        type: "line",
-        source: MAKILING_TRAIL_SOURCE_ID,
-        layout: { "line-cap": "round", "line-join": "round" },
-        paint: {
-          "line-color": MAKILING_TRAIL_COLOR,
-          "line-width": 4,
-          "line-opacity": 0.95,
-        },
-      });
-    }
-
-    // Station markers source + circle layer
-    if (!map.getSource(MAKILING_TRAIL_STATIONS_SOURCE_ID)) {
-      map.addSource(MAKILING_TRAIL_STATIONS_SOURCE_ID, {
-        type: "geojson",
-        data: {
-          type: "FeatureCollection",
-          features: MAKILING_TRAIL_STATIONS.map((s) => ({
-            type: "Feature" as const,
-            geometry: {
-              type: "Point" as const,
-              coordinates: [s.lon, s.lat],
-            },
-            properties: {
-              station: s.station,
-              name: s.name,
-              elevation: s.elevationMeters,
-            },
-          })),
-        },
-      });
-    }
-
-    if (!map.getLayer(MAKILING_TRAIL_STATIONS_LAYER_ID)) {
-      map.addLayer({
-        id: MAKILING_TRAIL_STATIONS_LAYER_ID,
-        type: "circle",
-        source: MAKILING_TRAIL_STATIONS_SOURCE_ID,
-        paint: {
-          "circle-radius": 6,
-          "circle-color": MAKILING_TRAIL_COLOR,
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 2,
-          "circle-opacity": 0.95,
-        },
-      });
-    }
-  }
-
-  function clearTrailLayers(map: mapGl.MapLibreMap) {
-    if (map.getLayer(MAKILING_TRAIL_STATIONS_LAYER_ID))
-      map.removeLayer(MAKILING_TRAIL_STATIONS_LAYER_ID);
-    if (map.getLayer(MAKILING_TRAIL_LAYER_ID))
-      map.removeLayer(MAKILING_TRAIL_LAYER_ID);
-    if (map.getLayer(MAKILING_TRAIL_LAYER_CASING_ID))
-      map.removeLayer(MAKILING_TRAIL_LAYER_CASING_ID);
-    if (map.getSource(MAKILING_TRAIL_STATIONS_SOURCE_ID))
-      map.removeSource(MAKILING_TRAIL_STATIONS_SOURCE_ID);
-    if (map.getSource(MAKILING_TRAIL_SOURCE_ID))
-      map.removeSource(MAKILING_TRAIL_SOURCE_ID);
-  }
-
   function buildEventRouteGeometry(
     route: EventData["routes"][number],
   ): LineString | null {
@@ -1003,18 +1153,29 @@
     // rAF: camera moves fire map event handlers synchronously; keep their
     // state writes out of the reactive flush that called us (see stop flyTo
     // effect) or the scheduler can die with effect_update_depth_exceeded.
-    requestAnimationFrame(() => {
-      map.fitBounds(
-        [
-          [minLng, minLat],
-          [maxLng, maxLat],
-        ],
-        {
-          padding: { top: 80, bottom: 80, left: 80, right: 80 },
-          duration: 1200,
-          pitch: 30,
-        },
-      );
+    // Two frames: the sheet's target position is set on the first.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        map.fitBounds(
+          [
+            [minLng, minLat],
+            [maxLng, maxLat],
+          ],
+          {
+            padding: visibleMapPadding(map),
+            duration: 1200,
+            pitch: 30,
+          },
+        );
+      }),
+    );
+  }
+
+  /** Padding that keeps a fitted area clear of the search bar, chips and sheet. */
+  function visibleMapPadding(map: mapGl.MapLibreMap): mapGl.PaddingOptions {
+    return measureVisibleMapPadding(map, {
+      mobile: md.current,
+      leftPanelWidth: sidePanelStore.collapsed ? 0 : SIDEPANEL_WIDTH,
     });
   }
 
@@ -1104,7 +1265,7 @@
       };
 
       if (!res.ok || !data.event) {
-        throw new Error(data.error ?? `Create failed (${res.status})`);
+        throw new Error(data.error ?? `Couldn't create the event (${res.status})`);
       }
 
       appActions.replaceEvent(data.event);
@@ -1132,7 +1293,7 @@
     } catch (error) {
       eventPlacementStore.failCreate();
       toastStore.show(
-        error instanceof Error ? error.message : "Failed to create event.",
+        error instanceof Error ? error.message : "Couldn't create the event.",
         "error",
       );
     }
@@ -1178,7 +1339,7 @@
       });
 
       if (!result.ok) {
-        throw new Error(result.error ?? "Failed to submit event proposal.");
+        throw new Error(result.error ?? "Couldn't submit the event proposal.");
       }
 
       eventPlacementStore.cancel();
@@ -1189,7 +1350,7 @@
     } catch (error) {
       eventPlacementStore.failCreate();
       toastStore.show(
-        error instanceof Error ? error.message : "Failed to propose event.",
+        error instanceof Error ? error.message : "Couldn't propose the event.",
         "error",
       );
     }
@@ -1380,12 +1541,28 @@
   // Buildings and dorms always show. Active (searched) and sponsored pins
   // bypass the gate so deep links and paid placements never vanish.
   const POI_MIN_ZOOM = 15.5;
+  // Names show at the default campus zoom (15.8) like Google Maps' place
+  // labels; the collision pass keeps them from piling up. Buildings and
+  // dorms first; the smaller POI names wait until a little closer in.
+  const LABEL_MIN_ZOOM = 15.5;
+  const POI_LABEL_MIN_ZOOM = 16.5;
   const poiPinsVisible = $derived(zoomLevel >= POI_MIN_ZOOM);
+  // Offices and student orgs are ~110 pins stacked on a few dozen buildings.
+  // On a phone at the default campus zoom they buried every building pin, so
+  // the unfiltered map adds them a little closer in. The Units and offices /
+  // Student orgs filters, and the selected org, still show them from
+  // POI_MIN_ZOOM.
+  const ORG_PINS_MOBILE_MIN_ZOOM = 16.75;
   $effect(() => {
     mapViewStore.poiPinsZoomVisible = poiPinsVisible;
   });
-  const SIDEPANEL_WIDTH = 25.75 * 16;
+  const SIDEPANEL_WIDTH = SIDE_PANEL_WIDTH_PX;
   const md = new MediaQuery("max-width:48rem");
+  const orgPinsVisible = $derived(
+    orgPinFilter === "all" && md.current
+      ? zoomLevel >= ORG_PINS_MOBILE_MIN_ZOOM
+      : poiPinsVisible,
+  );
   let editChromeEl = $state<HTMLElement | null>(null);
   const editChromeActive = $derived(
     eventPlacementStore.active ||
@@ -1408,11 +1585,66 @@
     });
   });
 
+  /**
+   * Share of the phone screen the place sheet covers at peek, nav included:
+   * the estimate for the first fly-to, before the sheet has measured itself
+   * and reported its real top edge (sidePanelStore.mobileSheetTop).
+   */
+  const MOBILE_SHEET_COVER_RATIO = 0.4;
+  const MIN_VISIBLE_STRIP_PX = 96;
+
   const calculatePadding = (md: boolean): mapGl.PaddingOptions => {
-    if (md) {
+    if (md && window.matchMedia(LANDSCAPE_COMPACT_MEDIA).matches) {
+      // Phone landscape: the place sheet is a left side panel
+      // (min(24rem, 52vw) plus its gutter), not a bottom sheet, so keep pins
+      // right of it and use the full height under the search chips.
+      const searchBlock = mapContainerEl
+        ? Number.parseFloat(
+            getComputedStyle(mapContainerEl).getPropertyValue(
+              "--search-block-height",
+            ),
+          )
+        : 0;
       return {
-        bottom: window.innerWidth / 2,
+        top: Number.isFinite(searchBlock)
+          ? Math.min(searchBlock, Math.round(window.innerHeight * 0.4))
+          : 0,
+        bottom: 0,
+        left: Math.round(Math.min(384, window.innerWidth * 0.52)) + 6,
+        right: 0,
+      };
+    }
+    if (md) {
+      // Centre the pin in the strip between the search bar and the place
+      // sheet: half the screen *width* used to leave it under the sheet.
+      const searchBlock = mapContainerEl
+        ? Number.parseFloat(
+            getComputedStyle(mapContainerEl).getPropertyValue(
+              "--search-block-height",
+            ),
+          )
+        : 0;
+      // Untracked: the camera effects that call this must not re-fly when the
+      // sheet changes stop; the effect below re-pads on its own.
+      const sheetTop = untrack(() => sidePanelStore.mobileSheetTop);
+      const top = Number.isFinite(searchBlock)
+        ? // Capped: while the search overlay is open it measures full screen.
+          Math.min(searchBlock, Math.round(window.innerHeight * 0.25))
+        : 0;
+      const covered =
+        sheetTop > 0
+          ? Math.max(0, Math.round(window.innerHeight - sheetTop))
+          : Math.round(window.innerHeight * MOBILE_SHEET_COVER_RATIO);
+      return {
+        top,
+        // A full sheet leaves only a sliver of map: never pad past the point
+        // where less than a pin's worth of strip is left to centre in.
+        bottom: Math.min(
+          covered,
+          Math.max(0, window.innerHeight - top - MIN_VISIBLE_STRIP_PX),
+        ),
         left: 0,
+        right: 0,
       };
     }
     return {
@@ -1425,6 +1657,126 @@
     if (!mapStore.mapInstance) return;
     zoomLevel = mapStore.mapInstance.getZoom();
   }
+
+  // Pin labels are HTML, so MapLibre's own label collision never sees them.
+  // After the camera settles (or the pin set changes), give each label the
+  // first free side of its pin (placeLabels), hiding the ones with none.
+  // Hovering a pin still shows its label.
+  const LABEL_PRIORITY: [string, number][] = [
+    ["building", 1],
+    ["dorm", 1],
+    ["private", 1],
+    ["landmark", 2],
+    ["establishment", 3],
+    ["office", 4],
+    ["organization", 5],
+  ];
+  let mapContainerEl = $state<HTMLDivElement | null>(null);
+  let declutterFrame = 0;
+
+  function declutterPinLabels() {
+    const root = mapContainerEl;
+    if (!root) return;
+    const labels: HTMLElement[] = [];
+    const candidates: LabelCandidate[] = [];
+    const pins: LabelRect[] = [];
+    const anchorClasses = LABEL_ANCHORS.map((a) => `pin-label--${a}`);
+    for (const pin of root.querySelectorAll<HTMLElement>(".map-entity-pin")) {
+      const label = pin.querySelector<HTMLElement>(".pin-label");
+      if (!label) continue;
+      label.classList.remove("pin-label--collided", ...anchorClasses);
+      const pinRect = pin.getBoundingClientRect();
+      if (pinRect.width === 0) continue;
+      // Every pin is an obstacle, labelled or not: a name painted under a
+      // neighbouring pin was the desktop overlap.
+      pins.push(pinRect);
+      if (!label.classList.contains("persistent")) continue;
+      const tone = LABEL_PRIORITY.find(([name]) => pin.classList.contains(name));
+      const size = label.getBoundingClientRect();
+      candidates.push({
+        id: labels.push(label) - 1,
+        priority: pin.classList.contains("active") ? 0 : (tone?.[1] ?? 6),
+        width: size.width,
+        height: size.height,
+        pin: pinRect,
+      });
+    }
+    const chrome = [
+      ...document.querySelectorAll(
+        ".search-root .map-search-chrome__pill, .search-root .map-filter-chips, .mobile-map-controls, .desktop-map-controls, .bottom-sheet",
+      ),
+    ].map((el) => el.getBoundingClientRect());
+    for (const [id, anchor] of placeLabels(
+      candidates,
+      pins,
+      chrome,
+      root.getBoundingClientRect(),
+    )) {
+      labels[id]?.classList.add(
+        anchor === null ? "pin-label--collided" : `pin-label--${anchor}`,
+      );
+    }
+  }
+
+  function scheduleLabelDeclutter() {
+    cancelAnimationFrame(declutterFrame);
+    declutterFrame = requestAnimationFrame(() => {
+      void tick().then(declutterPinLabels);
+    });
+  }
+
+  $effect(() => {
+    const map = mapStore.mapInstance;
+    if (!map) return;
+    map.on("moveend", scheduleLabelDeclutter);
+    return () => {
+      map.off("moveend", scheduleLabelDeclutter);
+      cancelAnimationFrame(declutterFrame);
+    };
+  });
+
+  $effect(() => {
+    // Re-run when the pin set or which labels show changes without a move.
+    void [
+      zoomLevel >= LABEL_MIN_ZOOM,
+      zoomLevel >= POI_LABEL_MIN_ZOOM,
+      filteredBuildings,
+      filteredDorms,
+      filteredPlaces,
+      filteredOrganizations,
+      orgPinsVisible,
+      queryStore.inputValue,
+      queryStore.category,
+      sidePanelStore.mobileSheetTop,
+    ];
+    scheduleLabelDeclutter();
+    // The sheet slides for 320ms to its stop; labels under its final edge
+    // (it is a blocked rect above) hide once it has settled.
+    const settle = setTimeout(scheduleLabelDeclutter, 380);
+    return () => clearTimeout(settle);
+  });
+
+  // The place sheet reports where its top edge rests once it has measured
+  // itself, and again when it moves to another stop. The first fly-to only had
+  // an estimate, so re-pad the camera to the real strip above the sheet: the
+  // selected pin then sits in the middle of the visible map, not under it.
+  $effect(() => {
+    const top = sidePanelStore.mobileSheetTop;
+    const map = mapStore.mapInstance;
+    if (!map || top <= 0 || !md.current || queryStore.category === null) return;
+    const apply = () => {
+      const want = calculatePadding(true);
+      if (Math.abs((want.bottom ?? 0) - map.getPadding().bottom) < 24) return;
+      map.easeTo({ padding: want, duration: 280 });
+    };
+    if (map.isMoving()) {
+      map.once("moveend", apply);
+      return () => {
+        map.off("moveend", apply);
+      };
+    }
+    apply();
+  });
 
   function buildingEditKey(id: number) {
     return `building:${id}`;
@@ -1720,7 +2072,7 @@
       }
       setLocalPosition("building", id, previous);
       toastStore.show(
-        editErrorMessage(name, "Failed to save building position.", error),
+        editErrorMessage(name, "Couldn't save the building position.", error),
         "error",
       );
     } finally {
@@ -1768,7 +2120,7 @@
       }
       setLocalPosition("dorm", id, previous);
       toastStore.show(
-        editErrorMessage(name, "Failed to save dorm position.", error),
+        editErrorMessage(name, "Couldn't save the dorm position.", error),
         "error",
       );
     } finally {
@@ -1832,7 +2184,7 @@
       }
       setLocalEvent(previousEvent);
       toastStore.show(
-        editErrorMessage(event.title, "Failed to save event location.", error),
+        editErrorMessage(event.title, "Couldn't save the event location.", error),
         "error",
       );
     } finally {
@@ -1876,7 +2228,7 @@
         input.rollback();
         toastStore.show(
           result.error ??
-            `${input.entityLabel} pin suggestion could not be submitted.`,
+            `${input.entityLabel} pin suggestion couldn't be submitted.`,
           "error",
         );
         return;
@@ -2048,12 +2400,12 @@
     try {
       const version = await applyRecordedMove(move, "undo");
       markSaved(move.key);
-      setEditStatus(`Undid move for ${move.name}.`);
+      setEditStatus(`Move for ${move.name} undone.`);
       const next = completeMapMoveUndo(undoStack, redoStack, move, version);
       undoStack = next.undoStack;
       redoStack = next.redoStack;
     } catch (error) {
-      handleRecordedMoveError(move, error, "Failed to undo last move.");
+      handleRecordedMoveError(move, error, "Couldn't undo the last move.");
     } finally {
       if (savingEditKey === move.key) savingEditKey = null;
       if (undoingEditKey === move.key) undoingEditKey = null;
@@ -2071,12 +2423,12 @@
     try {
       const version = await applyRecordedMove(move, "redo");
       markSaved(move.key);
-      setEditStatus(`Redid move for ${move.name}.`);
+      setEditStatus(`Move for ${move.name} redone.`);
       const next = completeMapMoveRedo(undoStack, redoStack, move, version);
       undoStack = next.undoStack;
       redoStack = next.redoStack;
     } catch (error) {
-      handleRecordedMoveError(move, error, "Failed to redo move.");
+      handleRecordedMoveError(move, error, "Couldn't redo the move.");
     } finally {
       if (savingEditKey === move.key) savingEditKey = null;
       if (undoingEditKey === move.key) undoingEditKey = null;
@@ -2104,17 +2456,14 @@
     const map = mapStore.mapInstance;
     if (!map) return;
 
-    let cancelled = false;
-    const applyPalette = () => {
-      if (!cancelled) applyBasemapPalette(map);
-    };
-    if (map.isStyleLoaded()) {
-      applyPalette();
-    } else {
-      map.once("load", applyPalette);
-    }
+    // Applies once the style's layers exist and whenever basemap layers are
+    // (re)added; see syncBasemapPalette for why "load" alone missed deep links.
+    const palette = syncBasemapPalette(map, getResolvedTheme);
+    // Dark mode swaps the basemap palette live (Settings or the OS switch).
+    const offTheme = onThemeChange(palette.sync);
     return () => {
-      cancelled = true;
+      palette.stop();
+      offTheme();
     };
   });
 
@@ -2248,7 +2597,7 @@
 
     const bounds = terrainEnabled
       ? TERRAIN_MAX_BOUNDS
-      : CAMPUS_MAX_BOUNDS;
+      : MAP_REGION_MAX_BOUNDS;
 
     const applyBounds = () => {
       map.setMaxBounds(bounds);
@@ -2400,9 +2749,33 @@
       return;
     }
 
+    // Other options stay on the map in grey while choosing, as in GMaps;
+    // navigation shows only the route being followed.
+    const alternatives = directionsStore.navigating
+      ? []
+      : directionsStore.journeys.filter((other) => other.id !== journey.id);
+
     const draw = () => {
       ensureJourneyLayers(map);
+      ensureJourneyAltLayers(map);
       applyJourneyPaint(map);
+      (
+        map.getSource(JOURNEY_ALT_SOURCE_ID) as mapGl.GeoJSONSource | undefined
+      )?.setData({
+        type: "FeatureCollection",
+        features: alternatives.flatMap((other) =>
+          other.legs
+            .filter((leg) => leg.coordinates.length >= 2)
+            .map((leg) => ({
+              type: "Feature" as const,
+              geometry: {
+                type: "LineString" as const,
+                coordinates: leg.coordinates,
+              },
+              properties: { journeyId: other.id },
+            })),
+        ),
+      });
       const source = map.getSource(JOURNEY_SOURCE_ID) as
         | mapGl.GeoJSONSource
         | undefined;
@@ -2565,6 +2938,73 @@
     };
   });
 
+  // Tap a grey alternative to choose it (#966). A pending start/end pick
+  // wins: that tap is meant to drop a pin.
+  $effect(() => {
+    const map = mapStore.mapInstance;
+    if (!map || !directionsStore.active || directionsStore.navigating) return;
+
+    const canvas = map.getCanvas();
+    // Plain listeners, not layer-delegated ones: those query a layer that
+    // does not exist until the first draw and error on every mouse move.
+    const hitJourneyId = (event: mapGl.MapMouseEvent): string | null => {
+      if (!map.getLayer(JOURNEY_ALT_HIT_ID)) return null;
+      const id = map.queryRenderedFeatures(event.point, {
+        layers: [JOURNEY_ALT_HIT_ID],
+      })[0]?.properties?.journeyId;
+      return typeof id === "string" ? id : null;
+    };
+    const choose = (event: mapGl.MapMouseEvent) => {
+      if (directionsStore.picking || directionsStore.addingStop) return;
+      const id = hitJourneyId(event);
+      if (id) directionsStore.select(id);
+    };
+    let pointing = false;
+    const hover = (event: mapGl.MapMouseEvent) => {
+      if (directionsStore.picking) return;
+      const over = hitJourneyId(event) !== null;
+      if (over === pointing) return;
+      pointing = over;
+      canvas.style.cursor = over ? "pointer" : "";
+    };
+    map.on("click", choose);
+    map.on("mousemove", hover);
+    return () => {
+      map.off("click", choose);
+      map.off("mousemove", hover);
+      if (pointing) canvas.style.cursor = "";
+    };
+  });
+
+  // While the rider is choosing a start or end point, a tap on bare map
+  // drops a pin there. Pin taps land on their DOM marker, not the canvas, and
+  // already route through tryAddDirectionsStop with the place name.
+  $effect(() => {
+    const map = mapStore.mapInstance;
+    if (!map || !directionsStore.picking) return;
+
+    const canvas = map.getCanvas();
+    const previousCursor = canvas.style.cursor;
+    canvas.style.cursor = "crosshair";
+    const handlePickClick = (event: mapGl.MapMouseEvent) => {
+      if (event.originalEvent.target !== canvas) return;
+      directionsStore.takePick({
+        lat: event.lngLat.lat,
+        lng: event.lngLat.lng,
+        label: "Dropped pin",
+        dropped: true,
+      });
+    };
+
+    map.on("click", handlePickClick);
+    return () => {
+      map.off("click", handlePickClick);
+      if (canvas.style.cursor === "crosshair") {
+        canvas.style.cursor = previousCursor;
+      }
+    };
+  });
+
   // #847: travel-time isochrone — while active, taps pick the origin point.
   $effect(() => {
     const map = mapStore.mapInstance;
@@ -2574,6 +3014,9 @@
     const previousCursor = canvas.style.cursor;
     canvas.style.cursor = "crosshair";
     const handleTravelTimeClick = (event: mapGl.MapMouseEvent) => {
+      // Beside measure route, only the first tap (the start point) is ours;
+      // later taps are measure waypoints.
+      if (measureRouteStore.active && travelTimeStore.origin) return;
       travelTimeStore.setOrigin(event.lngLat.lat, event.lngLat.lng);
     };
 
@@ -2651,6 +3094,10 @@
     const previousCursor = canvas.style.cursor;
     canvas.style.cursor = "crosshair";
     const handleMeasureClick = (event: mapGl.MapMouseEvent) => {
+      // Pin taps bubble here too; their own handler adds that waypoint.
+      if (event.originalEvent.target !== canvas) return;
+      // Walking time is still waiting for its start point: this tap is that.
+      if (travelTimeStore.active && !travelTimeStore.origin) return;
       measureRouteStore.addWaypoint(event.lngLat.lat, event.lngLat.lng);
     };
 
@@ -2859,9 +3306,8 @@
     const map = mapStore.mapInstance;
     if (!map) return;
 
-    const route = selectedId
-      ? transitStore.getRoute(selectedId)
-      : null;
+    // Oriented: the Kaliwa/Kanan toggle reverses the stop order and the line.
+    const route = selectedId ? transitStore.displayRoute(selectedId) : null;
 
     if (!route) {
       activeRouteId = null;
@@ -2881,6 +3327,8 @@
     activeRouteId = route.id;
     activeRouteStops = route.stops;
     activeRouteColor = route.color;
+    activeRouteIsLoop = isLoopRoute(route);
+    activeRouteStopNoun = transitStopNoun(route);
 
     // Geometry is resolved synchronously (static import + stop fallback).
     // Readiness gating is deliberately attempt-based: isStyleLoaded() is false
@@ -2888,7 +3336,14 @@
     // gating on either deadlocks and the polyline never draws. addSource /
     // addLayer only throw before the initial style load; try now and retry on
     // "styledata" until one attempt succeeds.
-    const { line, source: geometrySource } = routeGeometry(route);
+    // Stored lines are traced in listed order, so resolve on the listed route
+    // and flip the line for the reverse direction.
+    const listed = transitStore.getRoute(route.id) ?? route;
+    const { line: listedLine, source: geometrySource } = routeGeometry(listed);
+    const reversed = transitStore.isReversed(route.id);
+    const line = reversed ? reverseLine(listedLine) : listedLine;
+    const codes = ROUTE_LINE_CODES[route.id] ?? [];
+    const code = (reversed ? codes[1] : undefined) ?? codes[0] ?? "";
     const draw = () => {
       ensureJeepneyRouteLayers(map, route.color, geometrySource);
       const source = map.getSource(JEEPNEY_ROUTE_SOURCE_ID) as
@@ -2901,9 +3356,24 @@
               {
                 type: "Feature",
                 geometry: line,
-                properties: { routeId: route.id, geometrySource },
+                properties: { routeId: route.id, geometrySource, code },
               },
             ]
+          : [],
+      });
+      const arrowSource = map.getSource(JEEPNEY_ARROW_SOURCE_ID) as
+        | mapGl.GeoJSONSource
+        | undefined;
+      arrowSource?.setData({
+        type: "FeatureCollection",
+        features: line
+          ? stopArrows(line.coordinates as Position[], route.stops).map(
+              (arrow) => ({
+                type: "Feature",
+                geometry: { type: "Point", coordinates: [arrow.lon, arrow.lat] },
+                properties: { bearing: arrow.bearing },
+              }),
+            )
           : [],
       });
       fitMapToRoute(map, route);
@@ -2935,7 +3405,7 @@
     const stopIndex = jeepneyStore.selectedStopIndex;
     if (!map || routeId === null || stopIndex === null) return;
 
-    const route = transitStore.getRoute(routeId);
+    const route = transitStore.displayRoute(routeId);
     const stop = route?.stops[stopIndex];
     if (!stop) return;
 
@@ -2953,19 +3423,6 @@
       });
     });
     return () => cancelAnimationFrame(frame);
-  });
-
-  // #716: Makiling trail overlay — toggle trail line + station markers
-  $effect(() => {
-    const map = mapStore.mapInstance;
-    const enabled = trailStore.enabled;
-    if (!map) return;
-
-    if (enabled) {
-      ensureTrailLayers(map);
-    } else {
-      clearTrailLayers(map);
-    }
   });
 
   // Load external campuses footprint layers
@@ -3028,6 +3485,10 @@
     const map = mapStore.mapInstance;
 
     if (!map) return;
+    // Deep links and fast taps commit the query before campus data arrives;
+    // re-run once it does so the camera still flies to the place. Read only
+    // for selections that need it, so boot doesn't re-home an idle camera.
+    if (category !== null && category !== "room" && !campusRowsReady) return;
 
     untrack(() => {
       const isTerrainEnabled = terrainStore.enabled;
@@ -3047,14 +3508,24 @@
           });
         }
       } else if (category === null) {
-        flyToCamera(
-          map,
-          isTerrainEnabled ? TERRAIN_CAMERA : CAMPUS_DEFAULT_CAMERA,
-        );
+        // The trail sheet frames its own view; going home would undo it.
+        if (!trailStore.sheetOpen) {
+          flyToCamera(
+            map,
+            isTerrainEnabled ? TERRAIN_CAMERA : CAMPUS_DEFAULT_CAMERA,
+          );
+        }
         if (directions) directions.clear();
       } else if (category === "room") {
-        currentRoom.getRoomByCode(value).then(() => {
+        // A deep link already loaded this room; refetching blanked the panel
+        // (skeleton) and raced the URL sync.
+        const roomReady =
+          currentRoom.value?.code.toUpperCase() === value.toUpperCase()
+            ? Promise.resolve()
+            : currentRoom.getRoomByCode(value);
+        void roomReady.then(() => {
           if (
+            queryStore.category === "room" &&
             currentRoom.value?.building?.lat &&
             currentRoom.value.building.lon
           ) {
@@ -3201,9 +3672,16 @@
     });
   }
 
-  function handleEventMarkerClick(event: EventData) {
+  function handleEventMarkerClick(
+    event: EventData,
+    lngLat?: [number, number],
+  ) {
     if (eventPlacementStore.active) return;
     if (isMapEditEnabled() && selectedEditKey !== null) return;
+    if (measureRouteStore.active && lngLat) {
+      measureRouteStore.addWaypoint(lngLat[1], lngLat[0]);
+      return;
+    }
     if (queryStore.selectedEventSlug === event.slug) return;
     queryStore.updateQuery({
       category: "event",
@@ -3447,15 +3925,12 @@
     switch (queryStore.category) {
       case "building":
         return queryStore.inputValue;
-      case "room": {
-        return null;
-        // const currentRoom = rooms.find(
-        //   (room) => room.code === queryStore.inputValue,
-        // );
-        // return currentRoom && currentRoom.building
-        //   ? currentRoom.building.name
-        //   : null;
-      }
+      case "room":
+        // Highlight the room's building pin: that's where the camera flies.
+        return currentRoom.value?.code.toUpperCase() ===
+          queryStore.inputValue.toUpperCase()
+          ? (currentRoom.value.building?.name ?? null)
+          : null;
       default:
         return null;
     }
@@ -3528,9 +4003,10 @@
     return linkedActiveEventDormIds.has(dormId);
   }
 
-  // "My classes" highlight (#see MapViewStore.highlightMyBuildings): emphasize
-  // buildings hosting the active planner plan's classes, dim every other pin.
-  // Same shape as the event-focus dimming above.
+  // "My classes" highlight (#see MapViewStore.highlightMyBuildings): mark the
+  // buildings hosting the active planner plan's classes with a ring and an
+  // always-on label. It is on by default now, so it marks rather than dims:
+  // fading the rest of campus for everyone with a plan would hide the map.
   const activePlannerRoomCodes = $derived(
     plannerRoomCodes(plannerStore.activePlan?.sections ?? []),
   );
@@ -3547,22 +4023,19 @@
     return classHighlightActive && plannerBuildingsStore.buildingIds.has(buildingId);
   }
 
-  function isBuildingDimmedForClassHighlight(buildingId: number): boolean {
-    return classHighlightActive && !plannerBuildingsStore.buildingIds.has(buildingId);
-  }
-
   /**
    * While Get Directions is open, fade pins that are not the destination,
    * a waypoint, or within ~25 m of the drawn route (#966 route UI).
    */
   function isExemptFromDirectionsDim(lat: number, lon: number): boolean {
-    const dest = directionsStore.destination;
-    if (
-      dest &&
-      Math.abs(dest.lat - lat) < 1e-5 &&
-      Math.abs(dest.lng - lon) < 1e-5
-    ) {
-      return true;
+    for (const end of [directionsStore.destination, directionsStore.origin]) {
+      if (
+        end &&
+        Math.abs(end.lat - lat) < 1e-5 &&
+        Math.abs(end.lng - lon) < 1e-5
+      ) {
+        return true;
+      }
     }
     for (const stop of directionsStore.waypoints) {
       if (
@@ -3646,7 +4119,7 @@
 <svelte:window onkeydown={handleMapEditKeydown} />
 
 <div class="map-shell">
-  <div class="map-container">
+  <div class="map-container" bind:this={mapContainerEl}>
     {#if eventPlacementStore.active}
       <EventPlacementImageField />
     {/if}
@@ -3654,32 +4127,45 @@
       <MapLibre
         bind:map={mapStore.mapInstance}
         style={mapStyle}
-        maxBounds={CAMPUS_MAX_BOUNDS}
+        maxBounds={MAP_REGION_MAX_BOUNDS}
         center={CAMPUS_DEFAULT_CAMERA.center}
         zoom={17}
         pitch={CAMPUS_DEFAULT_CAMERA.pitch}
         bearing={CAMPUS_DEFAULT_CAMERA.bearing}
-        minZoom={13}
+        minZoom={MAP_REGION_MIN_ZOOM}
         class="map"
         attributionControl={false}
       >
         {#if locationStore.coords}
-          <Marker lngLat={locationStore.coords}>
-            {#if directionsStore.navigating}
-              <!-- Heading arrow while navigating (#966); falls back to the
-                   plain dot when the device reports no heading. -->
-              <div
-                class="user-location-puck"
-                class:user-location-puck--heading={locationStore.bearing !==
-                  null}
-                style:--puck-rotation="{locationStore.bearing ?? 0}deg"
-              ></div>
-            {:else}
-              <div class="user-location-pin"></div>
-            {/if}
-          </Marker>
+          <UserLocationMarker lngLat={locationStore.coords} />
         {/if}
+        <DroppedPinMarker />
         {#if directionsStore.active}
+          {#if directionsStore.originFixed && directionsStore.origin}
+            <Marker
+              lngLat={[directionsStore.origin.lng, directionsStore.origin.lat]}
+            >
+              <div
+                class="directions-origin-pin"
+                role="img"
+                aria-label={`Start: ${directionsStore.origin.label}`}
+              ></div>
+            </Marker>
+          {/if}
+          {#if directionsStore.destination?.dropped}
+            <Marker
+              lngLat={[
+                directionsStore.destination.lng,
+                directionsStore.destination.lat,
+              ]}
+            >
+              <div
+                class="addition-draft-pin"
+                role="img"
+                aria-label="Destination: dropped pin"
+              ></div>
+            </Marker>
+          {/if}
           {#each directionsStore.waypoints as stop, i (`dir-wp-${i}-${stop.lat}-${stop.lng}`)}
             <Marker lngLat={[stop.lng, stop.lat]}>
               <button
@@ -3737,7 +4223,10 @@
               lngLat={getEventMarkerLngLat(editableEventLocation)}
               draggable={canDragPin(editKey)}
               onclick={() =>
-                handleEventMarkerClick(editableEventLocation.event)}
+                handleEventMarkerClick(
+                  editableEventLocation.event,
+                  getEventMarkerLngLat(editableEventLocation),
+                )}
               ondragstart={() => beginMarkerDrag(editKey)}
               ondragend={(e) =>
                 handleEventLocationDragEnd(
@@ -3818,11 +4307,15 @@
                         title={`${entry.event.title}: ${entry.location.resolvedLabel}`}
                         ariaLabel={`Open event ${entry.event.title} at ${entry.location.resolvedLabel}`}
                         labelTitle={entry.event.title}
-                        labelMeta={`${getEventStatusLabel(entry.event)} · ${formatEventMarkerDateTime(
+                        labelMeta={`${getEventStatusLabel(entry.event)}, ${formatEventMarkerDateTime(
                           entry.event.occurrenceStartsAt,
                         )}`}
                         labelVisible={zoomLevel >= 17 || active}
-                        onclick={() => handleEventMarkerClick(entry.event)}
+                        onclick={() =>
+                          handleEventMarkerClick(
+                            entry.event,
+                            getEventMarkerLngLat(entry),
+                          )}
                         onpointerenter={(event) =>
                           handleEventPinPointerEnter(entry.event, event)}
                         onpointerleave={handleEventPinPointerLeave}
@@ -3892,7 +4385,10 @@
                                 title={`${entry.event.title}: ${entry.location.resolvedLabel}`}
                                 aria-label={`Open event ${entry.event.title} at ${entry.location.resolvedLabel}`}
                                 onclick={() =>
-                                  handleEventMarkerClick(entry.event)}
+                                  handleEventMarkerClick(
+                                    entry.event,
+                                    getEventMarkerLngLat(entry),
+                                  )}
                               >
                                 {#if image}
                                   <img
@@ -3950,7 +4446,7 @@
             </Marker>
           {/each}
         {/if}
-        {#each scheduleRouteStore.dayStops as stop, index (`schedule-stop:${index}:${stop.courseCode}:${stop.roomCode}:${stop.scheduleSlot}`)}
+        {#each scheduleRouteStore.stopsVisible ? scheduleRouteStore.dayStops : [] as stop, index (`schedule-stop:${index}:${stop.courseCode}:${stop.roomCode}:${stop.scheduleSlot}`)}
           {#if stop.coords}
             {@const routeActive =
               scheduleRouteStore.routedWeekday ===
@@ -3970,13 +4466,13 @@
                 <span class="schedule-route-stop-label" transition:fade>
                   {formatMinutes(stop.startMinutes)}
                   {stop.courseCode}
-                  {#if stop.roomCode} · {stop.roomCode}{/if}
+                  {#if stop.roomCode} in {stop.roomCode}{/if}
                 </span>
               </button>
             </Marker>
           {/if}
         {/each}
-        {#if !mapViewStore.eventsOnly}
+        {#if !showOnlyEvents}
           {#each filteredBuildings as building (`building:${building.id}`)}
             {#if building.lat && building.lon}
               {@const editKey = buildingEditKey(building.id)}
@@ -4013,12 +4509,13 @@
                 >
                   <MapEntityPin
                     label={building.buildingName}
+                    starred={savedPlaces.has("building", building.buildingName)}
                     active={activeBuildingName === building.buildingName}
                     editable={canDragPin(editKey)}
                     editing={selectedEditKey === editKey}
                     dimmed={isBuildingDimmedForEventFocus(building.id) ||
-                      isBuildingDimmedForClassHighlight(building.id) ||
                       isDimmedForDirections(position.lat, position.lon)}
+                    myClass={isMyClassBuilding(building.id)}
                     eventLinked={isBuildingEventLinked(building.id)}
                     hovered={hoveredEditKey === editKey}
                     saveState={savingEditKey === editKey
@@ -4032,7 +4529,7 @@
                       position.lat,
                       position.lon,
                     ) &&
-                      (zoomLevel >= 17 ||
+                      (zoomLevel >= LABEL_MIN_ZOOM ||
                         activeBuildingName === building.buildingName ||
                         isMyClassBuilding(building.id))}
                     useCentralHoverPreview={centralHoverPreview}
@@ -4051,16 +4548,22 @@
         {/if}
         {#if activeRouteId}
           {#each activeRouteStops as stop, i (`${activeRouteId}-${i}-${stop.name}`)}
-            {@const isHovered = jeepneyStore.hoveredStopIndex === i}
-            {@const isSelected = jeepneyStore.selectedStopIndex === i}
+            {@const loopEnd = activeRouteIsLoop ? activeRouteStops.length - 1 : -1}
+            {@const isHovered =
+              jeepneyStore.hoveredStopIndex === i ||
+              (i === 0 && jeepneyStore.hoveredStopIndex === loopEnd)}
+            {@const isSelected =
+              jeepneyStore.selectedStopIndex === i ||
+              (i === 0 && jeepneyStore.selectedStopIndex === loopEnd)}
+            {#if i !== loopEnd}
             <Marker lngLat={[stop.lon, stop.lat]}>
               <button
                 type="button"
                 class="jeepney-stop-pin"
                 class:jeepney-stop-pin--hovered={isHovered}
                 class:jeepney-stop-pin--selected={isSelected}
-                style:--stop-color={activeRouteColor}
-                aria-label={`Jeepney stop ${i + 1}: ${stop.name}`}
+                style:--stop-color={darkenForWhiteText(activeRouteColor)}
+                aria-label={`${activeRouteStopNoun} ${i + 1}: ${stop.name}`}
                 aria-pressed={isSelected}
                 onclick={(event) => {
                   event.stopPropagation();
@@ -4075,10 +4578,11 @@
                 <span class="stop-label" transition:fade>{stop.name}</span>
               </button>
             </Marker>
+            {/if}
           {/each}
         {/if}
 
-        {#if !mapViewStore.eventsOnly}
+        {#if !showOnlyEvents}
           {#each filteredDorms as dorm (`dorm:${dorm.id}`)}
             {#if dorm.lat && dorm.lon}
               {@const editKey = dormEditKey(dorm.id)}
@@ -4107,10 +4611,10 @@
                 >
                   <MapEntityPin
                     label={dorm.dormName}
+                    starred={savedPlaces.has("dorm", dorm.dormName)}
                     tone={dorm.isUpManaged ? "dorm" : "privateDorm"}
                     active={activeDormName === dorm.dormName}
                     dimmed={isDormDimmedForEventFocus(dorm.id) ||
-                      classHighlightActive ||
                       isDimmedForDirections(position.lat, position.lon)}
                     eventLinked={isDormEventLinked(dorm.id)}
                     editable={canDragPin(editKey)}
@@ -4127,7 +4631,8 @@
                       position.lat,
                       position.lon,
                     ) &&
-                      (zoomLevel >= 17 || activeDormName === dorm.dormName)}
+                      (zoomLevel >= LABEL_MIN_ZOOM ||
+                        activeDormName === dorm.dormName)}
                     useCentralHoverPreview={centralHoverPreview}
                     {previewSuppressed}
                     onpointerenter={(event) =>
@@ -4151,14 +4656,13 @@
               <Marker lngLat={[place.lon, place.lat]}>
                 <MapEntityPin
                   label={place.name}
+                  starred={savedPlaces.has("place", place.name)}
                   tone={isLandmarkPlace(place) ? "landmark" : "establishment"}
                   active={queryStore.category === "place" &&
                     queryStore.inputValue === place.name}
-                  dimmed={(classHighlightActive &&
-                    pinSponsorId === undefined) ||
-                    isDimmedForDirections(place.lat, place.lon)}
+                  dimmed={isDimmedForDirections(place.lat, place.lon)}
                   labelVisible={!isDimmedForDirections(place.lat, place.lon) &&
-                    (zoomLevel >= 17 ||
+                    (zoomLevel >= POI_LABEL_MIN_ZOOM ||
                       (queryStore.category === "place" &&
                         queryStore.inputValue === place.name))}
                   sponsored={pinSponsorId !== undefined}
@@ -4183,9 +4687,9 @@
           {/each}
         {/if}
 
-        {#if !mapViewStore.eventsOnly}
+        {#if !showOnlyEvents}
           {#each filteredOrganizations as { org, lat, lon } (`org:${org.id}`)}
-            {#if poiPinsVisible || activeOrgName === org.name}
+            {#if orgPinsVisible || activeOrgName === org.name}
             {@const centralHoverPreview = shouldShowEntityHoverPreview()}
             {@const previewSuppressed =
               centralHoverPreview &&
@@ -4197,10 +4701,10 @@
                   ? "organization"
                   : "office"}
                 active={activeOrgName === org.name}
-                dimmed={classHighlightActive ||
-                  isDimmedForDirections(lat, lon)}
+                dimmed={isDimmedForDirections(lat, lon)}
                 labelVisible={!isDimmedForDirections(lat, lon) &&
-                  (zoomLevel >= 17 || activeOrgName === org.name)}
+                  (zoomLevel >= POI_LABEL_MIN_ZOOM ||
+                    activeOrgName === org.name)}
                 useCentralHoverPreview={centralHoverPreview}
                 {previewSuppressed}
                 onclick={() => handleOrgMarkerClick(org.name, lat, lon)}
@@ -4255,7 +4759,7 @@
           <strong>Choose event location on the map</strong>
           <span>
             {eventPlacementStore.creating
-              ? "Creating the event at the selected map point..."
+              ? "We're creating the event at the selected map point..."
               : "Click or tap the map point where this event should appear."}
           </span>
         </div>
@@ -4430,12 +4934,21 @@
     height: 100%;
     z-index: 0;
     pointer-events: auto;
+    /* The basemap's ground colour (MAP_BASEMAP_PALETTE.background): on a slow
+       connection the chrome paints before the first tiles, and a bare white
+       page under it read as broken. */
+    background: var(--theme-green-soft, rgb(238, 244, 236));
   }
 
   /* Marker wrappers are stacking contexts (transform), so pin-level z-index
      can't lift a pin above sibling markers — raise the wrapper instead. */
   .map-container :global(.maplibregl-marker:has(.map-entity-pin.sponsored)) {
     z-index: 2;
+  }
+
+  /* The selected place's name card sits above every neighbouring pin. */
+  .map-container :global(.maplibregl-marker:has(.map-entity-pin.active)) {
+    z-index: 3;
   }
 
   .map-shell :global(.edit-dock),
@@ -4472,11 +4985,11 @@
     );
     min-height: 2.5rem;
     padding: 0.25rem 0.25rem 0.25rem 0.625rem;
-    border: 1px solid hsla(160, 52%, 32%, 0.35);
+    border: 1px solid var(--theme-green-text, hsla(160, 52%, 32%, 0.35));
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.94);
+    background: var(--theme-surface-translucent, rgba(255, 255, 255, 0.94));
     backdrop-filter: blur(12px);
-    color: hsl(0, 0%, 12%);
+    color: var(--theme-text, hsl(0, 0%, 12%));
     font-size: 0.8125rem;
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
     pointer-events: auto;
@@ -4497,7 +5010,7 @@
   }
 
   .map-edit-copy strong {
-    color: hsl(160, 84%, 18%);
+    color: var(--theme-green-text, hsl(160, 84%, 18%));
     font-size: 0.75rem;
     line-height: 1.15;
   }
@@ -4506,7 +5019,7 @@
     display: block;
     min-width: 0;
     overflow: hidden;
-    color: hsl(0, 0%, 24%);
+    color: var(--theme-text, hsl(0, 0%, 24%));
     font-size: 0.75rem;
     line-height: 1.25;
     text-overflow: ellipsis;
@@ -4573,11 +5086,11 @@
     );
     min-height: 2.5rem;
     padding: 0.25rem 0.25rem 0.25rem 0.625rem;
-    border: 1px solid hsla(5, 53%, 32%, 0.35);
+    border: 1px solid var(--theme-accent-text, hsla(5, 53%, 32%, 0.35));
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.96);
+    background: var(--theme-surface-translucent, rgba(255, 255, 255, 0.96));
     backdrop-filter: blur(12px);
-    color: hsl(0, 0%, 12%);
+    color: var(--theme-text, hsl(0, 0%, 12%));
     font-size: 0.8125rem;
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
     pointer-events: auto;
@@ -4591,7 +5104,7 @@
   }
 
   .event-placement-copy strong {
-    color: #7b1113;
+    color: var(--theme-accent-text, #7b1113);
     font-size: 0.78rem;
     line-height: 1.15;
   }
@@ -4600,7 +5113,7 @@
     display: block;
     min-width: 0;
     overflow: hidden;
-    color: hsl(0, 0%, 24%);
+    color: var(--theme-text, hsl(0, 0%, 24%));
     font-size: 0.75rem;
     line-height: 1.25;
     text-overflow: ellipsis;
@@ -4613,7 +5126,7 @@
     padding: 0.3125rem 0.625rem;
     border: none;
     border-radius: 999px;
-    background: #7b1113;
+    background: var(--theme-accent-fill, #7b1113);
     color: white;
     cursor: pointer;
     font: inherit;
@@ -4623,7 +5136,7 @@
   }
 
   .event-placement-cancel:hover:not(:disabled) {
-    background: #5f0d0f;
+    background: var(--theme-accent-fill, #5f0d0f);
   }
 
   .event-placement-cancel:disabled {
@@ -4652,16 +5165,16 @@
     min-height: 2rem;
     max-height: 2.75rem;
     padding: 0.25rem 0.375rem 0.25rem 0.625rem;
-    border: 1px solid hsla(160, 52%, 32%, 0.35);
+    border: 1px solid var(--theme-green-text, hsla(160, 52%, 32%, 0.35));
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.96);
+    background: var(--theme-surface-translucent, rgba(255, 255, 255, 0.96));
     backdrop-filter: blur(12px);
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
     pointer-events: auto;
   }
 
   .event-placement-dock {
-    border-color: hsla(5, 53%, 32%, 0.35);
+    border-color: var(--theme-accent-text, hsla(5, 53%, 32%, 0.35));
   }
 
   .edit-dock-status {
@@ -4669,7 +5182,7 @@
     min-width: 0;
     margin: 0;
     overflow: hidden;
-    color: hsl(0, 0%, 24%);
+    color: var(--theme-text, hsl(0, 0%, 24%));
     font-size: 0.75rem;
     font-weight: 500;
     line-height: 1.25;
@@ -4723,65 +5236,11 @@
   }
 
   .edit-dock-action.cancel {
-    background: #7b1113;
+    background: var(--theme-accent-fill, #7b1113);
   }
 
   .edit-dock-action.cancel:hover:not(:disabled) {
-    background: #5f0d0f;
-  }
-
-  .user-location-pin {
-    width: 1rem;
-    height: 1rem;
-    background-color: #4285f4;
-    border: 3px solid white;
-    border-radius: 50%;
-    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
-    position: relative;
-    z-index: 70;
-  }
-
-  /* Navigation puck (#966): a white disc with a heading arrow, GMaps-style.
-     Without a heading the arrow is hidden and only the disc shows, so the
-     puck never points somewhere the device did not actually report. */
-  .user-location-puck {
-    position: relative;
-    z-index: 70;
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 1px 6px rgb(0 0 0 / 0.35);
-  }
-
-  .user-location-puck::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    margin: auto;
-    width: 0.75rem;
-    height: 0.75rem;
-    border-radius: 50%;
-    background: #4285f4;
-  }
-
-  .user-location-puck--heading::before {
-    /* Arrowhead pointing along the reported bearing. */
-    width: 0;
-    height: 0;
-    border-right: 0.4375rem solid transparent;
-    border-bottom: 0.75rem solid #4285f4;
-    border-left: 0.4375rem solid transparent;
-    border-radius: 0;
-    background: none;
-    rotate: var(--puck-rotation, 0deg);
-    transition: rotate 300ms linear;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .user-location-puck--heading::before {
-      transition: none;
-    }
+    background: var(--theme-accent-fill, #5f0d0f);
   }
 
   .measure-waypoint {
@@ -4816,7 +5275,7 @@
     justify-content: center;
     border: 2px solid white;
     border-radius: 50%;
-    background-color: var(--color-brand, #8d1437);
+    background-color: var(--color-brand, var(--theme-accent-fill, #8d1437));
     color: white;
     font-size: 0.75rem;
     font-weight: 700;
@@ -4831,10 +5290,21 @@
     outline-offset: 1px;
   }
 
+  .directions-origin-pin {
+    width: 1rem;
+    height: 1rem;
+    border: 3px solid var(--color-brand, var(--theme-accent-text, #8d1437));
+    border-radius: 50%;
+    background-color: var(--theme-surface, white);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+    position: relative;
+    z-index: 71;
+  }
+
   .addition-draft-pin {
     width: 1.125rem;
     height: 1.125rem;
-    background-color: hsl(5, 53%, 42%);
+    background-color: var(--theme-accent-fill, hsl(5, 53%, 42%));
     border: 3px solid white;
     border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg);
@@ -4861,7 +5331,7 @@
     height: 0.7rem;
     border: 2px solid white;
     border-radius: 999px;
-    background: #7b1113;
+    background: var(--theme-accent-fill, #7b1113);
     box-shadow:
       0 0 0 0.14rem rgba(123, 17, 19, 0.22),
       0 0.15rem 0.35rem rgba(0, 0, 0, 0.24);
@@ -4921,7 +5391,7 @@
     padding: 0.22rem 0.35rem 0.22rem 0.22rem;
     border: 2px solid white;
     border-radius: 999px;
-    background: #7b1113;
+    background: var(--theme-accent-fill, #7b1113);
     color: white;
     cursor: grab;
     line-height: 1;
@@ -5033,7 +5503,7 @@
     overflow: hidden;
     border: 2px solid white;
     border-radius: 1rem;
-    background: white;
+    background: var(--theme-surface, white);
     box-shadow:
       0 0 0 0.16rem rgba(123, 17, 19, 0.28),
       0 0.55rem 1.15rem rgba(0, 0, 0, 0.34);
@@ -5045,7 +5515,7 @@
     justify-content: space-between;
     gap: 0.45rem;
     padding: 0.42rem 0.45rem 0.42rem 0.6rem;
-    background: #7b1113;
+    background: var(--theme-accent-fill, #7b1113);
     color: white;
   }
 
@@ -5098,7 +5568,7 @@
   .event-stack-list {
     display: grid;
     gap: 1px;
-    background: #eee1e1;
+    background: var(--theme-accent-soft, #eee1e1);
   }
 
   .event-stack-item {
@@ -5108,19 +5578,19 @@
     align-items: center;
     gap: 0.45rem;
     padding: 0.42rem 0.5rem;
-    background: white;
-    color: #18181b;
+    background: var(--theme-surface, white);
+    color: var(--theme-text, #18181b);
     cursor: pointer;
   }
 
   .event-stack-item:hover,
   .event-stack-item:focus-visible,
   .event-stack-item.active {
-    background: #fdf3f3;
+    background: var(--theme-accent-soft, #fdf3f3);
   }
 
   .event-stack-item:focus-visible {
-    outline: 2px solid #7b1113;
+    outline: 2px solid var(--theme-accent-text, #7b1113);
     outline-offset: -2px;
   }
 
@@ -5133,15 +5603,15 @@
 
   .event-stack-thumb {
     object-fit: contain;
-    background: hsl(0, 0%, 96%);
+    background: var(--theme-surface-2, hsl(0, 0%, 96%));
   }
 
   .event-stack-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: #fdf3f3;
-    color: #7b1113;
+    background: var(--theme-accent-soft, #fdf3f3);
+    color: var(--theme-accent-text, #7b1113);
   }
 
   .event-stack-copy {
@@ -5152,7 +5622,7 @@
 
   .event-stack-title {
     overflow: hidden;
-    color: #7b1113;
+    color: var(--theme-accent-text, #7b1113);
     font-size: 0.76rem;
     font-weight: 900;
     line-height: 1.15;
@@ -5161,7 +5631,7 @@
   }
 
   .event-stack-meta {
-    color: #71717a;
+    color: var(--theme-text-2, #71717a);
     font-size: 0.62rem;
     font-weight: 800;
     line-height: 1;
@@ -5200,7 +5670,7 @@
     justify-content: center;
     border: 2px solid white;
     border-radius: 50%;
-    background: #7b1113;
+    background: var(--theme-accent-fill, #7b1113);
     color: white;
     font-size: 0.72rem;
     font-weight: 800;
@@ -5215,8 +5685,8 @@
     width: max-content;
     padding: 0.25rem 0.5rem;
     border-radius: 0.5rem;
-    background: white;
-    color: #18181b;
+    background: var(--theme-surface, white);
+    color: var(--theme-text, #18181b);
     font-size: 0.72rem;
     font-weight: 700;
     opacity: 0;
@@ -5253,7 +5723,7 @@
   }
 
   .schedule-route-stop-pin.routed {
-    background: #7b1113;
+    background: var(--theme-accent-fill, #7b1113);
   }
 
   .schedule-route-stop-pin.focused,
@@ -5266,7 +5736,7 @@
   }
 
   .schedule-route-stop-pin:focus-visible {
-    outline: 2px solid #7b1113;
+    outline: 2px solid var(--theme-accent-text, #7b1113);
     outline-offset: 3px;
   }
 
@@ -5279,8 +5749,8 @@
     max-width: 12rem;
     padding: 0.25rem 0.5rem;
     border-radius: 0.5rem;
-    background: white;
-    color: #18181b;
+    background: var(--theme-surface, white);
+    color: var(--theme-text, #18181b);
     font-size: 0.72rem;
     font-weight: 700;
     opacity: 0;
@@ -5344,8 +5814,17 @@
   }
 
   .jeepney-stop-pin:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
     outline-offset: 2px;
+  }
+
+  /* 44px touch target around the 22px pin; the pin itself stays small so
+     close stops still read as separate dots. */
+  .jeepney-stop-pin::before {
+    content: "";
+    position: absolute;
+    inset: -0.6875rem;
+    border-radius: 50%;
   }
 
   .jeepney-stop-pin .stop-index {
@@ -5357,8 +5836,8 @@
     bottom: calc(100% + 0.4rem);
     left: 50%;
     translate: -50% 0;
-    background-color: white;
-    color: hsl(0, 0%, 15%);
+    background-color: var(--theme-surface, white);
+    color: var(--theme-text, hsl(0, 0%, 15%));
     border-radius: 0.5rem;
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;

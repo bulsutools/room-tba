@@ -131,6 +131,26 @@ If the snapshots are gone entirely, hand the list in directly:
 bun run backfill:bulk-history -- --ops ops.json
 ```
 
+## Maintainer: transit stop fixes (2026-10-06)
+
+Seven of the ten transit routes live only in the database. The mobile transit
+audit found stops kilometres off their own lines (San Pablo's "Alaminos",
+Sta. Cruz's Victoria, the Pansol stops) and six names for Olivarez Plaza. The
+same plan sets the October 2026 fares: campus jeeps ₱14 (₱12 students) and
+Los Baños → Calamba ₱30 (₱25 discounted). Forestry's direction note now
+says downhill trips start at the Upper Forestry Jeep Terminal.
+[`scripts/fix-transit-data.ts`](../scripts/fix-transit-data.ts) applies the
+corrections planned in
+[`scripts/lib/transit-fixes-core.ts`](../scripts/lib/transit-fixes-core.ts),
+writes one history row per change (op key `2026-10-07-transit-fixes`) and
+refreshes the `jeepney_routes` sync key. It is idempotent; the seed script
+applies the same plan, so a fresh database needs nothing.
+
+```sh
+DATABASE_URL=... bun run scripts/fix-transit-data.ts           # plan (19 changes)
+DATABASE_URL=... bun run scripts/fix-transit-data.ts --apply   # write
+```
+
 ## Tests
 
 [`src/lib/services/bulk-history.test.ts`](../src/lib/services/bulk-history.test.ts)

@@ -19,7 +19,7 @@ export const GET: APIRoute = async () => {
 
     if (!res.ok) {
       return json(
-        { error: "Failed to load GitHub stars" },
+        { error: "Couldn't load GitHub stars" },
         res.status === 403 ? 503 : res.status,
       );
     }
@@ -38,7 +38,7 @@ export const GET: APIRoute = async () => {
       },
     });
   } catch {
-    return json({ error: "Failed to load GitHub stars" }, 503);
+    return json({ error: "Couldn't load GitHub stars" }, 503);
   }
 };
 

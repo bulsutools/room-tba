@@ -1,4 +1,5 @@
 <script lang="ts">
+  import EntityActionScroll from "@ui/controls/EntityActionScroll.svelte";
   import EntitySkeleton from "@ui/EntitySkeleton.svelte";
   import { onMount } from "svelte";
   import {
@@ -25,6 +26,7 @@
   } from "@lib/contributor-drafts";
   import { getAppData } from "@lib/context";
   import EntityGoogleMapsLink from "../controls/EntityGoogleMapsLink.svelte";
+  import EntityPrintableMapLink from "../controls/EntityPrintableMapLink.svelte";
   import EntityDirectionsChip from "../controls/EntityDirectionsChip.svelte";
   import EntityEditorToggle from "@ui/editor/EntityEditorToggle.svelte";
   import EntityEditorPanel from "@ui/editor/EntityEditorPanel.svelte";
@@ -34,7 +36,10 @@
   import { entityEditorSavedMessage } from "@lib/editor/field-action-label";
   import ChevronLeft from "@lucide/svelte/icons/chevron-left";
   import Box from "@lucide/svelte/icons/box";
-  import EntityShareCopyLink from "../controls/EntityShareCopyLink.svelte";
+  import EntityShareButton from "../controls/EntityShareButton.svelte";
+  import EntitySaveButton from "../controls/EntitySaveButton.svelte";
+  import PlaceSheetHeader from "../controls/PlaceSheetHeader.svelte";
+  import { expandCampusAbbreviations } from "@lib/place-facts";
   import EntityLastUpdated from "../EntityLastUpdated.svelte";
   import MapChromeActionChip from "../map-chrome/MapChromeActionChip.svelte";
   import { getRoomShareUrl } from "@lib/share-links";
@@ -239,7 +244,7 @@
     if (field === "roomCode") {
       const trimmedCode = codeDraft.trim();
       if (trimmedCode.length === 0) {
-        fieldError = `${room.code} room code cannot be empty.`;
+        fieldError = `${room.code} room code can't be empty.`;
         return;
       }
       body.roomCode = trimmedCode;
@@ -281,7 +286,7 @@
 
       const outcome = handlePersistEntityResult<RoomData>(result, {
         syncFromServer: syncRoomFromServer,
-        fallbackError: `${room.code} ${fieldLabel(field)} could not be saved.`,
+        fallbackError: `${room.code} ${fieldLabel(field)} couldn't be saved.`,
       });
 
       if (outcome.error) {
@@ -313,7 +318,7 @@
       }, 1800);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Network error";
-      fieldError = `${room.code} ${fieldLabel(field)} failed to save: ${reason}`;
+      fieldError = `${room.code} ${fieldLabel(field)} failed to save (${reason}).`;
     } finally {
       savingField = null;
     }
@@ -344,7 +349,7 @@
         if (result.latest) syncRoomFromServer(result.latest);
         fieldError =
           result.error ??
-          `${room.code} could not be merged into ${mergePrompt.candidate.code}.`;
+          `${room.code} couldn't be merged into ${mergePrompt.candidate.code}.`;
         return;
       }
 
@@ -359,7 +364,7 @@
       editing = false;
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Network error";
-      fieldError = `${room.code} merge failed: ${reason}`;
+      fieldError = `${room.code} merge failed (${reason}).`;
     } finally {
       mergingRooms = false;
     }
@@ -426,7 +431,7 @@
     if (codeDraft.trim() !== room.code) {
       const trimmedCode = codeDraft.trim();
       if (trimmedCode.length === 0) {
-        fieldError = `${room.code} room code cannot be empty.`;
+        fieldError = `${room.code} room code can't be empty.`;
         return;
       }
       patch.roomCode = trimmedCode;
@@ -470,7 +475,7 @@
 
       const outcome = handlePersistEntityResult<RoomData>(result, {
         syncFromServer: syncRoomFromServer,
-        fallbackError: `${room.code} could not be saved.`,
+        fallbackError: `${room.code} couldn't be saved.`,
       });
 
       if (outcome.error) {
@@ -493,63 +498,68 @@
       }, 1800);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Network error";
-      fieldError = `${room.code} failed to save: ${reason}`;
+      fieldError = `${room.code} failed to save (${reason}).`;
     } finally {
       savingField = null;
     }
   }
 
+  /** "Floor 2, College of Human Ecology": the room's facts in one line. */
+  const roomFacts = $derived.by(() => {
+    const room = currentRoom.value;
+    if (!room) return null;
+    const bits = [
+      room.floor != null ? `Floor ${room.floor}` : null,
+      room.collegeName,
+    ].filter(Boolean);
+    return bits.length > 0 ? bits.join(", ") : null;
+  });
 </script>
 
 <div class="entity-detail">
   {#if currentRoom.value}
-    <header class="entity-header">
-      {#if parentBuilding}
-        <button
-          class="entity-header__breadcrumb"
-          type="button"
-          onclick={openBuildingResult}
-          aria-label={`Back to ${parentBuilding.name}`}
-        >
-          <ChevronLeft size={14} aria-hidden="true" />
-          <span>{parentBuilding.name}</span>
-        </button>
+    {#if parentBuilding}
+      <button
+        class="entity-header__breadcrumb"
+        type="button"
+        onclick={openBuildingResult}
+        aria-label={`Back to ${parentBuilding.name}`}
+      >
+        <ChevronLeft size={14} aria-hidden="true" />
+        <span>{parentBuilding.name}</span>
+      </button>
+    {/if}
+    <PlaceSheetHeader
+      title={currentRoom.value.code}
+      label={roomCategoryLabel(currentRoom.value.category) || null}
+      facts={roomFacts}
+      context={currentRoom.value.fullName ?? null}
+      closeLabel="Close room details"
+    >
+      {#if parentBuilding?.lat && parentBuilding.lon}
+        <EntityDirectionsChip
+          primary
+          lat={parentBuilding.lat}
+          lon={parentBuilding.lon}
+          destinationLabel={parentBuilding.name}
+        />
       {/if}
-
-      <h2 class="entity-header__title">{currentRoom.value.code}</h2>
-
-      {#if currentRoom.value.fullName}
-        <p class="entity-header__context room-full-name">
-          {currentRoom.value.fullName}
-        </p>
-      {/if}
-
-      {#if roomCategoryLabel(currentRoom.value.category)}
-        <span class="room-category-badge"
-          >{roomCategoryLabel(currentRoom.value.category)}</span
-        >
-      {/if}
-
-      {#if currentRoom.value.collegeName}
-        <p class="entity-header__context">
-          {currentRoom.value.collegeName}
-        </p>
-      {/if}
-
-      <div class="entity-actions">
-        {#if parentBuilding?.lat && parentBuilding.lon}
-          <EntityDirectionsChip
-            lat={parentBuilding.lat}
-            lon={parentBuilding.lon}
-            destinationLabel={parentBuilding.name}
-          />
-          <EntityGoogleMapsLink
-            lat={parentBuilding.lat}
-            lon={parentBuilding.lon}
-            name={parentBuilding.name}
-            ariaLabel={`Open ${parentBuilding.name} in Google Maps`}
-          />
-        {/if}
+      <EntityActionScroll>
+        <EntitySaveButton
+          place={{
+            category: "room",
+            value: currentRoom.value.code,
+            label: currentRoom.value.code,
+            subtitle:
+              currentRoom.value.fullName ?? parentBuilding?.name ?? null,
+            lat: parentBuilding?.lat ?? null,
+            lon: parentBuilding?.lon ?? null,
+          }}
+        />
+        <EntityShareButton
+          url={roomShareUrl}
+          entityLabel={currentRoom.value.code}
+        />
         {#if parentBuilding?.lat && parentBuilding.lon}
           <MapChromeActionChip
             toolbar
@@ -563,11 +573,13 @@
             <Box size={14} aria-hidden="true" />
             Move in 3D
           </MapChromeActionChip>
+          <EntityGoogleMapsLink
+            lat={parentBuilding.lat}
+            lon={parentBuilding.lon}
+            name={parentBuilding.name}
+            ariaLabel={`Open ${parentBuilding.name} in Google Maps`}
+          />
         {/if}
-        <EntityShareCopyLink
-          url={roomShareUrl}
-          entityLabel={currentRoom.value.code}
-        />
         <EntityEditorToggle
           expanded={editing}
           {canPublish}
@@ -575,8 +587,8 @@
           variant="toolbar"
           onclick={() => (editing = !editing)}
         />
-      </div>
-    </header>
+      </EntityActionScroll>
+    </PlaceSheetHeader>
 
     {#if editing}
       <section class="entity-editor" aria-label="Edit room details">
@@ -754,6 +766,7 @@
                   prefix="rooms"
                   bind:value={imageDraft}
                   disabled={savingField !== null}
+                  proposalId={activeProposalId}
                 />
                 <button
                   type="button"
@@ -779,7 +792,7 @@
                 already exists{#if mergePrompt.candidate.building?.name}
                   in {mergePrompt.candidate.building.name}{/if}. Merge
                 <strong>{currentRoom.value.code}</strong> into it? Classes and map
-                pins move to the kept room; empty fields are filled from the merged
+                pins move to the kept room. Empty fields are filled from the merged
                 room.
               </p>
               <div class="merge-actions">
@@ -822,9 +835,11 @@
 
     <section class="entity-directions" aria-label="Directions">
       <div class="entity-directions__segment">
-        <p class="entity-directions__label">Room directions</p>
+        <p class="entity-directions__label">How to find this room</p>
         {#if currentRoom.value.directions}
-          <p class="entity-directions__text">{currentRoom.value.directions}</p>
+          <p class="entity-directions__text">
+            {expandCampusAbbreviations(currentRoom.value.directions)}
+          </p>
         {:else}
           <p class="entity-directions__empty">
             No directions listed.
@@ -834,9 +849,11 @@
 
       {#if parentBuilding}
         <div class="entity-directions__segment">
-          <p class="entity-directions__label">Building directions</p>
+          <p class="entity-directions__label">How to find the building</p>
           {#if parentBuilding.directions}
-            <p class="entity-directions__text">{parentBuilding.directions}</p>
+            <p class="entity-directions__text">
+              {expandCampusAbbreviations(parentBuilding.directions)}
+            </p>
           {:else}
             <p class="entity-directions__empty">No building directions.</p>
           {/if}
@@ -849,7 +866,19 @@
         updatedAt={currentRoom.value.updatedAt}
         entityType="room"
         entityId={currentRoom.value.id}
+        entityName={currentRoom.value.code}
       />
+    {/if}
+
+    {#if parentBuilding?.lat && parentBuilding.lon}
+      <div class="entity-footer">
+        <EntityPrintableMapLink
+          lat={parentBuilding.lat}
+          lon={parentBuilding.lon}
+          name={parentBuilding.name}
+          inline
+        />
+      </div>
     {/if}
 
     <section
@@ -938,18 +967,7 @@
   /* The unabbreviated name (#875) reads as the room's real name, so it sits
      a shade darker than the college affiliation line below it. */
   .room-full-name {
-    color: #27272a;
-    font-weight: 600;
-  }
-
-  .room-category-badge {
-    display: inline-block;
-    align-self: flex-start;
-    padding: 0.125rem 0.5rem;
-    border-radius: 999px;
-    background: hsl(5, 40%, 94%);
-    color: #7b1113;
-    font-size: 0.6875rem;
+    color: var(--theme-text, #27272a);
     font-weight: 600;
   }
 
@@ -958,16 +976,16 @@
     flex-direction: column;
     gap: 0.5rem;
     padding: 0.625rem;
-    border: 1px solid hsl(35, 80%, 70%);
+    border: 1px solid var(--theme-amber-border, hsl(35, 80%, 70%));
     border-radius: 0.5rem;
-    background-color: hsl(45, 100%, 97%);
+    background-color: var(--theme-amber-soft, hsl(45, 100%, 97%));
   }
 
   .merge-prompt p {
     margin: 0;
     font-size: 0.8125rem;
     line-height: 1.45;
-    color: #333;
+    color: var(--theme-text, #333);
   }
 
   .merge-actions {
@@ -977,30 +995,30 @@
   }
 
   .merge-btn {
-    border: 1px solid #d8b9ba;
+    border: 1px solid var(--theme-accent-border, #d8b9ba);
     border-radius: 0.375rem;
     padding: 0.375rem 0.625rem;
-    background: white;
-    color: #7b1113;
+    background: var(--theme-surface, white);
+    color: var(--theme-accent-text, #7b1113);
     font-size: 0.75rem;
     font-weight: 700;
     cursor: pointer;
   }
 
   .merge-btn-primary {
-    border-color: hsl(5, 53%, 32%);
-    background-color: hsl(5, 53%, 32%);
+    border-color: var(--theme-accent-text, hsl(5, 53%, 32%));
+    background-color: var(--theme-accent-fill, hsl(5, 53%, 32%));
     color: white;
   }
 
   .merge-btn:hover:not(:disabled) {
-    border-color: #c58f91;
-    background: #fdf3f3;
+    border-color: var(--theme-accent-border, #c58f91);
+    background: var(--theme-accent-soft, #fdf3f3);
   }
 
   .merge-btn-primary:hover:not(:disabled) {
-    border-color: hsl(5, 53%, 32%);
-    background-color: hsl(5, 53%, 38%);
+    border-color: var(--theme-accent-text, hsl(5, 53%, 32%));
+    background-color: var(--theme-accent-fill, hsl(5, 53%, 38%));
   }
 
   .merge-btn:disabled {
@@ -1021,7 +1039,7 @@
   }
 
   .entity-schedule__count {
-    color: #71717a;
+    color: var(--theme-text-2, #71717a);
     font-weight: 600;
     letter-spacing: normal;
     text-transform: none;
@@ -1031,15 +1049,15 @@
     margin: 0;
     font-size: 0.75rem;
     font-weight: 600;
-    color: #7b1113;
+    color: var(--theme-accent-text, #7b1113);
   }
 
   .entity-schedule__scope {
     margin: 0;
     font-size: 0.6875rem;
     line-height: 1.4;
-    color: #71717a;
-    background-color: #f4f4f5;
+    color: var(--theme-text-2, #71717a);
+    background-color: var(--theme-surface-2, #f4f4f5);
     padding: 0.375rem 0.5rem;
     border-radius: 0.25rem;
   }
@@ -1047,6 +1065,6 @@
   .entity-schedule__empty {
     margin: 0;
     font-size: 0.8125rem;
-    color: #71717a;
+    color: var(--theme-text-2, #71717a);
   }
 </style>

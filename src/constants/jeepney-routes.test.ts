@@ -6,6 +6,8 @@ import {
   resolveRouteGeometry,
   type JeepneyStop,
   type StoredRouteGeometry,
+  BUNDLED_BUS_ROUTES,
+  withBundledRoutes,
 } from "./jeepney-routes.js";
 import jeepneyGeometries from "./jeepney-geometries.json" with { type: "json" };
 
@@ -110,7 +112,7 @@ describe("resolveRouteGeometry", () => {
   test("only inferred sources carry a rider-facing caveat", () => {
     expect(ROUTE_GEOMETRY_NOTES["osm-relation"]).toBeNull();
     expect(ROUTE_GEOMETRY_NOTES.routed).toContain("road-routed");
-    expect(ROUTE_GEOMETRY_NOTES["stops-only"]).toContain("not mapped");
+    expect(ROUTE_GEOMETRY_NOTES["stops-only"]).toContain("isn't mapped");
   });
 });
 
@@ -158,5 +160,33 @@ describe("JEEPNEY_ROUTES data", () => {
         expect(stop.description.trim().length).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe("withBundledRoutes", () => {
+  test("adds bundled routes the database does not have, keeping database rows", () => {
+    const dbKaliwa = { ...JEEPNEY_ROUTES[0]!, name: "From the database" };
+    const merged = withBundledRoutes([dbKaliwa]);
+    expect(merged[0]).toBe(dbKaliwa);
+    expect(merged.map((r) => r.id)).toContain("snodlob");
+    expect(merged.map((r) => r.id)).toEqual(
+      expect.arrayContaining(["uplb-to-buendia", "buendia-to-uplb"]),
+    );
+  });
+
+  test("bundled buses have a drawn line", () => {
+    for (const route of BUNDLED_BUS_ROUTES) {
+      const geometry = (jeepneyGeometries as Record<string, unknown>)[route.id];
+      expect(geometry).toBeDefined();
+    }
+  });
+
+  test("replaces a cached route that lost its stops", () => {
+    const empty = {
+      ...JEEPNEY_ROUTES.find((r) => r.id === "snodlob")!,
+      stops: [],
+    };
+    const merged = withBundledRoutes([empty]);
+    expect(merged.find((r) => r.id === "snodlob")?.stops.length).toBe(21);
   });
 });

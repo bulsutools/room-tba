@@ -8,6 +8,7 @@
     queryStore,
     sidePanelStore,
   } from "@lib/store.svelte";
+  import ModalHeader from "./ModalHeader.svelte";
   import { openCampusBrowse } from "@lib/browse-campus";
   import { UPLB_OSA_ORGANIZATIONS_URL } from "@constants/community-links";
 
@@ -22,9 +23,10 @@
   }
 </script>
 
-<div class="orgs-modal map-chrome-scroll">
+<div class="orgs-modal">
+  <ModalHeader id="student-orgs-modal-title" title="Student organizations" />
+  <div class="orgs-modal__scroll map-chrome-scroll">
   <header class="orgs-modal__header">
-    <h2 id="student-orgs-modal-title">Student organizations</h2>
     <p class="orgs-modal__lead">
       Room TBA lists UPLB student organizations and maps their tambayans when
       a location is known. Every OSA-imported listing links back to its
@@ -36,7 +38,7 @@
     <li>
       <Users size={18} aria-hidden="true" />
       <span>
-        <strong>Find an org.</strong> Search its name, or browse the Orgs
+        Search an org's name, or browse the Orgs
         category. Each listing shows its category, host building, and contact
         links.
       </span>
@@ -44,7 +46,7 @@
     <li>
       <Building2 size={18} aria-hidden="true" />
       <span>
-        <strong>Locate the tambayan.</strong> Listings pin to the org's own
+        Listings pin to the org's own
         location when known, otherwise to its host building, so directions
         always resolve.
       </span>
@@ -52,7 +54,7 @@
     <li>
       <Pencil size={18} aria-hidden="true" />
       <span>
-        <strong>Keep it accurate.</strong> Open any listing and hit
+        Open any listing and hit
         <em>Edit</em> to suggest a fix. Signed-in contributors have their
         suggestions credited to them.
       </span>
@@ -77,6 +79,7 @@
       </button>
     {/if}
   </div>
+  </div>
 </div>
 
 <style>
@@ -85,22 +88,25 @@
   .orgs-modal {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    padding: 1.5rem;
-    max-height: calc(100vh - 4rem);
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
-  .orgs-modal__header h2 {
-    margin: 0 0 0.5rem;
-    font-size: 1.25rem;
-    font-weight: 700;
+  .orgs-modal__scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 1rem 1rem;
   }
 
   .orgs-modal__lead {
     margin: 0;
     font-size: 0.9375rem;
     line-height: 1.5;
-    color: hsl(0, 0%, 35%);
+    color: var(--theme-text-2, hsl(0, 0%, 35%));
   }
 
   .orgs-modal__points {
@@ -118,17 +124,13 @@
     align-items: flex-start;
     font-size: 0.875rem;
     line-height: 1.5;
-    color: hsl(0, 0%, 25%);
+    color: var(--theme-text, hsl(0, 0%, 25%));
   }
 
   .orgs-modal__points :global(svg) {
     flex: 0 0 auto;
     margin-top: 0.125rem;
-    color: hsl(265, 45%, 48%);
-  }
-
-  .orgs-modal__points strong {
-    color: hsl(0, 0%, 12%);
+    color: var(--theme-purple-text, hsl(265, 45%, 48%));
   }
 
   .orgs-modal__actions {
@@ -143,10 +145,10 @@
     text-align: center;
     text-decoration: none;
     padding: 0.5rem 1rem;
-    border: 1px solid hsl(265, 45%, 80%);
+    border: 1px solid var(--theme-purple-border, hsl(265, 45%, 80%));
     border-radius: 0.5rem;
-    background: white;
-    color: hsl(265, 45%, 40%);
+    background: var(--theme-surface, white);
+    color: var(--theme-purple-text, hsl(265, 45%, 40%));
     font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
@@ -154,12 +156,12 @@
 
   .orgs-modal__btn:hover,
   .orgs-modal__btn:focus-visible {
-    background: hsl(265, 45%, 97%);
+    background: var(--theme-purple-soft, hsl(265, 45%, 97%));
   }
 
   .orgs-modal__btn--primary {
     background: hsl(265, 45%, 48%);
-    border-color: hsl(265, 45%, 48%);
+    border-color: var(--theme-purple-text, hsl(265, 45%, 48%));
     color: white;
   }
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import EntityActionScroll from "./EntityActionScroll.svelte";
   import {
     additionProposalStore,
     queryStore,
@@ -12,6 +13,7 @@
     PLACE_CATEGORIES,
     PLACE_CATEGORY_LABELS,
     isLandmarkPlaceCategory,
+    placeCategoryLabel,
     placeDirectoryLabel,
   } from "@constants/place-categories";
   import type { PlaceData } from "@lib/types";
@@ -21,10 +23,19 @@
   import EntityGoogleMapsLink from "./EntityGoogleMapsLink.svelte";
   import EntityPrintableMapLink from "./EntityPrintableMapLink.svelte";
   import EntityStreetAddress from "./EntityStreetAddress.svelte";
-  import EntityShareCopyLink from "./EntityShareCopyLink.svelte";
+  import EntityShareButton from "./EntityShareButton.svelte";
+  import EntitySaveButton from "./EntitySaveButton.svelte";
+  import PlaceSheetHeader from "./PlaceSheetHeader.svelte";
+  import { expandCampusAbbreviations } from "@lib/place-facts";
   import EntityExternalLink from "./EntityExternalLink.svelte";
   import EntityBackToList from "./EntityBackToList.svelte";
+  import BuildingPhoto from "./BuildingPhoto.svelte";
+  import EntityLastUpdated from "../EntityLastUpdated.svelte";
   import { getPlaceShareUrl } from "@lib/share-links";
+  import Route from "@lucide/svelte/icons/route";
+  import MapChromeActionChip from "@ui/map-chrome/MapChromeActionChip.svelte";
+  import { trailStopForPlace } from "@lib/makiling-trail";
+  import { openTrailSheet } from "@lib/trail-sheet";
 
   const appData = getAppData();
   const appActions = getAppActions();
@@ -37,6 +48,8 @@
   const canPublish = $derived(adminAuthStore.canPublish);
   const draftPin = $derived(additionProposalStore.draftPin);
   const placeShareUrl = $derived(place ? getPlaceShareUrl(place) : "");
+  /** Trailhead, Peak 2 and the side-trip spots open the Makiling trail. */
+  const trailStop = $derived(trailStopForPlace(place?.name));
 
   let editing = $state(false);
   let submitting = $state(false);
@@ -130,10 +143,10 @@
         editing = false;
         additionProposalStore.clearDraftPin();
       } else {
-        toastStore.show(result.error ?? "Could not save changes.", "error");
+        toastStore.show(result.error ?? "Couldn't save changes.", "error");
       }
     } catch {
-      toastStore.show("Could not save changes.", "error");
+      toastStore.show("Couldn't save changes.", "error");
     } finally {
       submitting = false;
     }
@@ -142,34 +155,56 @@
 
 {#if place}
   <div class="entity-detail">
-    <header class="entity-header">
-      {#if isLandmarkPlaceCategory(place.category)}
-        <EntityBackToList tab="landmarks" label="Back to landmarks" />
-      {:else}
-        <EntityBackToList tab="services" label="Back to establishments" />
+    {#if isLandmarkPlaceCategory(place.category)}
+      <EntityBackToList tab="landmarks" label="Back to landmarks" />
+    {:else}
+      <EntityBackToList tab="services" label="Back to establishments" />
+    {/if}
+    <PlaceSheetHeader
+      title={place.name}
+      label={placeCategoryLabel(place.category)}
+      labelTone="green"
+      facts={place.hours && place.hours.length <= 60 ? place.hours : null}
+      closeLabel="Close place details"
+    >
+      {#if place.lat != null && place.lon != null}
+        <EntityDirectionsChip
+          primary
+          lat={place.lat}
+          lon={place.lon}
+          destinationLabel={place.name}
+        />
       {/if}
-      <h2 class="entity-header__title">{place.name}</h2>
-      {#if placeDirectoryLabel(place.category)}
-        <span class="place-category-badge"
-          >{placeDirectoryLabel(place.category)}</span
-        >
-      {/if}
-      <div class="entity-actions">
+      <EntityActionScroll>
+        <EntitySaveButton
+          place={{
+            category: "place",
+            value: place.name,
+            label: place.name,
+            subtitle: placeDirectoryLabel(place.category) || null,
+            lat: place.lat,
+            lon: place.lon,
+          }}
+        />
+        {#if trailStop}
+          {@const stopId = trailStop.id}
+          <MapChromeActionChip
+            toolbar
+            onclick={() => openTrailSheet(stopId, { overPlace: true })}
+          >
+            <Route size={14} aria-hidden="true" />
+            Show trail
+          </MapChromeActionChip>
+        {/if}
+        <EntityShareButton url={placeShareUrl} entityLabel={place.name} />
         {#if place.lat != null && place.lon != null}
-          <EntityDirectionsChip
-            lat={place.lat}
-            lon={place.lon}
-            destinationLabel={place.name}
-          />
           <EntityGoogleMapsLink
             lat={place.lat}
             lon={place.lon}
             name={place.name}
             ariaLabel={`Open ${place.name} in Google Maps`}
           />
-          <EntityPrintableMapLink placeName={place.name} />
         {/if}
-        <EntityShareCopyLink url={placeShareUrl} entityLabel={place.name} />
         <EntityEditorToggle
           expanded={editing}
           {canPublish}
@@ -185,18 +220,27 @@
             }
           }}
         />
-      </div>
-    </header>
+      </EntityActionScroll>
+    </PlaceSheetHeader>
 
     {#if !editing}
+      <BuildingPhoto
+        kind="place"
+        name={place.name}
+        imageUrl={place.imageUrl}
+        lat={place.lat}
+        lon={place.lon}
+      />
       {#if place.lat != null && place.lon != null}
         <EntityStreetAddress lat={place.lat} lon={place.lon} />
       {/if}
       {#if place.description}
-        <p class="entity-directions__text">{place.description}</p>
+        <p class="entity-directions__text">
+          {expandCampusAbbreviations(place.description)}
+        </p>
       {/if}
       <ul class="place-facts">
-        {#if place.hours}
+        {#if place.hours && place.hours.length > 60}
           <li><strong>Hours:</strong> {place.hours}</li>
         {/if}
         {#if place.websiteLink}
@@ -210,6 +254,22 @@
           </li>
         {/if}
       </ul>
+      <EntityLastUpdated
+        updatedAt={place.updatedAt}
+        entityType="place"
+        entityId={place.id}
+        entityName={place.name}
+      />
+      {#if place.lat != null && place.lon != null}
+        <div class="entity-footer">
+          <EntityPrintableMapLink
+            lat={place.lat}
+            lon={place.lon}
+            name={place.name}
+            inline
+          />
+        </div>
+      {/if}
     {:else}
       <div class="place-form">
         <label>Name<input bind:value={nameDraft} /></label>
@@ -230,7 +290,7 @@
         <label>Facebook<input bind:value={facebookDraft} /></label>
         <EntityEditorPinRow
           label={draftPin
-            ? `Pin set · ${draftPin.lat.toFixed(5)}, ${draftPin.lon.toFixed(5)}`
+            ? `Pin set: ${draftPin.lat.toFixed(5)}, ${draftPin.lon.toFixed(5)}`
             : "Drop a pin on the map"}
           pickLabel={draftPin ? "Move pin" : "Pick on map"}
           disabled={submitting}
@@ -272,16 +332,6 @@
 <style>
   @import "./entity-detail.css";
 
-  .place-category-badge {
-    display: inline-block;
-    align-self: flex-start;
-    padding: 0.125rem 0.5rem;
-    border-radius: 999px;
-    background: hsl(162, 45%, 92%);
-    color: #0d7a5f;
-    font-size: 0.6875rem;
-    font-weight: 600;
-  }
   .place-facts {
     list-style: none;
     padding: 0;
@@ -291,7 +341,7 @@
     gap: 0.375rem;
     font-size: 0.875rem;
     line-height: 1.5;
-    color: #27272a;
+    color: var(--theme-text, #27272a);
   }
   .place-form {
     display: flex;
@@ -310,7 +360,7 @@
   .place-form textarea {
     font: inherit;
     padding: 0.375rem 0.5rem;
-    border: 1px solid hsl(0, 0%, 80%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 80%));
     border-radius: 0.375rem;
   }
   .place-form__actions {
@@ -336,17 +386,17 @@
   }
   .place-cancel-btn {
     padding: 0.375rem 0.75rem;
-    border: 1px solid hsl(0, 0%, 80%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 80%));
     border-radius: 0.375rem;
-    background: white;
+    background: var(--theme-surface, white);
     cursor: pointer;
   }
   .place-cancel-btn:hover:not(:disabled) {
-    border-color: #c58f91;
-    background: #fdf3f3;
+    border-color: var(--theme-accent-border, #c58f91);
+    background: var(--theme-accent-soft, #fdf3f3);
   }
   .place-empty {
     padding: 1rem;
-    color: hsl(0, 0%, 45%);
+    color: var(--theme-text-2, hsl(0, 0%, 45%));
   }
 </style>

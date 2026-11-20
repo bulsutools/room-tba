@@ -2,9 +2,27 @@ import type { APIRoute } from "astro";
 import { getAllJeepneyRoutes } from "@lib/services/transit-service";
 import { getAllPlaces } from "@lib/services/map-data-service";
 import {
+  resolveRouteGeometry,
+  ROUTE_PRINT_NOTES,
+  type StoredRouteGeometry,
+} from "@constants/jeepney-routes";
+import jeepneyGeometries from "@constants/jeepney-geometries.json";
+import transitBasemap from "@constants/transit-basemap.json";
+import { perBoardingFare } from "@lib/transit-route-kind";
+import {
+  parseHerePoint,
   renderTransitMapPdf,
+  TRANSIT_MAP_PALETTES,
+  type TransitMapPalette,
+  type TransitBasemap,
+  type TransitMapHere,
   type TransitMapFormat,
 } from "@lib/transit-map-pdf";
+
+const storedGeometries = jeepneyGeometries as Record<
+  string,
+  StoredRouteGeometry | undefined
+>;
 
 export const prerender = false;
 
@@ -16,16 +34,31 @@ function json(data: unknown, status = 200) {
 }
 
 /**
- * Printable transit map: GET /api/transit-map?here=<place id or name>&format=a4|letter
- * `here` is optional; when it matches a place, the PDF marks it "You are here".
+ * Printable transit map. GET /api/transit-map with optional `lat`, `lon` and
+ * `name` (any point), or `here` (a place id or name), plus
+ * `format=a4|letter|a3`, `layout=poster` (one portrait page, map over stops)
+ * and `palette=paper|high-contrast|app|colorblind` (default paper).
+ * The point is marked "You are here" with the nearest stop and the walk to it.
  */
 export const GET: APIRoute = async ({ url }) => {
   const hereParam = url.searchParams.get("here")?.trim();
   const formatParam = url.searchParams.get("format")?.trim();
-  const format: TransitMapFormat = formatParam === "letter" ? "letter" : "a4";
+  const paletteParam = url.searchParams.get("palette")?.trim() ?? "";
+  const palette =
+    paletteParam in TRANSIT_MAP_PALETTES
+      ? (paletteParam as TransitMapPalette)
+      : undefined;
+  const format: TransitMapFormat =
+    formatParam === "letter" || formatParam === "a3" ? formatParam : "a4";
+  const layout =
+    url.searchParams.get("layout") === "poster" ? "poster" : "sheet";
 
-  let here: { name: string; lat: number; lon: number } | null = null;
-  if (hereParam) {
+  const point = parseHerePoint(url.searchParams);
+  if (point === "invalid") {
+    return json({ error: "lat and lon must be valid coordinates." }, 400);
+  }
+  let here: TransitMapHere | null = point;
+  if (!here && hereParam) {
     const asId = Number(hereParam);
     const places = await getAllPlaces().catch(() => []);
     // "Riceworld Museum" should match "Riceworld Museum (IRRI)": compare the
@@ -59,26 +92,45 @@ export const GET: APIRoute = async ({ url }) => {
   try {
     // The service returns fares nested (fare.regular/discounted); the PDF
     // generator expects flat fields.
-    const routes = (await getAllJeepneyRoutes()).map((route) => ({
-      id: route.id,
-      name: route.name,
-      color: route.color,
-      fareRegular: route.fare?.regular ?? Number.NaN,
-      fareDiscounted: route.fare?.discounted ?? Number.NaN,
-      directionNote: route.directionNote ?? null,
-      stops: route.stops.map((stop) => ({
-        name: stop.name,
-        lat: stop.lat,
-        lon: stop.lon,
-      })),
-    }));
-    const bytes = await renderTransitMapPdf({ routes, here, format });
-    const slug = here
-      ? `-from-${here.name
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "")}`
-      : "";
+    const routes = (await getAllJeepneyRoutes()).map((route) => {
+      // Road-routed line when one is bundled; otherwise the PDF joins stops.
+      const geometry = resolveRouteGeometry(route, storedGeometries);
+      return {
+        id: route.id,
+        name: route.name,
+        color: route.color,
+        // Only verified per-ride fares are printed (campus jeeps).
+        fareRegular: perBoardingFare(route)?.regular ?? Number.NaN,
+        fareDiscounted: perBoardingFare(route)?.discounted ?? Number.NaN,
+        directionNote: route.directionNote ?? null,
+        boardingNote: ROUTE_PRINT_NOTES[route.id] ?? null,
+        line:
+          geometry.source !== "stops-only" && geometry.line
+            ? geometry.line.coordinates.map(([lon, lat]) => ({
+                lat: lat as number,
+                lon: lon as number,
+              }))
+            : undefined,
+        stops: route.stops.map((stop) => ({
+          name: stop.name,
+          lat: stop.lat,
+          lon: stop.lon,
+        })),
+      };
+    });
+    const bytes = await renderTransitMapPdf({
+      routes,
+      here,
+      basemap: transitBasemap as TransitBasemap,
+      format,
+      layout,
+      palette,
+    });
+    const nameSlug = (here?.name ?? "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const slug = here ? `-from-${nameSlug || "here"}` : "";
     return new Response(Buffer.from(bytes), {
       headers: {
         "Content-Type": "application/pdf",
@@ -88,6 +140,6 @@ export const GET: APIRoute = async ({ url }) => {
     });
   } catch (error) {
     console.error("transit-map PDF failed:", error);
-    return json({ error: "Could not render the transit map PDF." }, 500);
+    return json({ error: "Couldn't render the transit map PDF." }, 500);
   }
 };

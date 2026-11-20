@@ -1,5 +1,6 @@
 <script lang="ts">
   import Search from "@lucide/svelte/icons/search";
+  import { onMount } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
   import { fetchClassPage, fetchAllClasses } from "@lib/classes-api";
   import {
@@ -8,7 +9,14 @@
     type ClassOfferingGroup,
   } from "@lib/class-offering-groups";
   import { plannerStore, termStore, toastStore } from "@lib/store.svelte";
+  import { formatScheduleShort, formatSectionType } from "@lib/planner/format";
   import type { ClassMapValue } from "@lib/types";
+  import { readLocalJson, writeLocalJson } from "@lib/locStorage";
+  import {
+    fetchPrograms,
+    PLANNER_PROGRAM_KEY,
+    type Program,
+  } from "@lib/planner/program-courses";
 
   const termId = $derived(
     plannerStore.activePlan?.termId ?? termStore.activeTermId,
@@ -21,7 +29,30 @@
   let nextCursor = $state<string | null>(null);
   let hasMore = $state(false);
   let sentinelEl = $state<HTMLDivElement | null>(null);
+  // An empty query used to dump the whole term A-Z (AAE 10, AAE 103, ...).
+  // Browsing is now opt-in; the default empty state points at search.
+  let browsing = $state(false);
+  const planCourses = $derived([
+    ...new Set(
+      (plannerStore.activePlan?.sections ?? []).map((s) => s.courseCode),
+    ),
+  ]);
   const expanded = new SvelteSet<string>();
+
+  let programs = $state<Program[]>([]);
+  let programCode = $state(readLocalJson<string>(PLANNER_PROGRAM_KEY, ""));
+  const program = $derived(programs.find((p) => p.code === programCode));
+  const programCourses = $derived(
+    program?.courses.filter((code) => !planCourses.includes(code)) ?? [],
+  );
+  onMount(() => {
+    void fetchPrograms().then((list) => (programs = list));
+  });
+
+  function pickProgram(code: string) {
+    programCode = code;
+    writeLocalJson(PLANNER_PROGRAM_KEY, code);
+  }
 
   // Browse mode (no query) pages through the term 100 at a time (#planner).
   async function loadMore() {
@@ -65,6 +96,13 @@
   $effect(() => {
     const q = query.trim();
     const t = termId;
+    if (!q && !browsing) {
+      rows = [];
+      nextCursor = null;
+      hasMore = false;
+      loading = false;
+      return;
+    }
     const timer = setTimeout(
       () => {
         loading = true;
@@ -158,19 +196,24 @@
       // One section per course: picking a different section of a course you've
       // already added swaps it in rather than stacking multiple labs (#13).
       plannerStore.replaceCourse(offering.courseCode, offering.sections);
+      // Short so it stays one line on a phone; the row's "Added" state
+      // carries the detail.
       toastStore.show(
-        `${offering.courseCode} ${offering.section} added to ${plannerStore.activePlan?.label ?? "plan"}`,
+        `Added ${offering.courseCode} ${offering.section}`,
         "success",
       );
     }
   }
 
-  function offeringSchedule(offering: ClassOfferingGroup): string {
-    const parts = offering.sections.map((s) => {
-      const sched = s.schedule?.length ? s.schedule.join(", ") : "TBA";
-      return `${s.type ?? "Class"} ${sched}`;
+  /** One line per component: "Lec WF 4–5 PM in EAA LH". */
+  function offeringParts(offering: ClassOfferingGroup): string[] {
+    return offering.sections.map((s) => {
+      const sched = s.schedule?.length
+        ? s.schedule.map(formatScheduleShort).join(", ")
+        : "TBA";
+      const room = s.roomCode ? ` in ${s.roomCode}` : "";
+      return `${formatSectionType(s.type)} ${sched}${room}`;
     });
-    return parts.join(" · ");
   }
 
   /** Drop shared HK 12 base name + parens; leave the activity (e.g. Badminton). */
@@ -195,11 +238,68 @@
     />
   </label>
 
-  {#if loading}
+  {#if !query.trim() && !browsing}
+    <div class="course-search__empty">
+      <p class="course-search__hint">
+        Type a course code to see its sections, e.g. <strong>CMSC 12</strong>
+        or <strong>MATH 27</strong>.
+      </p>
+      {#if planCourses.length > 0}
+        <div class="course-search__chips" aria-label="Courses in this plan">
+          {#each planCourses as code (code)}
+            <button
+              type="button"
+              class="course-search__chip"
+              onclick={() => (query = code)}
+            >
+              {code}
+            </button>
+          {/each}
+        </div>
+      {/if}
+      {#if programs.length > 0}
+        <label class="course-search__program">
+          Your program
+          <select
+            value={programCode}
+            onchange={(event) => pickProgram(event.currentTarget.value)}
+          >
+            <option value="">Pick your program</option>
+            {#each programs as p (p.code)}
+              <option value={p.code}>{p.name}</option>
+            {/each}
+          </select>
+        </label>
+        {#if program && programCourses.length > 0}
+          <div
+            class="course-search__chips"
+            aria-label="Courses in {program.name}"
+          >
+            {#each programCourses as code (code)}
+              <button
+                type="button"
+                class="course-search__chip"
+                onclick={() => (query = code)}
+              >
+                {code}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      {/if}
+      <button
+        type="button"
+        class="course-search__more"
+        onclick={() => (browsing = true)}
+      >
+        Browse all courses
+      </button>
+    </div>
+  {:else if loading}
     <p class="course-search__note">Searching…</p>
   {:else if courses.length === 0}
     <p class="course-search__note">
-      {query.trim() ? "No courses found this term." : "No classes this term."}
+      {query.trim() ? "No courses match your search this term." : "There are no classes this term."}
     </p>
   {:else}
     <div class="course-search__list">
@@ -247,17 +347,21 @@
                   <li class="section-row">
                     <div class="section-row__main">
                       <span class="section-row__name">{offering.section}</span>
-                      <span class="section-row__schedule">
-                        {offeringSchedule(offering)}
-                      </span>
+                      {#each offeringParts(offering) as part, i (i)}
+                        <span class="section-row__schedule">{part}</span>
+                      {/each}
                     </div>
                     <button
                       type="button"
                       class="section-row__toggle"
                       class:section-row__toggle--added={added}
+                      aria-pressed={added}
+                      aria-label={added
+                        ? `Remove ${offering.courseCode} ${offering.section} from plan`
+                        : undefined}
                       onclick={() => togglePlan(offering)}
                     >
-                      {added ? "✓" : "Add"}
+                      {added ? "✓ Added" : "Add"}
                     </button>
                   </li>
                 {/each}
@@ -277,7 +381,7 @@
     {#if hasMore}
       <p class="course-search__note">
         {#if !query.trim()}
-          Showing {courses.length} courses so far ({courses.at(-1)?.courseCode}
+          This list shows {courses.length} courses so far ({courses.at(-1)?.courseCode}
           and earlier).
           <button
             type="button"
@@ -288,7 +392,7 @@
             {loadingMore ? "Loading…" : "Show more"}
           </button>
         {:else}
-          Showing the first {rows.length} sections. Search a fuller course code
+          This list shows the first {rows.length} sections. Search a fuller course code
           to find the rest.
         {/if}
       </p>
@@ -310,15 +414,15 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.375rem 0.625rem;
-    border: 1px solid hsl(0, 0%, 85%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 85%));
     border-radius: 0.5rem;
-    background: white;
-    color: hsl(0, 0%, 45%);
+    background: var(--theme-surface, white);
+    color: var(--theme-text-2, hsl(0, 0%, 45%));
     flex: 0 0 auto;
   }
 
   .course-search__box:focus-within {
-    border-color: hsl(5, 53%, 42%);
+    border-color: var(--theme-accent-text, hsl(5, 53%, 42%));
   }
 
   .course-search__box input {
@@ -326,7 +430,7 @@
     flex: 1;
     min-width: 0;
     font-size: 0.8125rem;
-    color: hsl(0, 0%, 15%);
+    color: var(--theme-text, hsl(0, 0%, 15%));
   }
 
   .course-search__note {
@@ -336,18 +440,78 @@
     padding: 0.5rem 0.375rem;
     font-size: 0.8125rem;
     font-weight: 600;
-    color: hsl(0, 0%, 28%);
-    background: hsl(0, 0%, 100%);
-    border-top: 1px solid hsl(0, 0%, 90%);
+    color: var(--theme-text, hsl(0, 0%, 28%));
+    background: var(--theme-surface, hsl(0, 0%, 100%));
+    border-top: 1px solid var(--theme-border, hsl(0, 0%, 90%));
+  }
+
+  .course-search__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.25rem 0.125rem;
+  }
+
+  .course-search__hint {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--theme-text-2, hsl(0, 0%, 35%));
+  }
+
+  .course-search__program {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    width: 100%;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--theme-text-2, hsl(0, 0%, 35%));
+  }
+
+  .course-search__program select {
+    min-height: 2.75rem;
+    padding: 0 0.5rem;
+    border: 1px solid var(--theme-border, hsl(0, 0%, 85%));
+    border-radius: 0.5rem;
+    background: var(--theme-surface, white);
+    color: var(--theme-text, hsl(0, 0%, 15%));
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 400;
+  }
+
+  .course-search__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .course-search__chip {
+    all: unset;
+    box-sizing: border-box;
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+    background: var(--theme-accent-soft, hsl(5, 53%, 95%));
+    color: var(--theme-accent-text, hsl(5, 53%, 28%));
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .course-search__chip:hover,
+  .course-search__chip:focus-visible {
+    background: var(--theme-accent-soft, hsl(5, 53%, 90%));
   }
 
   .course-search__more {
     all: unset;
     margin-left: 0.25rem;
     padding: 0.125rem 0.625rem;
-    border: 1px solid hsl(5, 53%, 82%);
+    border: 1px solid var(--theme-accent-border, hsl(5, 53%, 82%));
     border-radius: 999px;
-    color: hsl(5, 53%, 32%);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
     font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
@@ -355,7 +519,7 @@
 
   .course-search__more:hover:not(:disabled),
   .course-search__more:focus-visible {
-    background: hsl(5, 53%, 96%);
+    background: var(--theme-accent-soft, hsl(5, 53%, 96%));
   }
 
   .course-search__more:disabled {
@@ -383,9 +547,9 @@
   }
 
   .course-item {
-    border: 1px solid hsl(0, 0%, 90%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 90%));
     border-radius: 0.5rem;
-    background: white;
+    background: var(--theme-surface, white);
     overflow: hidden;
   }
 
@@ -400,19 +564,19 @@
 
   .course-item__header:hover,
   .course-item__header:focus-visible {
-    background: hsl(5, 53%, 98%);
+    background: var(--theme-accent-soft, hsl(5, 53%, 98%));
   }
 
   .course-item__code {
     font-size: 0.8125rem;
     font-weight: 700;
-    color: hsl(0, 0%, 12%);
+    color: var(--theme-text, hsl(0, 0%, 12%));
   }
 
   .course-item__meta {
     float: right;
     font-size: 0.6875rem;
-    color: hsl(0, 0%, 50%);
+    color: var(--theme-text-muted, hsl(0, 0%, 50%));
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
@@ -421,8 +585,8 @@
   .course-item__picked {
     padding: 0.0625rem 0.375rem;
     border-radius: 999px;
-    background: hsl(140, 60%, 94%);
-    color: hsl(140, 60%, 25%);
+    background: var(--theme-green-soft, hsl(140, 60%, 94%));
+    color: var(--theme-green-text, hsl(140, 60%, 25%));
     font-weight: 700;
   }
 
@@ -430,7 +594,7 @@
     display: block;
     margin-top: 0.125rem;
     font-size: 0.75rem;
-    color: hsl(0, 0%, 40%);
+    color: var(--theme-text-2, hsl(0, 0%, 40%));
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -443,7 +607,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    border-top: 1px solid hsl(0, 0%, 93%);
+    border-top: 1px solid var(--theme-border, hsl(0, 0%, 93%));
   }
 
   .section-row {
@@ -462,36 +626,41 @@
   .section-row__name {
     font-size: 0.75rem;
     font-weight: 600;
-    color: hsl(0, 0%, 20%);
+    color: var(--theme-text, hsl(0, 0%, 20%));
   }
 
   .section-row__schedule {
     font-size: 0.6875rem;
-    color: hsl(0, 0%, 45%);
+    color: var(--theme-text-2, hsl(0, 0%, 45%));
   }
 
   .section-row__toggle {
     all: unset;
+    box-sizing: border-box;
     flex-shrink: 0;
     min-width: 2rem;
     padding: 0.1875rem 0.5rem;
-    border: 1px solid hsl(5, 53%, 82%);
+    border: 1px solid var(--theme-accent-border, hsl(5, 53%, 82%));
     border-radius: 999px;
     text-align: center;
     font-size: 0.6875rem;
     font-weight: 600;
-    color: hsl(5, 53%, 32%);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
     cursor: pointer;
   }
 
   .section-row__toggle:hover,
   .section-row__toggle:focus-visible {
-    background: hsl(5, 53%, 96%);
+    background: var(--theme-accent-soft, hsl(5, 53%, 96%));
   }
 
-  .section-row__toggle--added {
-    background: hsl(5, 53%, 32%);
-    border-color: hsl(5, 53%, 32%);
+  /* Hover/focus used to repaint this pink and leave a white check on it,
+     near invisible after the tap that added it. Pin the added colors. */
+  .section-row__toggle--added,
+  .section-row__toggle--added:hover,
+  .section-row__toggle--added:focus-visible {
+    background: hsl(140, 45%, 30%);
+    border-color: var(--theme-green-text, hsl(140, 45%, 30%));
     color: white;
   }
 
@@ -545,13 +714,34 @@
       font-size: 0.8125rem;
     }
 
+    /* 40px tall (border-box) instead of the 62px pill content-box sizing
+       produced; still a comfortable tap target. */
     .section-row__toggle {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       min-width: 3.5rem;
-      min-height: 2.75rem;
-      padding: 0.5rem 0.875rem;
+      min-height: 2.5rem;
+      padding: 0 0.875rem;
+      font-size: 0.8125rem;
+    }
+
+    .course-search__hint {
+      font-size: 0.875rem;
+    }
+
+    .course-search__chip {
+      min-height: 2.25rem;
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.875rem;
+    }
+
+    .course-search__empty .course-search__more {
+      margin-left: 0;
+      min-height: 2.25rem;
+      display: inline-flex;
+      align-items: center;
       font-size: 0.875rem;
     }
   }

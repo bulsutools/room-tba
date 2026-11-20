@@ -4,6 +4,8 @@
   import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
   import X from "@lucide/svelte/icons/x";
   import IconButton from "@ui/IconButton.svelte";
+  import SegmentedControl from "@ui/modal/SegmentedControl.svelte";
+  import SettingsRow from "@ui/modal/SettingsRow.svelte";
   import {
     TERRAIN_EXAGGERATION_OPTIONS,
     TERRAIN_UNAVAILABLE_OFFLINE_MESSAGE,
@@ -13,9 +15,16 @@
 
   type Props = {
     embedded?: boolean;
+    /** row: one Layers switch row, exaggeration shown only while it is on. */
+    variant?: "panel" | "row";
   };
 
-  let { embedded = false }: Props = $props();
+  let { embedded = false, variant = "panel" }: Props = $props();
+
+  const exaggerationOptions = TERRAIN_EXAGGERATION_OPTIONS.map((option) => ({
+    value: option,
+    label: `${option}x`,
+  }));
 
   type NetworkInformation = EventTarget & {
     effectiveType?: string;
@@ -34,25 +43,17 @@
     if (!isOnline) return TERRAIN_UNAVAILABLE_OFFLINE_MESSAGE;
     if (terrainStore.status === "loading") return "Loading elevation tiles...";
     if (terrainStore.status === "active") {
-      return "Contextual relief, not survey-grade elevation.";
+      return "This is contextual relief, not survey-grade elevation.";
     }
     if (terrainStore.status === "unavailable") {
       return terrainStore.message ?? "Terrain is unavailable right now.";
     }
-    if (lowDataConnection) return "Uses online tiles. Keep it off on low data.";
+    if (lowDataConnection) return "It uses online tiles. Keep it off on low data.";
     return "";
   });
 
   const statusWarns = $derived(
     !isOnline || lowDataConnection || terrainStore.status === "unavailable",
-  );
-
-  // Visible label is "Off"/"On", so the accessible name has to contain it
-  // (WCAG 2.5.3) while still naming the action.
-  const toggleLabel = $derived(
-    terrainStore.enabled
-      ? "Terrain is on. Turn terrain off."
-      : "Terrain is off. Turn terrain on.",
   );
 
   function getConnection(): NetworkInformation | undefined {
@@ -101,6 +102,45 @@
   });
 </script>
 
+
+{#if variant === "row"}
+  <SettingsRow
+    label="Terrain"
+    supporting={statusText || "Mt. Makiling relief from online elevation tiles"}
+    icon={Mountain}
+    checked={terrainStore.enabled}
+    onclick={handleToggle}
+    expanded={terrainStore.enabled}
+  >
+    <div class="terrain-row__option">
+      <span class="terrain-row__option-label" id="terrain-row-exaggeration">
+        Exaggeration
+      </span>
+      <SegmentedControl
+        options={exaggerationOptions}
+        value={terrainStore.exaggeration}
+        labelledBy="terrain-row-exaggeration"
+        onchange={(value) => terrainStore.setExaggeration(value)}
+      />
+    </div>
+    <button
+      type="button"
+      class="map-chrome-action-chip terrain-row__reset"
+      onclick={() => terrainStore.requestReset()}
+      title="Point the camera back at Mt. Makiling."
+    >
+      <RotateCcw size="14" aria-hidden="true" />
+      Reset view
+    </button>
+    <p class="map-chrome-row-note">
+      Elevation tiles by <a
+        href="https://www.maptiler.com/"
+        target="_blank"
+        rel="noreferrer">MapTiler</a
+      >.
+    </p>
+  </SettingsRow>
+{:else}
 <div class="terrain-control" class:embedded>
   {#if showPanel}
     <div class="terrain-panel" class:embedded>
@@ -119,20 +159,18 @@
       {/if}
 
       <div class="map-chrome-row">
-        <span class="map-chrome-row__label">Makiling terrain</span>
-        <div class="map-chrome-row__control">
-          <button
-            type="button"
-            class="map-chrome-chip"
-            class:map-chrome-chip--toggle-active={terrainStore.enabled}
-            onclick={handleToggle}
-            aria-pressed={terrainStore.enabled}
-            aria-label={toggleLabel}
-            title="Mt. Makiling in 3D. Loads elevation tiles over the network."
-          >
-            {terrainStore.enabled ? "On" : "Off"}
-          </button>
-        </div>
+        <span class="map-chrome-row__label" id="terrain-toggle-label">
+          Makiling terrain
+        </span>
+        <button
+          type="button"
+          role="switch"
+          class="map-chrome-switch"
+          aria-checked={terrainStore.enabled}
+          aria-labelledby="terrain-toggle-label"
+          onclick={handleToggle}
+          title="Shows Mt. Makiling in 3D. It loads elevation tiles over the network."
+        ></button>
       </div>
 
       <div class="map-chrome-row">
@@ -144,13 +182,16 @@
           role="group"
           aria-labelledby="terrain-exaggeration-label"
         >
+          <!-- Nothing to exaggerate while terrain is off, so no option may
+               look selected then. -->
           {#each TERRAIN_EXAGGERATION_OPTIONS as option (option)}
             <button
               type="button"
               class="map-chrome-chip"
-              class:map-chrome-chip--toggle-active={terrainStore.exaggeration ===
-                option}
+              class:map-chrome-chip--toggle-active={terrainStore.enabled &&
+                terrainStore.exaggeration === option}
               aria-pressed={terrainStore.exaggeration === option}
+              disabled={!terrainStore.enabled}
               onclick={() => terrainStore.setExaggeration(option)}
             >
               {option}x
@@ -206,8 +247,24 @@
     </button>
   {/if}
 </div>
+{/if}
 
 <style>
+  .terrain-row__option {
+    display: grid;
+    gap: 0.375rem;
+  }
+
+  .terrain-row__option-label {
+    font-size: 0.875rem;
+    color: var(--theme-text-2, hsl(0, 0%, 32%));
+  }
+
+  .terrain-row__reset {
+    justify-self: start;
+    align-self: flex-start;
+  }
+
   .terrain-control.embedded {
     width: 100%;
   }
@@ -236,21 +293,21 @@
     height: 3rem;
     align-items: center;
     justify-content: center;
-    border: 1px solid #ececec;
+    border: 1px solid var(--theme-border, #ececec);
     border-radius: 50%;
-    background-color: white;
-    color: hsl(5, 53%, 32%);
+    background-color: var(--theme-surface, white);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
     cursor: pointer;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: background-color 0.2s;
   }
 
   .terrain-btn:hover {
-    background-color: hsl(5, 53%, 98%);
+    background-color: var(--theme-accent-soft, hsl(5, 53%, 98%));
   }
 
   .terrain-btn.active {
-    border-color: hsl(160, 84%, 26%);
+    border-color: var(--theme-green-text, hsl(160, 84%, 26%));
     background-color: hsl(160, 84%, 26%);
     color: white;
   }
@@ -262,7 +319,7 @@
     flex-direction: column;
     gap: 0.25rem;
     border-radius: 0.875rem;
-    background-color: white;
+    background-color: var(--theme-surface, white);
     padding: 0.75rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
@@ -272,7 +329,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.125rem 0.25rem;
-    color: hsl(0, 0%, 20%);
+    color: var(--theme-text, hsl(0, 0%, 20%));
     font-size: 0.875rem;
     font-weight: 600;
   }

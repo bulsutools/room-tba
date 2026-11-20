@@ -66,6 +66,11 @@ export default defineConfig({
         // (including mobile) regardless of device. Cache it on-demand
         // instead, via the runtimeCaching rule below.
         globIgnores: ["**/desktop-only*"],
+        // Vercel skew protection appends ?dpl=<deployment> to every chunk
+        // request. Without ignoring it, no precached chunk ever matches, and
+        // offline boot silently depends on the browser HTTP cache (gone after
+        // eviction, so the app could not start offline at all).
+        ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^dpl$/],
         navigateFallback: "/",
         navigateFallbackDenylist: [
           /^\/api\//,
@@ -84,7 +89,7 @@ export default defineConfig({
           // map shell and the planner never opens for returning (SW-cached)
           // users. The `\?` matters: workbox matches denylist against
           // pathname+search, so /planner?term=… must be covered too (#planner).
-          // Network-first; the in-app planner button covers offline.
+          // Offline it falls back to the map shell via runtimeCaching below.
           /^\/planner(\/|\?|$)/,
           /^\/final-exams(\/|\?|$)/,
           /^\/calendar(\/|\?|$)/,
@@ -93,11 +98,36 @@ export default defineConfig({
           /^\/messenger(\/|\?|$)/,
           /^\/maintain(\/|\?|$)/,
           /^\/discord(\/|\?|$)/,
+          // Token page: the offline map shell would hide the reset form.
+          /^\/reset-password(\/|\?|$)/,
+          // Email confirmation links must load their own page, not the map.
+          /^\/verify-email(\/|\?|$)/,
+          // Per-user server pages (staff dashboard, invites, unsubscribe).
+          /^\/admin(\/|\?|$)/,
+          /^\/invite(\/|\?|$)/,
+          /^\/unsubscribe(\/|\?|$)/,
         ],
         swDest: "dist/client/sw.js",
         // Cache third-party map resources at runtime so the campus map works
         // offline once visited (or after an explicit "download offline maps").
         runtimeCaching: [
+          {
+            // The full-screen app routes are denylisted from navigateFallback
+            // above so online visits get their own page (and its open*
+            // prop). Offline, that left the browser's "No internet" page.
+            // Try the network, and when it fails serve the precached map
+            // shell; Entry reads the path and opens the right screen
+            // (app-screen-path.ts). Nothing is cached here: a stale page
+            // would point at hashed chunks a newer deploy no longer has.
+            urlPattern: ({ request, url }) =>
+              request.mode === "navigate" &&
+              /^\/(planner|today|final-exams|calendar)\/?$/.test(url.pathname),
+            handler: "NetworkOnly",
+            options: {
+              // The Astro integration precaches index.html as "/".
+              precacheFallback: { fallbackURL: "/" },
+            },
+          },
           {
             // #716: desktop-only.css, excluded from precache above so mobile
             // installs never fetch it — cached the first time a desktop
@@ -256,6 +286,9 @@ export default defineConfig({
         optional: true,
         default: "production",
       }),
+      // Break-glass only: NOT a normal login. Works solely while the database
+      // has no active admin (blank-username sign-in creates/reactivates
+      // `admin`). Use scripts/set-admin-user.ts instead and leave this unset.
       ADMIN_PASSWORD: envField.string({
         access: "secret",
         context: "server",
@@ -268,6 +301,13 @@ export default defineConfig({
         optional: true,
       }),
       ADMIN_SESSION_SECRET: envField.string({
+        access: "secret",
+        context: "server",
+        optional: true,
+      }),
+      // Encrypts staff TOTP secrets at rest (32 bytes, base64 or hex). Unset
+      // turns two-step verification off rather than storing seeds in clear.
+      TOTP_ENCRYPTION_KEY: envField.string({
         access: "secret",
         context: "server",
         optional: true,
@@ -335,8 +375,10 @@ export default defineConfig({
         context: "server",
         optional: true,
       }),
-      // Cloudflare Turnstile on editor login (#443). Widget is hidden and
-      // server verification skipped when unset (local dev).
+      // Cloudflare Turnstile on sign-in, sign-up and password reset (#443).
+      // Required in production: without the secret those requests are
+      // rejected. `astro dev` and TURNSTILE_ALLOW_UNCONFIGURED=1 (E2E
+      // preview) skip verification instead.
       PUBLIC_TURNSTILE_SITE_KEY: envField.string({
         access: "public",
         context: "client",
@@ -393,6 +435,9 @@ export default defineConfig({
       }),
     },
   },
+  security: {
+    allowedDomains: e2eNodeAdapter ? [{ hostname: "127.0.0.1" }] : [],
+  },
   adapter: e2eNodeAdapter
     ? node({ mode: "standalone" })
     : vercel({
@@ -409,7 +454,20 @@ export default defineConfig({
           // pathname only, so ?t=/&s=/&k= variants all collapse into one cached
           // PNG and every entity shares the first-rendered card (#651). The
           // normal CDN cache (via the route's s-maxage) keys on the full URL.
-          exclude: [/^\/api\//, /^\/og\.png$/],
+          // /reset-password carries a per-user ?token=, and ISR keys on the
+          // pathname alone: one cached render (an empty error body, in the
+          // 2026-10 outage) was served to every reset link for a day.
+          exclude: [
+            /^\/api\//,
+            /^\/og\.png$/,
+            /^\/reset-password\/?$/,
+            // Same for every per-user page: the staff dashboard (its
+            // logged-out redirect was cached for everyone), invites, and
+            // unsubscribe links.
+            /^\/admin(\/.*)?$/,
+            /^\/invite\/?$/,
+            /^\/unsubscribe\/?$/,
+          ],
         },
       }),
 });

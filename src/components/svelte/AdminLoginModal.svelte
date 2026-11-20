@@ -1,31 +1,30 @@
 <script lang="ts">
-  import { fade, fly } from "svelte/transition";
-  import { X, Lock } from "@lucide/svelte";
-  import IconButton from "@ui/IconButton.svelte";
+  import { Eye, EyeOff } from "@lucide/svelte";
+  import Dialog from "@ui/modal/Dialog.svelte";
+  import ModalHeader from "@ui/modal/ModalHeader.svelte";
   import { adminAuthStore, toastStore } from "@lib/store.svelte";
-  import {
-    modalContentDismiss,
-    modalContentReveal,
-    overlayFade,
-  } from "@lib/motion";
-  import { trapFocus } from "@lib/focus-trap";
   import EntityEditorFormField from "@ui/editor/EntityEditorFormField.svelte";
   import EntityEditorSubmitButton from "@ui/editor/EntityEditorSubmitButton.svelte";
   import EntityEditorMessage from "@ui/editor/EntityEditorMessage.svelte";
-  import CommunityBrandIcon from "@ui/community/CommunityBrandIcon.svelte";
   import TurnstileWidget from "@ui/TurnstileWidget.svelte";
-  import { MESSENGER_MAINTAIN_TARGET } from "@constants/community-links";
+  import LoginStepPanel from "@ui/LoginStepPanel.svelte";
   import "./editor/entity-editor.css";
-  import { MediaQuery } from "svelte/reactivity";
 
   import { isSupabaseConfigured } from "@lib/supabase/env";
   import {
     getTurnstileSiteKey,
     isTurnstileWidgetConfigured,
   } from "@lib/turnstile-client";
-  import { MIN_CONTRIBUTOR_PASSWORD_LENGTH } from "@lib/auth/contributor-signup";
+  import {
+    MAX_PASSWORD_BYTES,
+    MIN_CONTRIBUTOR_PASSWORD_LENGTH,
+    USERNAME_MAX_LENGTH,
+    USERNAME_MIN_LENGTH,
+    USERNAME_PATTERN_SOURCE,
+    newPasswordError,
+    usernameError,
+  } from "@lib/auth/contributor-signup";
 
-  const reducedMotion = new MediaQuery("(prefers-reduced-motion: reduce)");
   const loginErrorId = "admin-login-error";
   const googleEnabled = isSupabaseConfigured();
   const turnstileEnabled = isTurnstileWidgetConfigured();
@@ -35,15 +34,15 @@
     missing_code: "Google sign-in was cancelled or incomplete. Try again.",
     oauth_failed: "Google sign-in failed. Try again.",
     account_unavailable:
-      "This Google account cannot be used to sign in. Contact the maintainers.",
+      "This Google account can't be used to sign in. Contact the maintainers.",
   };
 
   type Mode = "signin" | "signup";
 
-  let loginFrameEl = $state<HTMLDivElement | null>(null);
   let mode = $state<Mode>("signin");
-  let username = $state("admin");
+  let username = $state("");
   let password = $state("");
+  let showPassword = $state(false);
   let confirmPassword = $state("");
   let signupEmail = $state("");
   let error: string | null = $state(null);
@@ -58,12 +57,41 @@
   }
 
   const isSignup = $derived(mode === "signup");
+  // Live signup hints from the same pure validator the server runs (auth
+  // audit item 16): shown as the field hint, switching to the problem once
+  // something is typed.
+  const signupUsernameProblem = $derived(
+    isSignup && username ? usernameError(username) : null,
+  );
+  const signupPasswordProblem = $derived(
+    isSignup && password ? newPasswordError(password) : null,
+  );
+  const signupMismatch = $derived(
+    isSignup && confirmPassword.length > 0 && confirmPassword !== password,
+  );
+  const inStep = $derived(
+    Boolean(adminAuthStore.loginStep || adminAuthStore.loginRecoveryCodes),
+  );
+  const title = $derived(
+    adminAuthStore.loginRecoveryCodes
+      ? "Save your recovery codes"
+      : adminAuthStore.loginStep?.step === "change_password"
+        ? "Choose a new password"
+        : adminAuthStore.loginStep
+          ? "Two-step verification"
+          : showForgotPassword
+            ? "Reset password"
+            : isSignup
+              ? "Create contributor account"
+              : "Sign in",
+  );
 
   function switchMode(next: Mode) {
     mode = next;
     error = null;
     password = "";
     confirmPassword = "";
+    showPassword = false;
     if (next === "signup") username = "";
   }
 
@@ -74,6 +102,10 @@
   let forgotPasswordError = $state<string | null>(null);
 
   async function sendForgotPassword() {
+    if (turnstileEnabled && !turnstileToken) {
+      forgotPasswordError = "Complete the verification check, then try again.";
+      return;
+    }
     forgotPasswordSending = true;
     forgotPasswordError = null;
     try {
@@ -81,9 +113,14 @@
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login: forgotLoginDraft }),
+        body: JSON.stringify({
+          login: forgotLoginDraft,
+          turnstileToken: turnstileToken ?? undefined,
+        }),
       });
-      if (!res.ok && res.status === 429) {
+      // The Turnstile token is single-use either way.
+      refreshTurnstile();
+      if (!res.ok && (res.status === 429 || res.status === 400)) {
         const data = await res.json().catch(() => ({}) as { error?: string });
         forgotPasswordError =
           data.error ?? "Too many attempts. Wait a bit and try again.";
@@ -138,8 +175,14 @@
     error = null;
 
     if (isSignup) {
+      const problem =
+        usernameError(username) ?? newPasswordError(password);
+      if (problem) {
+        error = problem;
+        return;
+      }
       if (password !== confirmPassword) {
-        error = "Passwords do not match.";
+        error = "Passwords don't match.";
         return;
       }
       const err = await adminAuthStore.signup({
@@ -157,7 +200,12 @@
       confirmPassword = "";
       const label =
         adminAuthStore.displayName ?? adminAuthStore.username ?? "contributor";
-      toastStore.show(`Signed in as ${label}.`, "success");
+      toastStore.show(
+        signupEmail.trim()
+          ? `Signed in as ${label}. Check your email to confirm your address.`
+          : `Signed in as ${label}.`,
+        "success",
+      );
       return;
     }
 
@@ -168,9 +216,17 @@
       return;
     }
     password = "";
+    // A two-step code or new password is still needed: LoginStepPanel
+    // takes over and toasts when the session is issued.
+    if (adminAuthStore.loginStep) return;
     const label =
       adminAuthStore.displayName ?? adminAuthStore.username ?? "contributor";
-    toastStore.show(`Logged in as ${label}.`, "success");
+    toastStore.show(
+      adminAuthStore.mfaEnrollmentSuggested
+        ? `Logged in as ${label}. Admins need two-step verification, so turn it on in Account settings.`
+        : `Logged in as ${label}.`,
+      "success",
+    );
   }
 
   function close() {
@@ -182,39 +238,23 @@
     mode = "signin";
   }
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") close();
-  }
-
-  $effect(() => {
-    if (!loginFrameEl) return;
-    return trapFocus(loginFrameEl, { onEscape: close });
-  });
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
-<div class="login-overlay" transition:fade={overlayFade(reducedMotion.current)}>
-  <div
-    bind:this={loginFrameEl}
-    class="login-frame"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="admin-login-title"
-    in:fly={modalContentReveal(reducedMotion.current)}
-    out:fly={modalContentDismiss(reducedMotion.current)}
+<!-- The standard dialog, one layer above other modals: sign in can open from
+     inside one (suggest an edit, account). -->
+<div class="login-layer">
+  <Dialog
+    open
+    onclose={close}
+    size="compact"
+    labelledBy="admin-login-title"
+    closeLabel="Close login"
   >
-    <header class="login-header">
-      <div class="login-title" id="admin-login-title">
-        <Lock size={16} aria-hidden="true" />
-        <span>
-          {isSignup ? "Create contributor account" : "Contributor sign in"}
-        </span>
-      </div>
-      <IconButton size="sm" shape="rounded" label="Close login" onclick={close}>
-        <X size={18} aria-hidden="true" />
-      </IconButton>
-    </header>
+  <div class="login-frame">
+    <ModalHeader id="admin-login-title" {title} />
+    {#if inStep}
+      <LoginStepPanel />
+    {:else}
     <form class="login-body entity-editor-form" onsubmit={submit}>
       {#if !showForgotPassword}
         {#if isSignup}
@@ -227,6 +267,10 @@
         <EntityEditorFormField
           label={isSignup ? "Username" : "Username or email"}
           inputId="admin-login-username"
+          hint={isSignup
+            ? (signupUsernameProblem ??
+              `${USERNAME_MIN_LENGTH} to ${USERNAME_MAX_LENGTH} characters. Use lowercase letters, numbers, and . _ -`)
+            : undefined}
         >
           {#snippet control()}
             <input
@@ -235,23 +279,56 @@
               autocomplete="username"
               autocapitalize="none"
               spellcheck="false"
+              minlength={isSignup ? USERNAME_MIN_LENGTH : undefined}
+              maxlength={isSignup ? USERNAME_MAX_LENGTH : undefined}
+              pattern={isSignup ? USERNAME_PATTERN_SOURCE : undefined}
+              aria-invalid={signupUsernameProblem ? true : undefined}
+              aria-describedby={isSignup ? "admin-login-username-hint" : undefined}
               bind:value={username}
               required
             />
           {/snippet}
         </EntityEditorFormField>
-        <EntityEditorFormField label="Password" inputId="admin-login-password">
+        <EntityEditorFormField
+          label="Password"
+          inputId="admin-login-password"
+          hint={isSignup
+            ? (signupPasswordProblem ??
+              `${MIN_CONTRIBUTOR_PASSWORD_LENGTH} characters to ${MAX_PASSWORD_BYTES} bytes.`)
+            : undefined}
+        >
           {#snippet control()}
-            <input
-              id="admin-login-password"
-              type="password"
-              autocomplete={isSignup ? "new-password" : "current-password"}
-              minlength={isSignup ? MIN_CONTRIBUTOR_PASSWORD_LENGTH : undefined}
-              bind:value={password}
-              required
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? loginErrorId : undefined}
-            />
+            <span class="login-password">
+              <input
+                id="admin-login-password"
+                type={showPassword ? "text" : "password"}
+                autocomplete={isSignup ? "new-password" : "current-password"}
+                minlength={isSignup
+                  ? MIN_CONTRIBUTOR_PASSWORD_LENGTH
+                  : undefined}
+                bind:value={password}
+                required
+                aria-invalid={error || signupPasswordProblem ? true : undefined}
+                aria-describedby={error
+                  ? loginErrorId
+                  : isSignup
+                    ? "admin-login-password-hint"
+                    : undefined}
+              />
+              <button
+                type="button"
+                class="login-password-toggle"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                onclick={() => (showPassword = !showPassword)}
+              >
+                {#if showPassword}
+                  <EyeOff size={18} aria-hidden="true" />
+                {:else}
+                  <Eye size={18} aria-hidden="true" />
+                {/if}
+              </button>
+            </span>
           {/snippet}
         </EntityEditorFormField>
         {#if isSignup}
@@ -265,14 +342,19 @@
                 type="password"
                 autocomplete="new-password"
                 minlength={MIN_CONTRIBUTOR_PASSWORD_LENGTH}
+                aria-invalid={signupMismatch ? true : undefined}
                 bind:value={confirmPassword}
                 required
               />
             {/snippet}
           </EntityEditorFormField>
+          {#if signupMismatch}
+            <p class="login-inline-problem">Passwords don't match.</p>
+          {/if}
           <EntityEditorFormField
-            label="Email (optional)"
+            label="Email (needed to reset your password)"
             inputId="admin-signup-email"
+            hint="Optional, but without it a forgotten password can only be reset by an admin."
           >
             {#snippet control()}
               <input
@@ -316,7 +398,6 @@
           label={isSignup ? "Create account" : "Sign in"}
           savingLabel={isSignup ? "Creating account…" : "Signing in…"}
           saving={adminAuthStore.loading}
-          disabled={turnstileEnabled && !turnstileToken}
         />
         <p class="login-mode-toggle">
           {#if isSignup}
@@ -359,6 +440,20 @@
               Back to sign in
             </button>
           {:else}
+            <p class="login-lead">
+              Enter your username or email and we'll send a reset link to the
+              email on the account.
+            </p>
+            <ul class="forgot-password-notes">
+              <li>
+                Signed up with Google? Use Continue with Google instead.
+                Google manages your password.
+              </li>
+              <li>
+                No email on your account? An admin has to reset it for you.
+                Ask in the editor group.
+              </li>
+            </ul>
             <EntityEditorFormField
               label="Username or email"
               inputId="forgot-password-login"
@@ -373,6 +468,14 @@
                 />
               {/snippet}
             </EntityEditorFormField>
+            {#if turnstileEnabled}
+              {#key turnstileMountKey}
+                <TurnstileWidget
+                  siteKey={turnstileSiteKey}
+                  bind:token={turnstileToken}
+                />
+              {/key}
+            {/if}
             {#if forgotPasswordError}
               <EntityEditorMessage variant="error" message={forgotPasswordError} />
             {/if}
@@ -381,7 +484,8 @@
                 label="Send reset link"
                 savingLabel="Sending…"
                 saving={forgotPasswordSending}
-                disabled={!forgotLoginDraft.trim()}
+                disabled={!forgotLoginDraft.trim() ||
+                  (turnstileEnabled && !turnstileToken)}
                 onclick={sendForgotPassword}
               />
               <button
@@ -427,67 +531,73 @@
     </form>
     <p class="login-footer">
       Need editor access?
-      <a
-        href={MESSENGER_MAINTAIN_TARGET}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="login-footer-link"
-      >
-        <CommunityBrandIcon brand="messenger" size={14} />
-        Message maintainers
-      </a>
+      <a href="/admin" class="login-footer-link">Request it</a>
     </p>
+    {/if}
   </div>
+  </Dialog>
 </div>
 
 <style>
-  .login-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(8, 12, 22, 0.55);
-    z-index: var(--z-login-modal, 200);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
+  /* No box of its own: the Dialog inherits the higher layer. */
+  .login-layer {
+    display: contents;
+    --z-modal: var(--z-login-modal, 200);
   }
   .login-frame {
-    width: min(22rem, 100%);
-    background: white;
-    border-radius: 0.75rem;
-    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
-  }
-  .login-header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid hsl(0, 0%, 92%);
-  }
-  .login-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    color: hsl(0, 0%, 15%);
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .login-body {
-    padding: 1rem;
+    padding: 0.5rem 1.5rem 1rem;
   }
   .login-body :global(.entity-editor-submit) {
     width: 100%;
+  }
+  .login-password {
+    position: relative;
+    display: block;
+  }
+  .login-password input {
+    box-sizing: border-box;
+    width: 100%;
+    padding-right: 2.75rem;
+  }
+  .login-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--theme-text-2, hsl(0, 0%, 38%));
+    cursor: pointer;
+    transform: translateY(-50%);
+  }
+  .login-password-toggle:focus-visible {
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
+    outline-offset: -4px;
+    border-radius: 0.5rem;
   }
   .login-lead {
     margin: 0 0 0.25rem;
     font-size: 0.8125rem;
     line-height: 1.45;
-    color: hsl(0, 0%, 38%);
+    color: var(--theme-text-2, hsl(0, 0%, 38%));
   }
   .login-mode-toggle {
     margin: 0.25rem 0 0;
     font-size: 0.8125rem;
-    color: hsl(0, 0%, 38%);
+    color: var(--theme-text-2, hsl(0, 0%, 38%));
     text-align: center;
     line-height: 1.45;
   }
@@ -496,7 +606,7 @@
     padding: 0;
     border: none;
     background: none;
-    color: hsl(5, 53%, 32%);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
     font-weight: 600;
     cursor: pointer;
     text-decoration: underline;
@@ -504,14 +614,26 @@
   }
   .login-mode-btn:hover,
   .login-mode-btn:focus-visible {
-    color: hsl(5, 53%, 24%);
+    color: var(--theme-accent-text, hsl(5, 53%, 24%));
+  }
+  .login-inline-problem {
+    margin: -0.25rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
+  }
+  .forgot-password-notes {
+    margin: 0;
+    padding-left: 1.125rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--theme-text-2, hsl(0, 0%, 38%));
   }
   .login-footer {
     margin: 0;
     padding: 0.75rem 1rem 1rem;
-    border-top: 1px solid hsl(0, 0%, 92%);
+    border-top: 1px solid var(--theme-border, hsl(0, 0%, 92%));
     font-size: 0.8125rem;
-    color: hsl(0, 0%, 38%);
+    color: var(--theme-text-2, hsl(0, 0%, 38%));
     line-height: 1.5;
     text-align: center;
   }
@@ -520,7 +642,7 @@
     align-items: center;
     gap: 0.375rem;
     margin-left: 0.25rem;
-    color: hsl(5, 53%, 32%);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
     font-weight: 600;
     text-decoration: none;
   }
@@ -533,7 +655,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: hsl(0, 0%, 55%);
+    color: var(--theme-text-muted, hsl(0, 0%, 55%));
     font-size: 0.75rem;
     margin: 0.25rem 0;
   }
@@ -541,7 +663,7 @@
   .login-divider::after {
     content: "";
     flex: 1;
-    border-top: 1px solid hsl(0, 0%, 90%);
+    border-top: 1px solid var(--theme-border, hsl(0, 0%, 90%));
   }
   .google-login-btn {
     box-sizing: border-box;
@@ -551,18 +673,18 @@
     gap: 0.5rem;
     width: 100%;
     padding: 0.5rem 0.75rem;
-    border: 1px solid hsl(0, 0%, 82%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 82%));
     border-radius: 0.5rem;
-    background: white;
+    background: var(--theme-surface, white);
     font-size: 0.875rem;
     font-weight: 600;
-    color: hsl(0, 0%, 25%);
+    color: var(--theme-text, hsl(0, 0%, 25%));
     cursor: pointer;
   }
   .google-login-btn:hover:not(:disabled),
   .google-login-btn:focus-visible {
-    background: hsl(0, 0%, 97%);
-    outline: 2px solid hsl(5, 53%, 32%);
+    background: var(--theme-surface, hsl(0, 0%, 97%));
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
     outline-offset: 1px;
   }
   .google-login-btn:disabled {
@@ -574,7 +696,7 @@
     background: none;
     border: none;
     padding: 0;
-    color: hsl(5, 53%, 32%);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
     font-weight: 600;
     font-size: 0.75rem;
     cursor: pointer;
