@@ -8,13 +8,13 @@ body:
     value: |
       **No pull request required.** Describe what you tested and what broke or looked wrong.
 
-      See the [contributing guide](https://github.com/uplbtools/room-tba/blob/staging/CONTRIBUTING.md#campus-qa) for ideas.
+      See the [contributing guide](https://github.com/bulsutools/room-tba/blob/staging/CONTRIBUTING.md#campus-qa) for ideas.
   - type: input
     id: url
     attributes:
       label: URL tested
       description: Production or staging link, or describe how you opened the app
-      placeholder: https://room-tba.uplb.tools
+      placeholder: https://room-tba.bulsu.tools
   - type: input
     id: device
     attributes:

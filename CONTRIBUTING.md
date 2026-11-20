@@ -1,6 +1,6 @@
 # Contributing to Room TBA
 
-Thanks for helping UPLB students find rooms. You do **not** need to clone this repo unless you are writing code.
+Thanks for helping BulSU students find rooms. You do **not** need to clone this repo unless you are writing code.
 
 **Start here:** pick the path that fits you.
 
@@ -10,10 +10,10 @@ Thanks for helping UPLB students find rooms. You do **not** need to clone this r
 | [Campus gate coordinates](#campus-gate-coordinates) | Data volunteers | Fill gate spreadsheet, file batch issue | No |
 | [Campus QA](#campus-qa) | Testers | Verify the app on your phone | No |
 | [Developers](#developers-no-ai-required) | Coders | Branch, code, PR to `staging` | Yes |
-| [Good first issues](https://github.com/uplbtools/room-tba/issues?q=is%3Aopen+label%3A%22good+first+issue%22) | New devs | Smaller coding tasks | Yes |
+| [Good first issues](https://github.com/bulsutools/room-tba/issues?q=is%3Aopen+label%3A%22good+first+issue%22) | New devs | Smaller coding tasks | Yes |
 | [Maintainers / AI agents](#maintainers-and-agents) | Core team, Cursor | See [AGENTS.md](AGENTS.md) | Yes |
 
-**Community:** [Discord](https://discord.gg/SrVDgfcrVt) · [Messenger (contribute)](https://room-tba.uplb.tools/messenger/contribute) · [UPLB Tools](https://uplb.tools)
+**Community:** [GitHub issues](https://github.com/bulsutools/room-tba/issues) · [Upstream Room TBA](https://github.com/uplbtools/room-tba)
 
 ---
 
@@ -22,25 +22,25 @@ Thanks for helping UPLB students find rooms. You do **not** need to clone this r
 Use this when a schedule, pin, direction, or building name is wrong.
 
 1. **In the app:** open the room or building → **Suggest an edit** (if you have contributor access).
-2. **On GitHub:** [New data correction issue](https://github.com/uplbtools/room-tba/issues/new?template=data_correction.yml).
-3. **Chat:** [Discord](https://discord.gg/SrVDgfcrVt) or [Messenger](https://room-tba.uplb.tools/messenger/contribute) if GitHub is awkward.
+2. **On GitHub:** [New data correction issue](https://github.com/bulsutools/room-tba/issues/new?template=data_correction.yml).
+3. **Chat:** GitHub issues are the fastest path right now; a BulSU Discord/Messenger channel can be added here later.
 
 Include:
 
-- Room or building name (e.g. PSLH 1, PhySci)
+- Room or building name (e.g. Federizo, COE Building 2)
 - Term, if it is schedule-related
 - What is wrong and what it should be
 - How you verified (walked there, SAIS, org page, photo)
 
 **You do not need to open a pull request.** Someone else will ship the fix and reply on the issue.
 
-Approved suggest-edits for campus map entities (buildings, rooms, pins, and similar fields) are licensed **[CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)**. Class schedules imported from AMIS/CRS are not re-licensed that way. Details: [Terms — Data licenses](https://room-tba.uplb.tools/terms#data-licenses).
+Approved suggest-edits for campus map entities (buildings, rooms, pins, and similar fields) are licensed **[CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)**. Details: [Terms — Data licenses](https://room-tba.bulsu.tools/terms#data-licenses).
 
 ---
 
 ## Campus gate coordinates
 
-Use this when you can verify where campus gates and entry points are on the map. This feeds [#157](https://github.com/uplbtools/room-tba/issues/157) (gates as searchable entities).
+Use this when you can verify where campus gates and entry points are on the map. This feeds [#157](https://github.com/bulsutools/room-tba/issues/157) (gates as searchable entities).
 
 1. Download [`data/campus-gate-coordinates-template.csv`](data/campus-gate-coordinates-template.csv) from this repo (or copy into Google Sheets via **File → Import**).
 2. Fill one row per gate. Starter rows list common gates from building directions and jeepney routes; **leave `lat`/`lon` blank until you verify on site** (do not copy coordinates from other apps without checking).
@@ -49,8 +49,8 @@ Use this when you can verify where campus gates and entry points are on the map.
    - Record `lat` and `lon` (phone GPS or OpenStreetMap pin at the entry).
    - Set `gate_type` (`vehicle`, `pedestrian`, or `both`), `verified` to `yes`, and `verification_method` (e.g. "walked there 2026-07-16, GPS at sign").
    - Optional: `directions` (one sentence for walkers), `osm_link`, `notes`.
-4. When a batch is ready, open a [Gate coordinates (batch)](https://github.com/uplbtools/room-tba/issues/new?template=gate_coordinates_batch.yml) issue. Attach the filled CSV or link your Google Sheet.
-5. A maintainer imports verified rows when the `entry_points` schema ships ([#157](https://github.com/uplbtools/room-tba/issues/157)).
+4. When a batch is ready, open a [Gate coordinates (batch)](https://github.com/bulsutools/room-tba/issues/new?template=gate_coordinates_batch.yml) issue. Attach the filled CSV or link your Google Sheet.
+5. A maintainer imports verified rows when the `entry_points` schema ships ([#157](https://github.com/bulsutools/room-tba/issues/157)).
 
 **You do not need to open a pull request.**
 
@@ -62,7 +62,7 @@ Column reference: `name`, `short_name`, `slug`, `gate_type`, `lat`, `lon`, `is_p
 
 Use this when you can test the live or staging app on a real device.
 
-1. [New campus QA issue](https://github.com/uplbtools/room-tba/issues/new?template=campus_qa.yml)
+1. [New campus QA issue](https://github.com/bulsutools/room-tba/issues/new?template=campus_qa.yml)
 2. Label `qa` is applied automatically.
 
 Helpful checks: search a room you know, open schedules for the current term, try offline mode after loading once, check layout at narrow phone width.
@@ -93,7 +93,7 @@ Empty database? `bun run seed:sample` loads a small fictional campus (buildings,
 
 ### Workflow
 
-1. Find or file an issue ([coding task template](https://github.com/uplbtools/room-tba/issues/new?template=coding_task.yml) or [good first issue](https://github.com/uplbtools/room-tba/issues?q=is%3Aopen+label%3A%22good+first+issue%22)).
+1. Find or file an issue ([coding task template](https://github.com/bulsutools/room-tba/issues/new?template=coding_task.yml) or [good first issue](https://github.com/bulsutools/room-tba/issues?q=is%3Aopen+label%3A%22good+first+issue%22)).
 2. Branch off **`staging`** (not `main`).
 3. Make your change.
 4. Before opening a PR:
@@ -144,7 +144,7 @@ Includes: branch rules, issue hygiene for detailed specs, Cursor workflow skill,
 
 **One-time agent setup (maintainers):** `bun run install:agent-tooling` then `bun run install:agent-plugins` — see [agent tooling](docs/agent-tooling.md).
 
-**Maintainer chat:** [Discord](https://discord.gg/SrVDgfcrVt) · [Messenger (maintain)](https://room-tba.uplb.tools/messenger/maintain)
+**Maintainer chat:** GitHub issues on this repo.
 
 ---
 
