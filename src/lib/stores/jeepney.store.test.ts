@@ -6,7 +6,22 @@ import {
   mapToolsStore,
   modalStore,
   scheduleRouteStore,
+  transitStore,
 } from "@lib/store.svelte";
+import type { JeepneyRoute } from "@constants/jeepney-routes";
+
+// BulSU ships no bundled transit routes; tests that need one inject a fixture.
+const FIXTURE_ROUTE: JeepneyRoute = {
+  id: "snodlob",
+  name: "Campus Loop (test jeep)",
+  description: "Test fixture.",
+  color: "#000000",
+  fare: { regular: 15, discounted: 12 },
+  stops: [
+    { name: "A", description: "", lat: 14.1, lon: 121.2 },
+    { name: "B", description: "", lat: 14.2, lon: 121.3 },
+  ],
+};
 
 describe("JeepneyStore", () => {
   beforeEach(() => {
@@ -97,16 +112,22 @@ describe("JeepneyStore", () => {
   });
 
   test("drawnRoute names the drawn route and clearDrawnRoute removes it", () => {
-    expect(jeepneyStore.drawnRoute).toBeNull();
-    jeepneyStore.selectRoute("snodlob");
-    expect(jeepneyStore.drawnRoute).toEqual({
-      id: "snodlob",
-      name: "UPLB Loop (SNODLOB e-jeep)",
-    });
-    jeepneyStore.openStop(1);
-    jeepneyStore.clearDrawnRoute();
-    expect(jeepneyStore.drawnRoute).toBeNull();
-    expect(jeepneyStore.selectedStopIndex).toBeNull();
-    expect(jeepneyStore.routePinned).toBe(false);
+    const original = transitStore.routes;
+    transitStore.routes = [FIXTURE_ROUTE];
+    try {
+      expect(jeepneyStore.drawnRoute).toBeNull();
+      jeepneyStore.selectRoute("snodlob");
+      expect(jeepneyStore.drawnRoute).toEqual({
+        id: "snodlob",
+        name: "Campus Loop (test jeep)",
+      });
+      jeepneyStore.openStop(1);
+      jeepneyStore.clearDrawnRoute();
+      expect(jeepneyStore.drawnRoute).toBeNull();
+      expect(jeepneyStore.selectedStopIndex).toBeNull();
+      expect(jeepneyStore.routePinned).toBe(false);
+    } finally {
+      transitStore.routes = original;
+    }
   });
 });

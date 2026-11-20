@@ -164,14 +164,16 @@ describe("JEEPNEY_ROUTES data", () => {
 });
 
 describe("withBundledRoutes", () => {
-  test("adds bundled routes the database does not have, keeping database rows", () => {
-    const dbKaliwa = { ...JEEPNEY_ROUTES[0]!, name: "From the database" };
-    const merged = withBundledRoutes([dbKaliwa]);
-    expect(merged[0]).toBe(dbKaliwa);
-    expect(merged.map((r) => r.id)).toContain("snodlob");
-    expect(merged.map((r) => r.id)).toEqual(
-      expect.arrayContaining(["uplb-to-buendia", "buendia-to-uplb"]),
-    );
+  test("returns database rows unchanged while no bundled routes ship", () => {
+    const dbRoute: import("./jeepney-routes.js").JeepneyRoute = {
+      id: "campus-loop",
+      name: "From the database",
+      description: "Seeded row.",
+      color: "#000",
+      fare: { regular: 15, discounted: 12 },
+      stops: [stop("A", 14.1, 121.2), stop("B", 14.3, 121.4)],
+    };
+    expect(withBundledRoutes([dbRoute])).toEqual([dbRoute]);
   });
 
   test("bundled buses have a drawn line", () => {
@@ -179,14 +181,5 @@ describe("withBundledRoutes", () => {
       const geometry = (jeepneyGeometries as Record<string, unknown>)[route.id];
       expect(geometry).toBeDefined();
     }
-  });
-
-  test("replaces a cached route that lost its stops", () => {
-    const empty = {
-      ...JEEPNEY_ROUTES.find((r) => r.id === "snodlob")!,
-      stops: [],
-    };
-    const merged = withBundledRoutes([empty]);
-    expect(merged.find((r) => r.id === "snodlob")?.stops.length).toBe(21);
   });
 });

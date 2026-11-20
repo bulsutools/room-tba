@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { BUNDLED_BUS_ROUTES, JEEPNEY_ROUTES } from "@constants/jeepney-routes";
+import type { JeepneyRoute, JeepneyStop } from "@constants/jeepney-routes";
 import {
   activeDirection,
   orientRoute,
@@ -7,20 +7,47 @@ import {
   routesAtStop,
 } from "./transit-direction";
 
-const kaliwaKanan = JEEPNEY_ROUTES.find((r) => r.id === "kaliwa-kanan")!;
-const forestry = JEEPNEY_ROUTES.find((r) => r.id === "forestry")!;
-const allRoutes = [...JEEPNEY_ROUTES, ...BUNDLED_BUS_ROUTES];
+const stop = (name: string, lat: number, lon: number): JeepneyStop => ({
+  name,
+  description: `${name} stop.`,
+  lat,
+  lon,
+});
 
+const route = (id: string, stops: JeepneyStop[]): JeepneyRoute => ({
+  id,
+  name: id,
+  description: "Test route.",
+  color: "#000000",
+  fare: { regular: 15, discounted: 12 },
+  stops,
+});
+
+// BulSU ships no bundled routes, so these tests use synthetic routes. Real
+// direction labels still come from ROUTE_DIRECTIONS, keyed by upstream route
+// ids ("kaliwa-kanan" is two-way, "forestry" is one-way).
 describe("orientRoute", () => {
-  test("Kaliwa serves the Kanan stops in reverse", () => {
+  test("a two-way route serves its stops in reverse", () => {
+    const kaliwaKanan = route("kaliwa-kanan", [
+      stop("First", 14.1, 121.2),
+      stop("Middle", 14.2, 121.3),
+      stop("Last", 14.3, 121.4),
+    ]);
     const kaliwa = orientRoute(kaliwaKanan, true);
     expect(kaliwa.id).toBe("kaliwa-kanan");
-    expect(kaliwa.stops[1]!.name).toBe("Carabao Park / Landbank");
-    expect(kaliwa.stops.at(-2)!.name).toBe("Robinsons Town Mall");
-    expect(kaliwaKanan.stops[1]!.name).toBe("Robinsons Town Mall");
+    expect(kaliwa.stops.map((s) => s.name)).toEqual([
+      "Last",
+      "Middle",
+      "First",
+    ]);
+    expect(kaliwaKanan.stops[0]!.name).toBe("First");
   });
 
   test("one-way routes keep their only real order", () => {
+    const forestry = route("forestry", [
+      stop("A", 14.1, 121.2),
+      stop("B", 14.2, 121.3),
+    ]);
     expect(orientRoute(forestry, true)).toBe(forestry);
   });
 
@@ -50,34 +77,44 @@ describe("reverseLine", () => {
 });
 
 describe("routesAtStop", () => {
+  const shared = stop("Shared stop", 14.2, 121.3);
+  const kaliwaKanan = route("kaliwa-kanan", [
+    stop("Olivarez", 14.1, 121.2),
+    shared,
+    stop("Terminal", 14.3, 121.4),
+  ]);
+  const loop = route("campus-loop", [
+    stop("Loop terminal", 14.5, 121.5),
+    stop("Loop middle", 14.6, 121.6),
+    stop("Loop terminal", 14.5, 121.5),
+  ]);
+  const outbound = route("outbound", [
+    stop("Origin", 14.7, 121.7),
+    stop("Destination", 14.8, 121.8),
+  ]);
+
   test("finds every route serving a stop by position, not name", () => {
-    const library = kaliwaKanan.stops.find((s) => s.name === "Main Library")!;
-    const serving = routesAtStop(allRoutes, library);
+    const nearShared = stop("Same kerb, other name", 14.2, 121.3);
+    const serving = routesAtStop([kaliwaKanan, loop, outbound], nearShared);
     const ids = serving.map((entry) => entry.route.id);
-    expect(ids).toContain("kaliwa-kanan");
-    expect(ids).toContain("snodlob");
-    expect(serving.find((e) => e.route.id === "kaliwa-kanan")!.direction).toBe(
-      "Kanan / Kaliwa",
-    );
-    expect(serving.find((e) => e.route.id === "snodlob")!.direction).toBe(
-      "One-way loop",
-    );
+    expect(ids).toEqual(["kaliwa-kanan"]);
+    expect(serving[0]!.direction).toBe("Kanan / Kaliwa");
   });
 
   test("a loop terminal resolves to stop 1, not the closing stop", () => {
-    const olivarez = kaliwaKanan.stops[0]!;
-    const entry = routesAtStop([kaliwaKanan], olivarez)[0]!;
+    const terminal = stop("Loop terminal", 14.5, 121.5);
+    const entry = routesAtStop([loop], terminal)[0]!;
     expect(entry.stopIndex).toBe(0);
+    expect(entry.direction).toBe("One-way loop");
   });
 
   test("one-way routes say where they are heading", () => {
-    const gate = BUNDLED_BUS_ROUTES[0]!.stops[0]!;
-    const serving = routesAtStop(BUNDLED_BUS_ROUTES, gate);
-    expect(
-      serving.find((e) => e.route.id === "uplb-to-buendia")!.direction,
-    ).toBe("Toward Buendia bus terminal (LRT-1 Gil Puyat)");
-    expect(
-      serving.find((e) => e.route.id === "buendia-to-uplb")!.direction,
-    ).toBe("Last stop");
+    const origin = stop("Origin", 14.7, 121.7);
+    const serving = routesAtStop([outbound], origin);
+    expect(serving[0]!.direction).toBe("Toward Destination");
+    const destination = stop("Destination", 14.8, 121.8);
+    expect(routesAtStop([outbound], destination)[0]!.direction).toBe(
+      "Last stop",
+    );
   });
 });

@@ -118,6 +118,19 @@ describe("MapOverlayRegistry", () => {
   });
 });
 
+// BulSU ships no bundled transit routes; overlay tests inject a fixture.
+const FIXTURE_ROUTE: import("@constants/jeepney-routes").JeepneyRoute = {
+  id: "campus-loop",
+  name: "Campus Loop (test jeep)",
+  description: "Test fixture.",
+  color: "#000000",
+  fare: { regular: 15, discounted: 12 },
+  stops: [
+    { name: "A", description: "", lat: 14.1, lon: 121.2 },
+    { name: "B", description: "", lat: 14.2, lon: 121.3 },
+  ],
+};
+
 describe("app overlays: clear rules and ownership", () => {
   const byId = (id: string) => {
     const overlay = APP_MAP_OVERLAYS.find((o) => o.id === id);
@@ -126,6 +139,7 @@ describe("app overlays: clear rules and ownership", () => {
   };
 
   beforeEach(() => {
+    transitStore.routes = [FIXTURE_ROUTE];
     jeepneyStore.disableLayer();
     scheduleRouteStore.clearRoute();
     locationStore.clearRouteWaypoints();

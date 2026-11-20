@@ -1,13 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import {
-  JEEPNEY_ROUTES,
-  resolveRouteGeometry,
-  type StoredRouteGeometry,
-} from "@constants/jeepney-routes";
-import jeepneyGeometries from "@constants/jeepney-geometries.json" with {
-  type: "json",
-};
-import { distanceMeters } from "../campus-route";
 import { polylineMeters, sliceRouteLine } from "./ride-geometry";
 
 /** An L-shaped street: east 0.002°, then north 0.002°. */
@@ -63,31 +54,5 @@ describe("sliceRouteLine", () => {
   });
 });
 
-describe("real route geometry", () => {
-  const stored = jeepneyGeometries as Record<string, StoredRouteGeometry>;
-
-  test("a Forestry ride follows the road, not the stop chord", () => {
-    const forestry = JEEPNEY_ROUTES.find((route) => route.id === "forestry")!;
-    const { line, source } = resolveRouteGeometry(forestry, stored);
-    expect(source).not.toBe("stops-only");
-    const board = forestry.stops.findIndex((s) =>
-      /Health Service/.test(s.name),
-    );
-    const alight = forestry.stops.findIndex((s) => /Botanic/.test(s.name));
-    const coords = line!.coordinates as [number, number][];
-    const slice = sliceRouteLine(
-      coords,
-      forestry.stops[board]!,
-      forestry.stops[alight]!,
-    );
-    expect(slice).not.toBeNull();
-    expect(slice!.length).toBeGreaterThan(alight - board + 1);
-    let chord = 0;
-    for (let i = board; i < alight; i++) {
-      chord += distanceMeters(forestry.stops[i]!, forestry.stops[i + 1]!);
-    }
-    const road = polylineMeters(slice!);
-    expect(road).toBeGreaterThanOrEqual(chord * 0.9);
-    expect(road).toBeLessThan(chord * 2);
-  });
-});
+// The "real route geometry" suite upstream ships here needs bundled UPLB
+// route data; BulSU ships JEEPNEY_ROUTES empty until Malolos transit lands.

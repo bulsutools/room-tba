@@ -79,9 +79,10 @@ describe("MapToolsFlyout", () => {
       .getByRole("switch", { name: "Landmarks and establishments" })
       .click();
     expect(mapViewStore.showPlaces).toBe(false);
+    // This fork hides the UPLB Makiling trail (campusFeatures.trail = false).
     expect(
-      within(sheet).getByRole("switch", { name: "Makiling Trail" }),
-    ).toBeInTheDocument();
+      within(sheet).queryByRole("switch", { name: "Makiling Trail" }),
+    ).toBeNull();
   });
 
   test("My classes is off and disabled with a reason when there are no classes", async () => {

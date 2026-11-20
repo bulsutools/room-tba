@@ -3,7 +3,7 @@ import { tick } from "svelte";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import JeepneyStopPanel from "./JeepneyStopPanel.svelte";
 import { jeepneyStore, transitStore } from "@lib/store.svelte";
-import { JEEPNEY_ROUTES } from "@constants/jeepney-routes";
+import type { JeepneyRoute, JeepneyStop } from "@constants/jeepney-routes";
 import { transitStopKey } from "@lib/transit-reports";
 import {
   CROWDING_ESTIMATE_NOTE,
@@ -14,12 +14,63 @@ import {
   mountAtWidth,
 } from "@test/layout-assertions";
 
-const kaliwaKanan = JEEPNEY_ROUTES.find((r) => r.id === "kaliwa-kanan")!;
-const libraryIndex = kaliwaKanan.stops.findIndex(
-  (s) => s.name === "Main Library",
-);
+// BulSU ships no bundled routes, so the panel tests inject fixtures shaped
+// like the upstream data they were written against: a 20-stop Kaliwa/Kanan
+// loop (terminal repeated, 19 distinct places) and a SNODLOB loop sharing the
+// Main Library kerb.
+const mkStop = (name: string, lat: number, lon: number): JeepneyStop => ({
+  name,
+  description: `${name} stop.`,
+  lat,
+  lon,
+});
+
+const TERMINAL = mkStop("Olivarez Plaza Mall", 14.17903, 121.23908);
+const kaliwaStops: JeepneyStop[] = [
+  TERMINAL,
+  ...Array.from({ length: 8 }, (_, i) =>
+    mkStop(`Kanan stop ${i + 1}`, 14.181 + i * 0.001, 121.241 + i * 0.0004),
+  ),
+  mkStop("Main Library", 14.2, 121.3),
+  ...Array.from({ length: 8 }, (_, i) =>
+    mkStop(`Kaliwa stop ${i + 1}`, 14.192 + i * 0.001, 121.245 + i * 0.0004),
+  ),
+  mkStop("Carabao Park / Landbank", 14.178, 121.238),
+  TERMINAL,
+];
+
+const kaliwaKanan: JeepneyRoute = {
+  id: "kaliwa-kanan",
+  name: "Kaliwa / Kanan",
+  description: "Campus jeep loop.",
+  color: "#000000",
+  fare: { regular: 15, discounted: 12 },
+  stops: kaliwaStops,
+};
+
+const SNODLOB_TERMINAL = mkStop("SNODLOB Terminal", 14.17, 121.24);
+const snodlob: JeepneyRoute = {
+  id: "snodlob",
+  name: "SNODLOB e-jeep",
+  description: "Campus loop.",
+  color: "#000000",
+  fare: { regular: 15, discounted: 12 },
+  stops: [
+    SNODLOB_TERMINAL,
+    mkStop("College Junction", 14.19, 121.26),
+    mkStop("UPLB Main Library", 14.2, 121.3),
+    SNODLOB_TERMINAL,
+  ],
+};
+
+const libraryIndex = kaliwaStops.findIndex((s) => s.name === "Main Library");
+
+beforeEach(() => {
+  transitStore.routes = [kaliwaKanan, snodlob];
+});
 
 afterEach(() => {
+  transitStore.routes = [];
   transitStore.setReversed("kaliwa-kanan", false);
   jeepneyStore.clearRoute();
 });
@@ -247,11 +298,10 @@ describe("JeepneyStopPanel jeep reports", () => {
   });
 
   test("three full reports make the stop read busy", async () => {
-    const snodlob = JEEPNEY_ROUTES.find((r) => r.id === "snodlob")!;
     stubApi({
       reports: [3, 8, 12].map((minutesAgo) => ({
         routeId: "snodlob",
-        stopKey: transitStopKey(snodlob.stops[0]!),
+        stopKey: transitStopKey(snodlob.stops[2]!),
         direction: null,
         full: true,
         at: at(minutesAgo),

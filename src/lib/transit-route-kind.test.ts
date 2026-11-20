@@ -10,10 +10,10 @@ import {
 } from "./transit-route-kind";
 
 describe("transitRouteKind", () => {
-  test("bundled routes are campus jeeps", () => {
-    expect(transitRouteKind({ id: "forestry", name: "Forestry" })).toBe(
-      "campus",
-    );
+  test("no bundled routes ship on this fork, so nothing classifies as campus", () => {
+    // Upstream's campus-jeep ids (forestry, kaliwa-kanan, …) only classify as
+    // "campus" while they exist in JEEPNEY_ROUTES; BulSU ships that list empty.
+    expect(transitRouteKind({ id: "forestry", name: "Forestry" })).toBe("town");
   });
 
   test("DLTB and provincial buses are buses", () => {
@@ -90,16 +90,15 @@ describe("isLoopRoute", () => {
 });
 
 describe("routeFareInfo", () => {
-  test("campus jeeps quote the verified flat fare", () => {
+  test("upstream campus-jeep ids behave as unverified town jeeps while routes are empty", () => {
+    // "campus" kind comes from JEEPNEY_ROUTES membership; with the list empty,
+    // ids like kaliwa-kanan only get the town-jeep minimum, never a flat fare.
     const info = routeFareInfo({ id: "kaliwa-kanan", name: "Kaliwa / Kanan" });
     expect(info).toMatchObject({
-      kind: "fixed",
-      fare: { regular: 14, discounted: 12 },
+      kind: "distance",
+      minimum: { regular: 14, discounted: 12 },
     });
-    expect(perBoardingFare({ id: "forestry", name: "Forestry" })).toEqual({
-      regular: 14,
-      discounted: 12,
-    });
+    expect(perBoardingFare({ id: "forestry", name: "Forestry" })).toBeNull();
   });
 
   test("Calamba quotes the whole-route fare and the minimum for shorter rides", () => {
@@ -118,13 +117,10 @@ describe("routeFareInfo", () => {
     ).toBeNull();
   });
 
-  test("the SNODLOB e-jeep has the verified campus fare", () => {
+  test("the SNODLOB e-jeep id gets only the town-jeep minimum", () => {
     const route = { id: "snodlob", name: "UPLB Loop (SNODLOB e-jeep)" };
-    expect(routeFareInfo(route)).toMatchObject({
-      kind: "fixed",
-      fare: { regular: 14, discounted: 12 },
-    });
-    expect(perBoardingFare(route)).toEqual({ regular: 14, discounted: 12 });
+    expect(routeFareInfo(route).kind).toBe("distance");
+    expect(perBoardingFare(route)).toBeNull();
   });
 
   test("other town jeeps give only the minimum", () => {

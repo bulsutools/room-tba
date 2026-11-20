@@ -1,4 +1,13 @@
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+// This fork ships campusTerrain.enabled = false; the store tests exercise the
+// terrain state machine itself, so force the flag on for this file only.
+vi.mock("@constants/map-terrain", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@constants/map-terrain")>();
+  return { ...actual, TERRAIN_ENABLED: true };
+});
+
 import {
   Building3DStore,
   MapToolsStore,

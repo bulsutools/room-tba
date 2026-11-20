@@ -97,7 +97,12 @@ export type RouteFareInfo =
   | { kind: "ticketed"; ticketing: RouteTicketing }
   | { kind: "unverified"; note: string };
 
-const CAMPUS_FARE = JEEPNEY_ROUTES[0]!.fare;
+// BulSU ships no bundled routes yet, so fall back to the campus fare constant
+// the fork used before upstream's fare metadata landed.
+const CAMPUS_FARE: JeepneyFare = JEEPNEY_ROUTES[0]?.fare ?? {
+  regular: 15,
+  discounted: 12,
+};
 
 /** Campus jeeps whose ₱14 / ₱12 fare was confirmed (FARES_VERIFIED_ON). */
 const VERIFIED_CAMPUS_FARE_IDS = new Set([
