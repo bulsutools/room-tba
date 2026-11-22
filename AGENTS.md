@@ -26,6 +26,7 @@ Read the right doc for the task; do not rely on this file alone for detailed che
 | Drizzle, API routes, migrations, PGlite           | [.cursor/rules/data-and-migrations.mdc](.cursor/rules/data-and-migrations.mdc)                                                                 |
 | Bulk / direct-database edits, audit trail         | [docs/bulk-data-history.md](docs/bulk-data-history.md)                                                                                          |
 | Stores and client state                           | [.cursor/rules/svelte-stores.mdc](.cursor/rules/svelte-stores.mdc)                                                                             |
+| Campus fork config, profile JSON spike            | [docs/campus-profile-spike.md](docs/campus-profile-spike.md) + [docs/fork-data-guide.md](docs/fork-data-guide.md)                               |
 | PR QA evidence and reporting                      | [docs/agentic-qa-process.md](docs/agentic-qa-process.md)                                                                                       |
 | **Tests for an issue / test backlog**             | [docs/issue-test-matrix.md](docs/issue-test-matrix.md) + [docs/testing.md](docs/testing.md) + [docs/test-inventory.md](docs/test-inventory.md) |
 | Editor manual checklist                           | [docs/editor-foundation-test-plan.md](docs/editor-foundation-test-plan.md)                                                                     |
