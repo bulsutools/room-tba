@@ -7,6 +7,7 @@
     searchLocalRooms,
   } from "@lib/local/data/utils";
   import { buildEntitySuggestions } from "@lib/search-suggestions";
+  import { FACILITY_RECORDS } from "@lib/facility-status";
   import {
     queryStore,
     buildingTypeFilter,
@@ -59,6 +60,7 @@
       events,
       organizations,
       places,
+      facilityRecords: FACILITY_RECORDS,
     }),
   );
 

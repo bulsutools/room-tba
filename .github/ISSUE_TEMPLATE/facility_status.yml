@@ -1,0 +1,93 @@
+name: Facility status report
+description: Report restroom (CR), computer lab, clinic, or canteen status for the facility index
+title: "[FACILITY] "
+labels:
+  - data
+body:
+  - type: markdown
+    value: |
+      **No pull request required.** Reports feed `data/facility-status.json` in the repo; a maintainer reviews and merges verified rows.
+
+      Only report what you checked yourself. Include how you verified (walked there, asked staff, counted units) and when.
+  - type: dropdown
+    id: facility_type
+    attributes:
+      label: Facility type
+      options:
+        - Restroom (CR)
+        - Computer lab
+        - Clinic
+        - Canteen
+    validations:
+      required: true
+  - type: input
+    id: building
+    attributes:
+      label: Building
+      description: Building name as shown on the map, e.g. COE Building 2, ICS
+      placeholder: COE Building 2
+    validations:
+      required: true
+  - type: input
+    id: floor
+    attributes:
+      label: Floor (restroom) or room (lab / clinic / canteen)
+      description: e.g. 3 for a restroom, IC LAB 1 for a lab. Leave blank if unsure.
+  - type: input
+    id: room
+    attributes:
+      label: Room or CR label (optional)
+      description: e.g. CR FB, CR near elevator. Leave blank if unsure.
+  - type: textarea
+    id: restroom_attrs
+    attributes:
+      label: Restroom attributes (restroom reports only)
+      description: |
+        One per line, e.g.:
+        audience: male | female | all-gender
+        pwd_accessible: yes | no
+        bidet: yes | no | unknown
+        flush_working: yes | no | unknown
+        pail_dipper: yes | no | unknown
+        water_available: yes | no | unknown
+        cleanliness: 1-5
+      render: text
+  - type: input
+    id: lab_units
+    attributes:
+      label: Computer lab units (lab reports only)
+      description: e.g. "30 total, 12 free". Leave blank for other types.
+  - type: input
+    id: clinic_wait
+    attributes:
+      label: Clinic wait estimate (clinic reports only)
+      description: Estimated queue wait in minutes, e.g. 20. Leave blank for other types.
+  - type: dropdown
+    id: canteen_crowd
+    attributes:
+      label: Canteen crowd level (canteen reports only)
+      options:
+        - Not applicable
+        - Quiet
+        - Moderate
+        - Busy
+    validations:
+      required: true
+  - type: input
+    id: verified_at
+    attributes:
+      label: Date checked
+      description: YYYY-MM-DD, e.g. 2026-06-01
+      placeholder: 2026-06-01
+    validations:
+      required: true
+  - type: input
+    id: verified_by
+    attributes:
+      label: Your name or initials (optional)
+      description: Shown as "checked by" in the app. Leave blank to stay anonymous.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes (optional)
+      description: One factual line, e.g. "third stall sink clogged". No reviews.
