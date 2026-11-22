@@ -189,7 +189,7 @@
   <details class="acal-about">
     <summary>May differ from the official BulSU academic calendar</summary>
     <p class="acal-note" role="note">
-      Term windows are community-maintained per CRS term. The dated rows below
+      Term windows are community-maintained per term. The dated rows below
       are read from the Office of the University Registrar's published
       calendar. Verify anything you're relying on with the Registrar.
     </p>
@@ -321,7 +321,7 @@
               >
             </summary>
             <p class="acal-card__meta">
-              <span>CRS {card.term.id}</span>
+              <span>Term {card.term.id}</span>
               {#if card.window}
                 <span>{formatTermDateRange(card.window)}</span>
               {/if}

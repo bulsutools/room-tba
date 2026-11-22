@@ -22,8 +22,6 @@ const WIKI_SOURCES = [
   "src/components/wiki/WikiProvenance.astro",
   "src/components/SiteFooter.astro",
   "src/components/SponsorStrip.astro",
-  "src/constants/emergency-hotlines.ts",
-  "src/constants/campus-curfew.ts",
   "src/lib/wiki-pages.ts",
 ];
 
@@ -61,10 +59,8 @@ describe("sitemap", () => {
     expect(sitemap).not.toMatch(/"\/wiki\//);
     for (const path of [
       "/wiki",
-      "/wiki/emergency-hotlines",
-      "/wiki/campus-curfew",
-      "/wiki/glossary",
-      "/wiki/jeepney-guide",
+      "/wiki/using-room-tba",
+      "/wiki/fork-for-your-campus",
     ]) {
       expect(WIKI_PATHS).toContain(path);
     }
@@ -172,12 +168,12 @@ describe("fork guide file references", () => {
 describe("correction link", () => {
   test("opens a prefilled GitHub issue naming the page", () => {
     const url = new URL(
-      wikiCorrectionUrl("Campus curfew", "/wiki/campus-curfew"),
+      wikiCorrectionUrl("Using Room TBA", "/wiki/using-room-tba"),
     );
     expect(url.pathname.endsWith("/issues/new")).toBe(true);
     expect(url.searchParams.get("title")).toBe(
-      "Wiki correction: Campus curfew",
+      "Wiki correction: Using Room TBA",
     );
-    expect(url.searchParams.get("body")).toContain("/wiki/campus-curfew");
+    expect(url.searchParams.get("body")).toContain("/wiki/using-room-tba");
   });
 });

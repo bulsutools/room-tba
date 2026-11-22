@@ -333,7 +333,7 @@ export function createEntityUrlSync(context: EntityUrlSyncContext) {
           termStore.defaultTermId,
         )
       : pathname;
-    // Keep URL-borne map state (?q=, ?dir=, ?browse=, ?layers=, ?trail=,
+    // Keep URL-borne map state (?q=, ?dir=, ?browse=, ?layers=,
     // #map=) for Entry and the map to restore; dropping it here made those
     // links open bare.
     const appState = new URLSearchParams(window.location.search);
@@ -343,7 +343,6 @@ export function createEntityUrlSync(context: EntityUrlSyncContext) {
       browse: appState.get("browse"),
       mode: appState.get("mode"),
       layers: appState.get("layers"),
-      trail: appState.get("trail"),
     })}${window.location.hash}`;
 
     window.history.replaceState(initialState, "", initialPath);

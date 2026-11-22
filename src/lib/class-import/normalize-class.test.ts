@@ -2,9 +2,9 @@ import { describe, expect, it } from "bun:test";
 import {
   extractClassRows,
   normalizeAmisClass,
-} from "@lib/amis/normalize-class";
+} from "@lib/class-import/normalize-class";
 
-describe("amis normalize", () => {
+describe("normalize class rows", () => {
   it("unwraps nested classes.data payloads", () => {
     const rows = extractClassRows({
       classes: {
@@ -100,14 +100,14 @@ describe("amis normalize", () => {
     expect(rows).toHaveLength(2);
   });
 
-  it("maps legacy AMIS export rows", () => {
+  it("maps legacy export rows", () => {
     const normalized = normalizeAmisClass(
       {
         course_code: "HK 12",
         section: "AB",
         type: "LEC",
         activity: "Dance",
-        facility_id: "PSLH A",
+        facility_id: "LH A",
         term_id: 1252,
         course: { title: "Physical Education" },
         class_dates: [
@@ -128,7 +128,7 @@ describe("amis normalize", () => {
       courseTitle: "Physical Education (Dance)",
       schedule: ["MW 07:00AM-08:00AM"],
       termId: 1252,
-      facilityCode: "PSLH A",
+      facilityCode: "LH A",
       acadGroup: null,
       acadOrg: null,
     });
@@ -149,7 +149,7 @@ describe("amis normalize", () => {
     expect(normalized?.acadOrg).toBe("LBICS");
   });
 
-  it("builds schedule from top-level date/time when class_dates is empty (CRS 1231)", () => {
+  it("builds schedule from top-level date/time when class_dates is empty (term 1231)", () => {
     const normalized = normalizeAmisClass(
       {
         course_code: "AAE 10",

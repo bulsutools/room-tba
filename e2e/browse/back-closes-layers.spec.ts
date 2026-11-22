@@ -47,13 +47,13 @@ test.describe("Back closes layers", () => {
     page,
   }) => {
     const menu = await openAppMenu(page);
-    await menu.getByRole("button", { name: "Emergency hotlines" }).click();
-    const hotlines = page.getByRole("dialog", { name: "Emergency hotlines" });
-    await expect(hotlines).toBeVisible();
+    await menu.getByRole("button", { name: "Announcements" }).click();
+    const announcements = page.getByRole("dialog", { name: "Announcements" });
+    await expect(announcements).toBeVisible();
     await expect(menu).toBeHidden();
 
     await page.goBack();
-    await expect(hotlines).toBeHidden();
+    await expect(announcements).toBeHidden();
     await expectInApp(page);
     // The sheet's own entry went with it: nothing is left to reopen.
     await expect(menu).toBeHidden();
@@ -62,19 +62,19 @@ test.describe("Back closes layers", () => {
   test("closing a modal from its X leaves no entry for Back to land on", async ({
     page,
   }) => {
-    const openHotlines = async () => {
+    const openAnnouncements = async () => {
       const menu = await openAppMenu(page);
-      await menu.getByRole("button", { name: "Emergency hotlines" }).click();
-      const dialog = page.getByRole("dialog", { name: "Emergency hotlines" });
+      await menu.getByRole("button", { name: "Announcements" }).click();
+      const dialog = page.getByRole("dialog", { name: "Announcements" });
       await expect(dialog).toBeVisible();
       return dialog;
     };
-    const hotlines = await openHotlines();
+    const announcements = await openAnnouncements();
     await page.keyboard.press("Escape");
-    await expect(hotlines).toBeHidden();
+    await expect(announcements).toBeHidden();
     const length = await page.evaluate(() => history.length);
 
-    await openHotlines();
+    await openAnnouncements();
     // Reopening reuses the freed slot instead of stacking past it.
     expect(await page.evaluate(() => history.length)).toBe(length);
   });

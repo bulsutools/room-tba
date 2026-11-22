@@ -2,14 +2,11 @@ import { describe, expect, test } from "bun:test";
 import {
   carryLayersParam,
   formatDirectionsParam,
-  formatLayersParam,
   formatMapHash,
   isUnknownAppPath,
   parseBrowseParam,
   parseDirectionsParam,
-  parseLayersParam,
   parseMapHash,
-  parseTrailParam,
   readAppState,
   stripOverlayParams,
   withAppState,
@@ -130,16 +127,12 @@ test("readAppState decodes what the app writes", () => {
     browse: "dorms",
     dir: { from: { kind: "me" }, to: { kind: "slug", slug: "psb" } },
     mode: null,
-    layers: [],
-    trail: null,
   });
   expect(readAppState("?browse=nope")).toEqual({
     q: null,
     browse: null,
     dir: null,
     mode: null,
-    layers: [],
-    trail: null,
   });
 });
 
@@ -174,41 +167,9 @@ describe("isUnknownAppPath", () => {
   });
 });
 
-describe("trail params", () => {
-  test("?layers= keeps known layers only", () => {
-    expect(parseLayersParam("trail")).toEqual(["trail"]);
-    expect(parseLayersParam("trail,bogus")).toEqual(["trail"]);
-    expect(parseLayersParam(null)).toEqual([]);
-    expect(formatLayersParam(["trail", "trail"])).toBe("trail");
-    expect(formatLayersParam([])).toBeNull();
-  });
-
-  test("?trail= takes a slug", () => {
-    expect(parseTrailParam("agila-base")).toBe("agila-base");
-    expect(parseTrailParam("overview")).toBe("overview");
-    expect(parseTrailParam("<script>")).toBeNull();
-    expect(parseTrailParam(null)).toBeNull();
-  });
-
-  test("readAppState reads both", () => {
-    const state = readAppState("?layers=trail&trail=station-13");
-    expect(state.layers).toEqual(["trail"]);
-    expect(state.trail).toBe("station-13");
-  });
-
-  test("withAppState writes and clears them", () => {
-    expect(withAppState("/#map=1/2/3", { layers: "trail" })).toBe(
-      "/?layers=trail#map=1/2/3",
-    );
-    expect(withAppState("/?layers=trail&trail=overview", { trail: null })).toBe(
-      "/?layers=trail",
-    );
-  });
-
-  test("layers and the trail sheet ride on top of any page", () => {
-    expect(stripOverlayParams("?layers=trail&trail=overview&term=5")).toBe(
-      "?term=5",
-    );
+describe("layers param", () => {
+  test("layers ride on top of any page", () => {
+    expect(stripOverlayParams("?layers=events&term=5")).toBe("?term=5");
   });
 
   test("carryLayersParam follows the rider between pages", () => {

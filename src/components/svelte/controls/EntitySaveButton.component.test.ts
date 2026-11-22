@@ -5,9 +5,9 @@ import { recentPlaces, savedPlaces } from "@lib/saved-places.svelte";
 
 const place = {
   category: "dorm",
-  value: "Makiling Residence Hall",
-  label: "Makiling Residence Hall",
-  subtitle: "UP-managed dorm",
+  value: "Riverside Residence Hall",
+  label: "Riverside Residence Hall",
+  subtitle: "Campus-managed dorm",
   lat: 14.16,
   lon: 121.24,
 } as const;
@@ -22,7 +22,7 @@ describe("EntitySaveButton", () => {
   test("toggles Save / Saved with aria-pressed", async () => {
     render(EntitySaveButton, { props: { place } });
     const btn = screen.getByRole("button", {
-      name: "Save Makiling Residence Hall",
+      name: "Save Riverside Residence Hall",
     });
     expect(btn).toHaveAttribute("aria-pressed", "false");
     expect(btn).toHaveTextContent("Save");
@@ -30,7 +30,7 @@ describe("EntitySaveButton", () => {
     await fireEvent.click(btn);
     expect(btn).toHaveAttribute("aria-pressed", "true");
     expect(btn).toHaveTextContent("Saved");
-    expect(btn).toHaveAccessibleName("Saved Makiling Residence Hall");
+    expect(btn).toHaveAccessibleName("Saved Riverside Residence Hall");
     expect(savedPlaces.has("dorm", place.value)).toBe(true);
 
     await fireEvent.click(btn);

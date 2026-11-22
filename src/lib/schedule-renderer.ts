@@ -347,13 +347,13 @@ const courseColors = [
   "#B71C1C",
 ] as const;
 
-/** Map an AMIS day string ("MWF", "TTh", …) to indices 0-5 (M-S). */
+/** Map a registrar day string ("MWF", "TTh", …) to indices 0-5 (M-S). */
 export function parseDays(dayStr: string): number[] {
   const dayMap: { [key: string]: number } = { M: 0, T: 1, W: 2, F: 4, S: 5 };
   const indices: number[] = [];
 
   // Strip the Thursday token first so its T/H aren't mis-read as Tuesday.
-  // AMIS/DB data mixes casing — seed uses "Th", production uses "TH".
+  // Import/DB data mixes casing — seed uses "Th", production uses "TH".
   const str = dayStr.replace(/th/gi, () => {
     indices.push(3);
     return "";

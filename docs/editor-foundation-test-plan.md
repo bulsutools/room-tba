@@ -23,12 +23,12 @@ Use this checklist before merging the in-app editor foundation PR.
 
 ## Terrain Mode
 
-- The Makiling terrain control is reachable inside the Map tools flyout.
+- The terrain control is reachable inside the Map tools flyout when terrain is enabled.
 - Terrain mode is off by default and does not request hosted elevation tiles before it is enabled.
-- Enabling terrain loads the hosted DEM layer, expands the map bounds toward Mt. Makiling, and moves to the Makiling terrain view.
+- Enabling terrain loads the hosted DEM layer, expands the map bounds toward the configured camera area, and moves to the terrain view.
 - Turning terrain off restores the flat campus map bounds and leaves building, dorm, jeepney, and location markers usable.
 - Exaggeration controls update the terrain without clearing the current search or route state.
-- Reset view returns to the Makiling terrain camera without clearing the current search.
+- Reset view returns to the terrain camera without clearing the current search.
 - Offline mode shows terrain as unavailable and keeps the flat map usable.
 - Failed or blocked terrain tile requests do not leave the control implying terrain is active.
 - MapTiler attribution/logo remains visible when terrain is active.

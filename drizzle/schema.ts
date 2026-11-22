@@ -51,7 +51,7 @@ export const editProposalStatusEnum = pgEnum("edit_proposal_status", [
   "withdrawn",
 ]);
 
-// Academic terms. `id` mirrors the CRS/SAIS term_id (e.g. 1252) rather than
+// Academic terms. `id` mirrors the registrar term_id (e.g. 1252) rather than
 // being auto-generated, so it matches the `term_id` already stored on classes.
 export const termsTable = pgTable(
   "terms",
@@ -285,7 +285,7 @@ export const classesTable = pgTable(
     roomId: integer("room_id"),
     courseTitle: text("course_title"),
     termId: integer("term_id"),
-    // AMIS college + department codes (#846), e.g. "CAS" / "LBICS". Decode
+    // College + department codes (#846), e.g. "CAS" / "LBICS". Decode
     // table: data/acad-orgs.json.
     acadGroup: varchar("acad_group", { length: 8 }),
     acadOrg: varchar("acad_org", { length: 16 }),
@@ -805,7 +805,7 @@ export const eventRouteStopsTable = pgTable(
   ],
 );
 
-// Search aliases / synonyms (e.g. "PhySci" -> Physical Sciences Building),
+// Search aliases / synonyms (e.g. "SciHall" -> Science Hall Building),
 // including retired names. Seeded from public/room_info.json (#155).
 export const aliasesTable = pgTable(
   "aliases",

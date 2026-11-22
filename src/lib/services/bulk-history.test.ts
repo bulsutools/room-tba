@@ -56,9 +56,9 @@ describe("toHistoryRow", () => {
   });
 
   it("keeps an explicit action and actor", () => {
-    const row = toHistoryRow({ ...op, action: "merge" }, "import-amis");
+    const row = toHistoryRow({ ...op, action: "merge" }, "import-classes");
     expect(row.action).toBe("merge");
-    expect(row.editedBy).toBe("import-amis");
+    expect(row.editedBy).toBe("import-classes");
   });
 
   it("rejects input that would violate the editor_history columns", () => {

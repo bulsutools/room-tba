@@ -243,6 +243,6 @@ ${mdList(inv.e2eStaging)}
 
 ## Manual only (not in this list)
 
-Subjective UX, AMIS live \`--fetch\`, prod data spot-checks — [testing.md § Manual only](testing.md#manual-only).
+Subjective UX, registrar live fetches, prod data spot-checks — [testing.md § Manual only](testing.md#manual-only).
 `;
 }

@@ -5,7 +5,6 @@ import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm?module";
 import satori, { init as initSatori } from "satori/standalone";
 import yogaWasm from "satori/yoga.wasm?module";
 import ogFontDataUrl from "../assets/og-font.woff?inline";
-import bgImageDataUrl from "../assets/uplb-bg-og.jpg?inline";
 import logoImageDataUrl from "../assets/logo.png?inline";
 
 export const prerender = false;
@@ -113,7 +112,6 @@ export const GET: APIRoute = async ({ url, request }) => {
   const subtitle = clamp(url.searchParams.get("s"), 96);
   const kicker = clamp(url.searchParams.get("k"), 40);
 
-  const bgImage = bgImageDataUrl;
   const logoImage = logoImageDataUrl;
 
   const card = h(
@@ -129,14 +127,13 @@ export const GET: APIRoute = async ({ url, request }) => {
         fontFamily: "Inter",
       },
     },
-    h("img", {
-      src: bgImage,
-      width: WIDTH,
-      height: HEIGHT,
+    // Solid brand field: the old card used an upstream campus photo, which does
+    // not belong on BulSU share images.
+    h("div", {
       style: {
         position: "absolute",
         inset: 0,
-        objectFit: "cover",
+        backgroundColor: "#33100d",
       },
     }),
     // Flat tint, not a bottom-weighted gradient scrim: Satori does not

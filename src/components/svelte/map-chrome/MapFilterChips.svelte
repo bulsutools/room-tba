@@ -10,7 +10,6 @@
   import BookText from "@lucide/svelte/icons/book-text";
   import GraduationCap from "@lucide/svelte/icons/graduation-cap";
   import MapPin from "@lucide/svelte/icons/map-pin";
-  import Phone from "@lucide/svelte/icons/phone";
   import University from "@lucide/svelte/icons/university";
   import Users from "@lucide/svelte/icons/users";
   import { onMount } from "svelte";
@@ -34,9 +33,9 @@
   import eventIcon from "../../../assets/icons/event.svg?url";
 
   /** Top-row chips from the map chrome design. The row is full (AGENTS.md:
-   * past ~5 chips it clips), so Colleges, Student orgs, Classes and Emergency
-   * live in the More menu. Emergency opens the hotlines, not a list. */
-  type ChipId = CampusBrowseTab | "events" | "classes" | "emergency";
+   * past ~5 chips it clips), so Colleges, Student orgs and Classes
+   * live in the More menu. */
+  type ChipId = CampusBrowseTab | "events" | "classes";
 
   type Chip =
     | { id: ChipId; label: string; iconUrl: string }
@@ -69,7 +68,6 @@
     { id: "classes", label: "Classes", LucideIcon: BookText },
     { id: "divisions", label: "Divisions", LucideIcon: GraduationCap },
     { id: "offices", label: "Units and offices", iconUrl: unitsOfficesIcon },
-    { id: "emergency", label: "Emergency", LucideIcon: Phone },
   ];
 
   let moreOpen = $state(false);
@@ -188,10 +186,6 @@
   function handleChip(chip: Chip) {
     const { id, label } = chip;
     moreOpen = false;
-    if (id === "emergency") {
-      modalStore.openModal("hotlines");
-      return;
-    }
     jeepneyStore.closeStop();
     if (id === "classes") {
       openBrowseClasses(queryStore, sidePanelStore);

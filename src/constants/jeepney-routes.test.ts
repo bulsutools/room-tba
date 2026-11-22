@@ -119,7 +119,8 @@ describe("resolveRouteGeometry", () => {
 describe("jeepney-geometries.json", () => {
   test("every entry declares a source and a drawable line", () => {
     const entries = Object.entries(stored);
-    expect(entries.length).toBeGreaterThan(0);
+    // This fork ships no transit geometry yet; the check still guards any
+    // entries a future campus adds.
     for (const [id, entry] of entries) {
       expect(["osm-relation", "routed"], id).toContain(entry.source);
       // Provenance is the point of this file; an entry without it is unauditable.
@@ -127,7 +128,7 @@ describe("jeepney-geometries.json", () => {
       expect(entry.geometry.type, id).toBe("LineString");
       expect(entry.geometry.coordinates.length, id).toBeGreaterThan(1);
       for (const [lon, lat] of entry.geometry.coordinates) {
-        // GeoJSON is lon-first; a swapped pair would put UPLB in Somalia.
+        // GeoJSON is lon-first; a swapped pair would put the campus in Somalia.
         expect(lon, id).toBeGreaterThan(100);
         expect(lat, id).toBeLessThan(90);
       }

@@ -6,7 +6,7 @@
  * sheet, a filter set in Layers), the active-overlays chip bar lists it with an
  * X, and Back / Escape clears the most recent one first.
  *
- * Persistent preferences (map type, terrain, Makiling trail, camera HUD) are
+ * Persistent preferences (map type, terrain, overlay layers, camera HUD) are
  * not overlays and never register here.
  */
 

@@ -24,7 +24,7 @@ import {
 } from "./transit-reports";
 
 const MIN = 60_000;
-const NOW = Date.UTC(2026, 9, 8, 2, 0); // 10:00 AM in Los Baños
+const NOW = Date.UTC(2026, 9, 8, 2, 0); // 10:00 AM in Malolos
 const ago = (minutes: number) => NOW - minutes * MIN;
 
 const LIBRARY = { name: "Main Library", lat: 14.16523, lon: 121.24138 };

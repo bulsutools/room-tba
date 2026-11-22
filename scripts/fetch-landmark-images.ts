@@ -128,12 +128,10 @@ async function commonsQuery(params: Record<string, string>) {
 /**
  * Hand-picked Commons files, by manifest key, for places whose good photos
  * carry no location tag, so the geosearch below never finds them. A name
- * search is not safe instead: "UPLB Oblation" also matches Oblation Run
- * photos. Each file here was checked by hand.
+ * search is not safe instead: generic names match unrelated photos. Each
+ * file here was checked by hand.
  */
-const PINNED_COMMONS: Record<string, string[]> = {
-  "place:UPLB Oblation (Oblation Park)": ["File:UPLB Oblation Statue.jpg"],
-};
+const PINNED_COMMONS: Record<string, string[]> = {};
 
 async function commonsImagesFor(target: Target): Promise<CommonsImage[]> {
   const pinnedTitles = PINNED_COMMONS[`${target.kind}:${target.name}`] ?? [];

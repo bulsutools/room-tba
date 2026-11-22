@@ -6,7 +6,7 @@ import {
   crowdingHint,
 } from "./transit-crowding";
 
-/** Epoch ms for a Los Baños wall-clock time (UTC+8, no DST). */
+/** Epoch ms for a Malolos wall-clock time (UTC+8, no DST). */
 const manila = (day: number, hour: number, minute = 0) =>
   Date.UTC(2026, 9, day, hour - 8, minute);
 
@@ -20,7 +20,7 @@ const BREAK = { startsOn: "2026-01-19", endsOn: "2026-05-29" };
 describe("campusClock", () => {
   test("reads campus time whatever the device zone", () => {
     expect(campusClock(manila(THU, 10, 5))).toEqual({ day: 3, minute: 605 });
-    // 11:30 PM Thursday in Los Baños is still Thursday, though UTC says 15:30.
+    // 11:30 PM Thursday in Malolos is still Thursday, though UTC says 15:30.
     expect(campusClock(manila(THU, 23, 30))).toEqual({ day: 3, minute: 1410 });
     expect(campusClock(manila(SUN, 0, 10)).day).toBe(6);
   });

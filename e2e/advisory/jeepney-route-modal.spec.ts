@@ -1,9 +1,15 @@
 import { test, expect } from "@playwright/test";
+import { campusTransit } from "../../src/campus.config";
 import { waitForAppBoot } from "../helpers/app";
 import { openCampusDirectory } from "../helpers/map-tools";
 
 // Advisory (non-blocking): exercises the jeepney transit surface end to end.
-test.describe("jeepney route details @advisory", () => {
+// Campus transit is disabled on this fork.
+const describeTransit = campusTransit.enabled
+  ? test.describe
+  : test.describe.skip;
+
+describeTransit("jeepney route details @advisory", () => {
   test("opens the transit browse panel and a route details modal", async ({
     page,
   }) => {

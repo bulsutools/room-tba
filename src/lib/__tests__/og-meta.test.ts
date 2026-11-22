@@ -27,10 +27,10 @@ describe("OG meta helpers", () => {
 
   it("ogCardPath omits empty subtitle and kicker", () => {
     const params = new URL(
-      ogCardPath({ title: "PhySci" }),
+      ogCardPath({ title: "SciHall" }),
       "https://example.test",
     ).searchParams;
-    expect(params.get("t")).toBe("PhySci");
+    expect(params.get("t")).toBe("SciHall");
     expect(params.has("s")).toBe(false);
     expect(params.has("k")).toBe(false);
   });

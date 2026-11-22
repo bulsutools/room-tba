@@ -54,7 +54,7 @@ export function classNaturalKey(row: {
   ].join("|");
 }
 
-// AMIS/registrar venues are free-typed strings, so exact keys miss spacing,
+// Registrar venues are free-typed strings, so exact keys miss spacing,
 // abbreviation, and punctuation variants ("IBSLH 2" vs "IBSLH2", "CHE CONF RM"
 // vs "CHE Conference Room"). Fuzzy tiers below recover those; truly irregular
 // names persist as rows in the aliases table (targetType='room').
@@ -190,7 +190,7 @@ export function matchRoomId(
       if (viaSquash != null) return { roomId: viaSquash, kind: "fuzzy" };
     }
   }
-  // AMIS truncates facility ids to 10 chars ("ASILH B-12" = ASILH B-125).
+  // Some exports truncate facility ids to 10 chars ("ASILH B-12" = ASILH B-125).
   // Accept only a unique squashed-prefix completion.
   if (facility.trim().length >= 9) {
     const truncated = squashFacilityKey(normalizeFacilityKey(facility));
@@ -369,7 +369,7 @@ export function summarizeImportChanges(input: {
 
     // acad fields compare only when the importer carries them (undefined =
     // source has no such column, e.g. a generic file without acad_org) so a
-    // rerun neither clobbers nor spuriously "updates" AMIS-imported codes.
+    // rerun neither clobbers nor spuriously "updates" imported codes.
     const changed =
       existing.courseCode !== row.courseCode ||
       existing.section !== row.section ||
@@ -420,7 +420,7 @@ export function formatImportReport(input: {
   unmatched: Map<string, number>;
 }) {
   const lines: string[] = [
-    `AMIS import summary (term_id=${input.termId})`,
+    `Class import summary (term_id=${input.termId})`,
     `  Raw rows: ${input.rawCount}`,
     `  Normalized: ${input.normalizedCount}`,
     `  Room matches: ${input.stats.directRoomMatch} direct, ${input.stats.aliasRoomMatch} via alias, ${input.stats.fuzzyRoomMatch} fuzzy`,

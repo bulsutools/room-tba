@@ -25,7 +25,6 @@
   import Home from "@lucide/svelte/icons/home";
   import MapPin from "@lucide/svelte/icons/map-pin";
   import Plus from "@lucide/svelte/icons/plus";
-  import Route from "@lucide/svelte/icons/route";
   import School from "@lucide/svelte/icons/school";
   import University from "@lucide/svelte/icons/university";
   import Users from "@lucide/svelte/icons/users";
@@ -43,7 +42,6 @@
     roomCode,
     lat = null,
     lon = null,
-    trailStopId = null,
   }: {
     value: string;
     category: SuggestionCategory;
@@ -58,8 +56,6 @@
     roomCode?: string | null;
     lat?: number | null;
     lon?: number | null;
-    /** Trail rows: the stop to open (null = the whole trail). */
-    trailStopId?: string | null;
   } = $props();
 
   const stopLat = $derived(lat ?? building?.lat ?? null);
@@ -92,7 +88,6 @@
       lon: stopLon,
       courseCode,
       roomCode,
-      trailStopId,
     });
   }
 
@@ -193,8 +188,6 @@
       <Users size={20} />
     {:else if type === "place"}
       <MapPin size={20} />
-    {:else if type === "trail"}
-      <Route size={20} />
     {:else}
       <MapPin size={20} />
     {/if}

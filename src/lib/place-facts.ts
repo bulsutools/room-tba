@@ -5,21 +5,18 @@
 import { parseDays, parseScheduleTime } from "./schedule-renderer";
 
 /**
- * Campus shorthand that first-time visitors do not know. The data keeps the
- * volunteers' wording ("left of OPark when facing the Oblation"), so the
- * sheet spells it out when it prints it.
+ * Campus shorthand that first-time visitors do not know. Upstream
+ * abbreviations were removed with the upstream data; add BulSU
+ * shorthand here if volunteers start using any.
  */
-const ABBREVIATIONS: readonly [RegExp, string][] = [
-  [/\bOPark\b/g, "Oblation Park"],
-  [/\bOble\b/g, "the Oblation"],
-];
+const ABBREVIATIONS: readonly [RegExp, string][] = [];
 
 export function expandCampusAbbreviations(text: string): string {
   let out = text;
   for (const [pattern, replacement] of ABBREVIATIONS) {
     out = out.replace(pattern, replacement);
   }
-  // "of the the Oblation" when the source already said "the Oble".
+  // Collapse a doubled article a replacement could leave behind.
   return out.replace(/\bthe the\b/gi, "the");
 }
 

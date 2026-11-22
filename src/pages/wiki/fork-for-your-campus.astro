@@ -7,7 +7,7 @@ import { APP_VERSION_LABEL } from "@constants/version";
 
 const title = "Fork this for your campus | Room TBA Wiki";
 const description =
-  "This page covers what you have to change to run Room TBA for a different campus. That includes the UPLB-specific data and glue to rip out, the config to repoint and the parts you write yourself.";
+  "This page covers what you have to change to run Room TBA for a different campus. That includes the campus data and glue to rip out, the config to repoint and the parts you write yourself.";
 ---
 
 <WikiLayout
@@ -20,10 +20,11 @@ const description =
     <header class="article-hero">
       <h1 class="wiki-title">Fork this for your campus</h1>
       <p class="wiki-lede">
-        Room TBA is built for UPLB, and its MIT license lets you fork it. This
-        isn't a "swap the logo and ship" kind of fork, because a lot of the app
-        is UPLB data and UPLB-specific glue. Below is what you replace, in the
-        order that matters, with the real file paths.
+        Room TBA started at UPLB (<code>uplbtools/room-tba</code>) and this
+        BulSU fork already replaced the campus data, branding and most of the
+        UPLB-only tooling. Its MIT license lets you fork it for your own
+        campus. Below is what you replace, in the order that matters, with
+        the real file paths.
       </p>
       <p class="article-meta">
         An automated test checked the file paths below against the repository
@@ -44,34 +45,30 @@ const description =
         <li>The editor and the suggest-an-edit review queue.</li>
         <li>The course planner and the personal-schedule routing.</li>
         <li>Events on the map, alias synonym matching, share links.</li>
-        <li>The Drizzle schema. Tables for <code>buildings</code>, <code>rooms</code>, <code>classes</code>, <code>aliases</code>, <code>events</code>, <code>organizations</code>, <code>places</code>, <code>colleges</code>, <code>dorms</code>, <code>jeepney_routes</code>, and final exams are campus-shaped, not UPLB-shaped.</li>
+        <li>The Drizzle schema. Tables for <code>buildings</code>, <code>rooms</code>, <code>classes</code>, <code>aliases</code>, <code>events</code>, <code>organizations</code>, <code>places</code>, <code>colleges</code>, <code>dorms</code>, <code>jeepney_routes</code>, and final exams are campus-shaped.</li>
       </ul>
     </section>
 
-    <section aria-labelledby="what-is-uplb">
-      <h2 id="what-is-uplb">What is UPLB-only (you rip this out or replace it)</h2>
+    <section aria-labelledby="what-is-campus">
+      <h2 id="what-is-campus">What is BulSU-only (you rip this out or replace it)</h2>
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>File / thing</th><th>Why it’s UPLB-only</th></tr>
+            <tr><th>File / thing</th><th>Why it’s BulSU-only</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>src/lib/site.ts</code></td><td>Site name, URL, title, and description are UPLB.</td></tr>
-            <tr><td><code>src/campus.config.ts</code></td><td>Map bounds, default camera, the Mt. Makiling terrain block, the jeepney transit flag and label, and E2E fixture coordinates. <code>bun run fork:init</code> rewrites it for you.</td></tr>
+            <tr><td><code>src/campus.config.ts</code></td><td>Map bounds, default camera, the terrain block, the transit flag and label, and E2E fixture coordinates. <code>bun run fork:init</code> rewrites it for you.</td></tr>
             <tr><td><code>src/constants/community-links.ts</code></td><td>bulsutools, Discord, and Messenger links.</td></tr>
-            <tr><td><code>public/room_info.json</code></td><td>UPLB buildings, aliases, and walking directions. Seed file for aliases.</td></tr>
-            <tr><td><code>src/constants/jeepney-routes.ts</code> + <code>jeepney-geometries.json</code></td><td>UPLB jeepney routes. Replace with your routes, or set <code>campusTransit.enabled: false</code> if your campus has no equivalent.</td></tr>
-            <tr><td><code>scripts/import-amis-classes.ts</code></td><td>AMIS is UPLB's course system. You don’t have AMIS.</td></tr>
-            <tr><td><code>scripts/import-final-exams.ts</code></td><td>Reads UPLB OUR finals JSON.</td></tr>
-            <tr><td><code>scripts/import-osa-organizations.ts</code> + <code>scripts/import-campus-office-directory.ts</code></td><td>UPLB org and office directories.</td></tr>
+            <tr><td><code>src/constants/jeepney-routes.ts</code> + <code>jeepney-geometries.json</code></td><td>UPLB jeepney routes left over from upstream, shipped disabled (<code>campusTransit.enabled: false</code>). Replace with your routes, or leave them disabled.</td></tr>
+            <tr><td><code>data/acad-orgs.json</code></td><td>UPLB department codes. Empty until your importer produces them.</td></tr>
             <tr><td><code>astro.config.mjs</code> <code>site</code></td><td>Hardcoded to <code>room-tba.bulsu.tools</code>.</td></tr>
-            <tr><td>The database contents</td><td>Every row is UPLB. The schema stays and the data goes.</td></tr>
+            <tr><td>The database contents</td><td>Every row is BulSU. The schema stays and the data goes.</td></tr>
           </tbody>
         </table>
       </div>
       <p>
-        If a fork only changes the logo and the site name, it’s still a UPLB
-        app pointing at UPLB data. That’s what the license line in the README
+        If a fork only changes the logo and the site name, it’s still pointing
+        at someone else’s campus. That’s what the license line in the README
         warns you about.
       </p>
     </section>
@@ -83,7 +80,7 @@ const description =
         <li><a href="https://bun.sh" class="wiki-link">Bun</a> 1.3+ on your machine.</li>
         <li>A <a href="https://supabase.com" class="wiki-link">Supabase</a> project. Free tier is fine for a small campus.</li>
         <li>A <a href="https://maptiler.com" class="wiki-link">MapTiler</a> key for vector and terrain tiles. A free tier exists, so watch the quota.</li>
-        <li>Your campus data, meaning a building list with coordinates, room codes, class schedules from your registrar or SAIS equivalent, and a final-exam schedule if you want that panel.</li>
+        <li>Your campus data, meaning a building list with coordinates, room codes, class schedules from your registrar or student-system equivalent, and a final-exam schedule if you want that panel.</li>
         <li>Somewhere to deploy. <a href="https://vercel.com" class="wiki-link">Vercel</a> free tier works, and the app is built for the Vercel adapter.</li>
       </ul>
     </section>
@@ -128,7 +125,7 @@ bunx drizzle-kit push</code></pre>
         <li><code>campusSite</code> holds <code>url</code>, <code>name</code>, <code>title</code> and <code>description</code>.</li>
         <li><code>campusMap</code> holds <code>maxBounds</code> (the lng/lat box that keeps the camera on your campus) and <code>defaultCamera</code> (<code>center: [lng, lat]</code>, <code>zoom</code>, <code>pitch</code>, <code>bearing</code>).</li>
         <li><code>campusTerrain</code> holds the 3D terrain source, bounds and camera. <code>enabled: false</code> gives a flat map with no terrain controls anywhere.</li>
-        <li><code>campusTransit</code> is the campus transit overlay. <code>enabled: false</code> hides the map layer, sidebar entry, deep links and sitemap entries, and <code>label</code> renames the menu entry (UPLB says jeepney, yours may say shuttle).</li>
+        <li><code>campusTransit</code> is the campus transit overlay. <code>enabled: false</code> hides the map layer, sidebar entry, deep links and sitemap entries, and <code>label</code> renames the menu entry.</li>
         <li><code>campusTestFixtures</code> holds coordinates the E2E suite seeds its test building and dorm at. Keep them inside your bounds and the Playwright suite runs unchanged.</li>
         <li><code>campusCommunity</code> holds your org, GitHub, Discord and Messenger links. Delete entries you don’t have.</li>
       </ul>
@@ -138,12 +135,10 @@ bunx drizzle-kit push</code></pre>
         transit UI, <code>scripts/e2e-reset-db.ts</code>) imports from here.
       </p>
 
-      <h3>5. Delete or replace the UPLB data files</h3>
+      <h3>5. Delete or replace the campus data files</h3>
       <ul>
-        <li>Replace <code>public/room_info.json</code> with your buildings (or delete it and seed the DB directly).</li>
-        <li>Replace the routes in <code>src/constants/jeepney-routes.ts</code> and <code>jeepney-geometries.json</code> with your campus transit, or leave them and set <code>campusTransit.enabled: false</code>.</li>
-        <li>Delete the UPLB import scripts you can’t reuse, which are <code>import-amis-classes.ts</code>, <code>import-final-exams.ts</code>, <code>import-osa-organizations.ts</code> and <code>import-campus-office-directory.ts</code>. Keep them as reference while you write your own.</li>
-        <li>Delete <code>src/pages/wiki/section-times.astro</code> (the UPLB section-code glossary) and its card on the wiki index.</li>
+        <li>Replace the routes in <code>src/constants/jeepney-routes.ts</code> and <code>jeepney-geometries.json</code> with your campus transit, or leave them and keep <code>campusTransit.enabled: false</code>.</li>
+        <li>Empty <code>data/acad-orgs.json</code> stays empty until your class importer produces department codes for your campus.</li>
       </ul>
 
       <h3>6. Start the dev server</h3>
@@ -188,10 +183,10 @@ bunx drizzle-kit push</code></pre>
         safe to rerun. The walkthrough is in <code>docs/fork-data-guide.md</code>.
       </p>
       <p>
-        Class schedules are the recurring part. Room TBA pulls from AMIS, which
-        is UPLB's system. You don’t have AMIS, so flatten whatever export your
-        registrar or SAIS equivalent gives you (CSV, JSON, a scraped portal, a
-        PDF someone has to retype) into the documented shape of
+        Class schedules are the recurring part. There is no BulSU class
+        importer yet, so flatten whatever export your registrar or student
+        system gives you (CSV, JSON, a scraped portal, a PDF someone has to
+        retype) into the documented shape of
         <code>bun run import:classes-generic</code> and rerun it each term.
         <code>data/sample-campus/classes.csv</code> is the worked example.
       </p>
@@ -226,8 +221,9 @@ bunx drizzle-kit push</code></pre>
       <h2 id="pain">The painful parts</h2>
       <ul>
         <li>
-          <strong>Class import is write-your-own.</strong> AMIS is UPLB-only.
-          Your registrar's export is the long pole. Budget time for it.
+          <strong>Class import is write-your-own.</strong> There is no BulSU
+          importer yet. Your registrar's export is the long pole. Budget time
+          for it.
         </li>
         <li>
           <strong>Map tiles cost money at scale.</strong> MapTiler free tier is
@@ -248,11 +244,7 @@ bunx drizzle-kit push</code></pre>
         <li>
           <strong>You’re maintaining a fork.</strong> Upstream moves. Rebase
           pain is real. Keep your campus-specific changes in the clearly
-          UPLB-marked files above so merges don’t stomp your data config.
-        </li>
-        <li>
-          <strong>The wiki page you’re reading is UPLB-specific too.</strong>
-          Replace it with your own campus guide, or delete it.
+          marked files above so merges don’t stomp your data config.
         </li>
       </ul>
     </section>
@@ -265,7 +257,8 @@ bunx drizzle-kit push</code></pre>
         have to ask.
       </p>
       <p>
-        The UPLB database contents aren’t a MIT dump you can ship unchanged.
+        The upstream UPLB database contents aren’t a MIT dump you can ship
+        unchanged, and this fork has already replaced them with BulSU rows.
         Replace campus rows with your own. Community-curated map entities in
         upstream Room TBA are
         <a
@@ -273,8 +266,8 @@ bunx drizzle-kit push</code></pre>
           target="_blank"
           rel="noopener noreferrer">CC-BY 4.0</a
         >. If you reuse those entities, credit Room TBA / bulsutools.
-        OpenStreetMap data stays ODbL. AMIS and other university imports aren’t
-        open bulk data.
+        OpenStreetMap data stays ODbL. University imports aren’t open bulk
+        data.
       </p>
       <p>
         Credit is free. The README credits the people who built this. Don’t
@@ -284,4 +277,3 @@ bunx drizzle-kit push</code></pre>
     </section>
   </article>
 </WikiLayout>
-

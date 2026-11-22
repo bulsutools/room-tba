@@ -27,7 +27,7 @@ body:
     attributes:
       label: Steps you took
       placeholder: |
-        1. Searched PSLH 1
+        1. Searched Main Building 101
         2. Opened schedule
         3. ...
     validations:

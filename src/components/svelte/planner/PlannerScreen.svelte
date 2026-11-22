@@ -22,7 +22,7 @@
   import {
     COURSE_CHANGE_DISCLAIMER,
     ROOM_SCHEDULE_SCOPE_NOTE,
-  } from "@lib/amis/room-scheduled-types";
+  } from "@lib/class-import/room-scheduled-types";
   import { changeOfMatriculationLabel } from "@lib/term-calendar";
   import { fetchFinalExams, FINALS_SCOPE_NOTE } from "@lib/final-exams";
   import { isUnscheduled } from "@lib/planner/conflicts";
@@ -632,7 +632,7 @@
           </ul>
         {/if}
         <p class="planner-side__hint" role="note">
-          AMIS doesn't list instructors here. Jot each section's professor
+          The registrar doesn't list instructors here. Jot each section's professor
           below. Notes stay private and sync to your account when you're signed in.
         </p>
         <ul class="planner-offerings">

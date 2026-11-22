@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
+import { campusTransit } from "../../../campus.config";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   directionsStore,
@@ -166,13 +167,19 @@ describe("MapContextMenu while planning directions", () => {
     mapStore.mapInstance = map.instance;
     render(MapContextMenu);
     map.fire(14.16512, 121.24138);
+    await screen.findByRole("dialog", { name: "Map options" });
 
-    const link = await screen.findByRole("link", {
+    const link = screen.queryByRole("link", {
       name: /printable jeep map from here/i,
     });
-    expect(link.getAttribute("href")).toBe(
-      "/api/transit-map?lat=14.16512&lon=121.24138",
-    );
+    if (campusTransit.enabled) {
+      expect(link).not.toBeNull();
+      expect(link?.getAttribute("href")).toBe(
+        "/api/transit-map?lat=14.16512&lon=121.24138",
+      );
+    } else {
+      expect(link).toBeNull();
+    }
 
     await fireEvent.click(
       screen.getByRole("button", { name: /directions from here/i }),

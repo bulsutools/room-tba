@@ -1,13 +1,15 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   MAX_IMAGES_PER_LANDMARK,
   landmarkImages,
   needsStreetViewLookup,
+  setLandmarkImagesManifestForTests,
+  type LandmarkImagesManifest,
 } from "@lib/landmark-images";
 
-// "building:CEM Building" ships in the committed manifest with three Street
-// View headings from a Google capture, so the real manifest doubles as the
-// fixture.
+// The committed manifest is empty on this fork; the fixture below carries the
+// entries the tests exercise (building/dorm/place/org keys, commons photos,
+// an uploaded-photo-sphere pano).
 const CEM = {
   name: "CEM Building",
   lat: 14.1675,
@@ -35,6 +37,45 @@ const VET_HOSPITAL = {
   panoId: null,
   googleKey: "test-google-key",
 };
+
+const FIXTURE_MANIFEST: LandmarkImagesManifest = {
+  "building:CEM Building": {
+    streetViewHeadings: [159, 214, 269],
+    streetViewPanoId: "wV4r1MZug8UnL2mEU0OtWA",
+  },
+  "building:Freedom Park": {
+    streetViewHeadings: [233, 288, 343],
+    streetViewPanoId: "CAoSFkNJSE0wb2dLRUlDQWdJREUwYVhZT1E.",
+    streetViewCopyright: "© Ry Clark Media Arts",
+  },
+  "building:Veterinary Teaching Hospital": {
+    commons: [
+      {
+        url: "https://thumb.wikimedia.org/example/vet-1.jpg",
+        pageUrl: "https://commons.wikimedia.org/wiki/File:Vet_1.jpg",
+        artist: "Test Photographer",
+        license: "CC BY-SA 4.0",
+      },
+    ],
+  },
+  "dorm:Centtro Residences": {
+    streetViewHeadings: [6, 61, 116],
+    streetViewPanoId: "kQ9CVamNbadixlLz8p6UcQ",
+  },
+  "place:Church Among the Palms": {
+    commons: [
+      {
+        url: "https://thumb.wikimedia.org/example/church.jpg",
+        pageUrl: "https://commons.wikimedia.org/wiki/File:Church.jpg",
+        artist: "Test Photographer",
+        license: "CC BY 2.0",
+      },
+    ],
+  },
+};
+
+beforeEach(() => setLandmarkImagesManifestForTests(FIXTURE_MANIFEST));
+afterEach(() => setLandmarkImagesManifestForTests(null));
 
 describe("landmarkImages", () => {
   test("orders street view angles, contributor, commons; caps at 10", () => {

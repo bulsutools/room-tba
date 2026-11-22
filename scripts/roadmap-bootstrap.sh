@@ -96,7 +96,7 @@ link_new "$P1" "[QA] Editor pin move manual pass" "editor-foundation-test-plan.m
 link_new "$P2" "Re-enable class search and room schedules in SPA" "Uncomment ClassQuery/RoomResult/ScheduleModal." "sub-issue,enhancement"
 link_new "$P2" "Theme schedule canvas to Room TBA design tokens" "schedule-renderer.ts uses design tokens." "sub-issue,enhancement,design improvement"
 link_new "$P2" "Mobile schedule UX pass (320px)" "Side panel + modal layout." "sub-issue,enhancement"
-link_new "$P2" "[DATA] Verify 20 course codes map to room schedules" "AMIS cross-check." "sub-issue,data,good first issue"
+link_new "$P2" "[DATA] Verify 20 course codes map to room schedules" "Registrar cross-check." "sub-issue,data,good first issue"
 link_new "$P2" "[DATA] Term calendar dates one-pager" "Sem dates for term selector." "sub-issue,data,good first issue,documentation"
 link_new "$P2" "[DATA] Alias and synonym suggestions spreadsheet" "For #155." "sub-issue,data,good first issue"
 link_new "$P2" "[QA] Schedule UAT — 10 rooms x 3 courses" "Screenshot grid in comments." "sub-issue,qa,good first issue"

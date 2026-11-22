@@ -1,11 +1,11 @@
 ---
 name: discord-notifications
-description: Wires and debugs Room TBA NotificationEvent delivery to uplbtools/discord-bot (proposal.submitted, proposal.reviewed, CI E2E, test inventory). Use when Discord notifications fail, NOTIFICATION_* env vars, Heroku bot deploy, or cross-repo changes with discord-bot.
+description: Wires and debugs Room TBA NotificationEvent delivery to bulsutools/discord-bot (proposal.submitted, proposal.reviewed, CI E2E, test inventory). Use when Discord notifications fail, NOTIFICATION_* env vars, Heroku bot deploy, or cross-repo changes with discord-bot.
 ---
 
 # Discord notifications (room-tba ↔ discord-bot)
 
-Contract: [docs/notifications.md](../../docs/notifications.md). Bot repo: `uplbtools/discord-bot` (Heroku). Handoff: [docs/e2e-discord-handoff.md](../../docs/e2e-discord-handoff.md).
+Contract: [docs/notifications.md](../../docs/notifications.md). Bot repo: `bulsutools/discord-bot` (Heroku). Handoff: [docs/e2e-discord-handoff.md](../../docs/e2e-discord-handoff.md).
 
 ## Two repos
 
@@ -35,7 +35,7 @@ Shared helpers: `src/lib/notifications/proposal-events.ts`.
 
 ## discord-bot consumer
 
-- Ingress: `POST https://uplbtools-discord-bot-*.herokuapp.com/notifications`
+- Ingress: `POST https://bulsutools-discord-bot-*.herokuapp.com/notifications`
 - Header: `x-notification-secret: NOTIFICATION_INGRESS_SECRET`
 - Delivery: `src/notifications/delivery/discord.ts`
 
@@ -51,7 +51,7 @@ Shared helpers: `src/lib/notifications/proposal-events.ts`.
 Required on **Production** and **Preview (staging)** at minimum:
 
 ```sh
-NOTIFICATION_GATEWAY_URL=https://uplbtools-discord-bot-5eb468fac572.herokuapp.com/notifications
+NOTIFICATION_GATEWAY_URL=https://bulsutools-discord-bot-5eb468fac572.herokuapp.com/notifications
 NOTIFICATION_INGRESS_SECRET=<same as Heroku NOTIFICATION_INGRESS_SECRET>
 ```
 
@@ -67,15 +67,15 @@ vercel env add NOTIFICATION_GATEWAY_URL production --value "$GATEWAY" --yes --fo
 ## Heroku (discord-bot)
 
 ```sh
-heroku config:get NOTIFICATION_INGRESS_SECRET -a uplbtools-discord-bot
+heroku config:get NOTIFICATION_INGRESS_SECRET -a bulsutools-discord-bot
 git push heroku main   # from discord-bot checkout on main
 ```
 
 ## Manual verify (curl)
 
 ```sh
-SECRET=$(heroku config:get NOTIFICATION_INGRESS_SECRET -a uplbtools-discord-bot)
-curl -sS -X POST "https://uplbtools-discord-bot-5eb468fac572.herokuapp.com/notifications" \
+SECRET=$(heroku config:get NOTIFICATION_INGRESS_SECRET -a bulsutools-discord-bot)
+curl -sS -X POST "https://bulsutools-discord-bot-5eb468fac572.herokuapp.com/notifications" \
   -H "Content-Type: application/json" \
   -H "x-notification-secret: $SECRET" \
   -d '{"schemaVersion":1,"type":"proposal.reviewed","source":"room-tba","occurredAt":"'$(date -Iseconds)'","idempotencyKey":"test:manual","payload":{"proposalId":1,"outcome":"approved","entityType":"room","entityId":1,"entityLabel":"Test","submitterName":"Test","reviewedBy":"Editor","adminNote":null}}'
@@ -93,6 +93,6 @@ Expect `{"ok":true}` and embed in `#contributors`.
 ## Paired issues
 
 - room-tba [#222](https://github.com/bulsutools/room-tba/issues/222) — proposal reviewed
-- discord-bot [#4](https://github.com/uplbtools/discord-bot/issues/4) — bot embed handler
+- discord-bot [#4](https://github.com/bulsutools/discord-bot/issues/4) — bot embed handler
 
 Comment on both issues when shipping cross-repo work.

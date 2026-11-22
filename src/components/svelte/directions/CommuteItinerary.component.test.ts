@@ -36,7 +36,7 @@ const journey: Journey = {
       stopCount: 4,
       stopNames: [
         "Carabao Park / Landbank",
-        "Makiling School",
+        "Riverside Hall",
         "St. Therese / Math Building",
         "Headquarters",
       ],
@@ -72,7 +72,7 @@ describe("CommuteItinerary", () => {
     expect(steps).toEqual([
       "Walk 4 min (300 m)",
       "Board Kaliwa / Kanan (Kaliwa) at Carabao Park / Landbank",
-      "Ride 3 stops (7 min) Makiling SchoolSt. Therese / Math Building",
+      "Ride 3 stops (7 min) Riverside HallSt. Therese / Math Building",
       "Get off at Headquarters",
       "Walk 5 min (300 m)",
     ]);
@@ -83,7 +83,7 @@ describe("CommuteItinerary", () => {
     const { container } = render(CommuteItinerary, { props: { journey } });
     const details = container.querySelector("details");
     expect(details?.open).toBe(false);
-    expect(screen.getByText("Makiling School")).not.toBeVisible();
+    expect(screen.getByText("Riverside Hall")).not.toBeVisible();
   });
 
   test("tapping a stop shows it on the map", () => {

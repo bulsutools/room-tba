@@ -15,7 +15,7 @@ const items = dorms
     href: `/dorm/${getDormRouteSlug(dorm)}/`,
     label: dorm.dormName,
     description: [
-      dorm.isUpManaged ? "UP-managed dorm" : "Private dorm",
+      dorm.isUpManaged ? "Campus-managed dorm" : "Private dorm",
       dorm.shortName ? `short name: ${dorm.shortName}` : null,
       dorm.priceRange,
     ]

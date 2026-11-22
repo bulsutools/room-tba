@@ -10,7 +10,6 @@
   } from "@lib/store.svelte";
   import ModalHeader from "./ModalHeader.svelte";
   import { openCampusBrowse } from "@lib/browse-campus";
-  import { UPLB_OSA_ORGANIZATIONS_URL } from "@constants/community-links";
 
   function browseOrganizations() {
     openCampusBrowse(queryStore, sidePanelStore, "organizations");
@@ -65,14 +64,6 @@
     <button type="button" class="orgs-modal__btn orgs-modal__btn--primary" onclick={browseOrganizations}>
       Browse organizations
     </button>
-    <a
-      class="orgs-modal__btn"
-      href={UPLB_OSA_ORGANIZATIONS_URL}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      Official OSA directory
-    </a>
     {#if !adminAuthStore.isLoggedIn}
       <button type="button" class="orgs-modal__btn" onclick={signUp}>
         Sign up to contribute

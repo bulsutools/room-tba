@@ -26,7 +26,7 @@ describe("QueryStore pin filter reset (#chip mislabel)", () => {
     queryStore.updateQuery({
       type: "result",
       category: "dorm",
-      value: "Makiling Residence Hall",
+      value: "Riverside Residence Hall",
     });
     expect(buildingTypeFilter.value).toBe("up-managed-dorm");
   });
@@ -76,7 +76,7 @@ describe("QueryStore browseOrigin (list breadcrumb)", () => {
     queryStore.hydrateQuery({
       type: "result",
       category: "dorm",
-      value: "Makiling Residence Hall",
+      value: "Riverside Residence Hall",
     });
     expect(queryStore.browseOrigin).toBeNull();
   });
@@ -90,12 +90,12 @@ describe("QueryStore browseOrigin (list breadcrumb)", () => {
     queryStore.updateQuery({
       type: "result",
       category: "dorm",
-      value: "Makiling Residence Hall",
+      value: "Riverside Residence Hall",
     });
     queryStore.hydrateQuery({
       type: "result",
       category: "dorm",
-      value: "Makiling Residence Hall",
+      value: "Riverside Residence Hall",
     });
     expect(queryStore.browseOrigin).toBe("dorms");
   });

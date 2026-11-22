@@ -19,7 +19,7 @@ describe("getPlannerBlockColor", () => {
 });
 
 describe("parseScheduleTime", () => {
-  it("parses AMIS-style compact times", () => {
+  it("parses compact times", () => {
     expect(parseScheduleTime("MW 07:00AM-08:00AM")).toEqual({
       days: "MW",
       time: "7-8",

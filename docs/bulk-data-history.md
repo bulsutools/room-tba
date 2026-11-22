@@ -114,7 +114,7 @@ bun run apply:campus-audit-links -- --prod --apply
 If the pre-operation JSON dumps are still on disk, the script enriches the
 `before` payload and writes one row per affected room instead of a single
 summary row. It looks in `--snapshots <dir>`, else under
-`/tmp/claude-1000/-home-stimmie-dev-uplbtools-room-tba/*/scratchpad/`, for:
+`/tmp/claude-1000/-home-stimmie-dev-bulsutools-room-tba/*/scratchpad/`, for:
 
 - `room-merge-snapshot.json` — the duplicate-room candidates and their referencing rows
 - `rooms-building-snapshot.json` — rooms before the building audit

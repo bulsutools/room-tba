@@ -12,10 +12,14 @@ import {
 } from "@lib/api/rate-limit";
 import { getStopPeaks } from "@lib/services/transit-report-service";
 import { parseStopKey } from "@lib/transit-reports";
+import { campusTransit } from "../../../campus.config";
 
 export const prerender = false;
 
 export const GET: APIRoute = async ({ request, url }) => {
+  if (!campusTransit.enabled) {
+    return cachedJson({ termWindow: null, peaks: [], buildings: 0 });
+  }
   const limited = checkRateLimit(
     `read:stop-peaks:${clientIp(request)}`,
     120,

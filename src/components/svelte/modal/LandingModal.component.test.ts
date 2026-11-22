@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
+import { campusTransit } from "../../../campus.config";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   directionsStore,
@@ -118,16 +119,19 @@ describe("feature rows do what they say and close the guide", () => {
     openEmpty.mockRestore();
   });
 
-  test("Jeepney routes opens the transit list", async () => {
-    openFromMenu();
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Jeepney and bus routes" }),
-    );
-    expect(queryStore.category).toBe("browse");
-    expect(queryStore.queryValue).toBe("jeepney");
-    expect(modalStore.open).toBe(false);
-    queryStore.clearQuery();
-  });
+  test.skipIf(!campusTransit.enabled)(
+    "Jeepney routes opens the transit list",
+    async () => {
+      openFromMenu();
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Jeepney and bus routes" }),
+      );
+      expect(queryStore.category).toBe("browse");
+      expect(queryStore.queryValue).toBe("jeepney");
+      expect(modalStore.open).toBe(false);
+      queryStore.clearQuery();
+    },
+  );
 
   test("Plan your classes opens the Planner", async () => {
     openFromMenu();

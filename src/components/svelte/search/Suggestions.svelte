@@ -22,7 +22,6 @@
     scoreRooms,
   } from "@lib/search-suggestions";
   import { openCourseClasses, selectSuggestion } from "@lib/search-select";
-  import { searchTrail } from "@lib/makiling-trail";
   import {
     appBootstrapStore,
     buildingTypeFilter,
@@ -231,15 +230,6 @@
           : []),
         ...(roomFor === query ? scoreRooms(query, roomResults) : []),
         ...(classFor === query ? scoreClasses(query, classResults) : []),
-        ...searchTrail(query).map((hit) => ({
-          value: hit.label,
-          category: "trail" as const,
-          secondary: hit.secondary,
-          score: hit.score,
-          trailStopId: hit.stopId ?? hit.trailId,
-          lat: hit.lat,
-          lon: hit.lon,
-        })),
       ],
       expanded ? EXPANDED_LIMITS : {},
     );
@@ -411,7 +401,7 @@
       {#if group.label}
         <h2 class="suggestions-header suggestions-group">{group.label}</h2>
       {/if}
-      {#each group.items as suggestion (`${suggestion.category}:${suggestion.eventSlug ?? suggestion.trailStopId ?? suggestion.value}`)}
+      {#each group.items as suggestion (`${suggestion.category}:${suggestion.eventSlug ?? suggestion.value}`)}
         <Suggestion {...suggestion} />
       {/each}
       {#if courseCode && group.items.some((s) => s.category === "class")}

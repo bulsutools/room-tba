@@ -38,7 +38,6 @@
   import MeasureRoutePanel from "@ui/MeasureRoutePanel.svelte";
   import CameraDebugHud from "@ui/CameraDebugHud.svelte";
   import MapContextMenu from "@ui/map-chrome/MapContextMenu.svelte";
-  import MakilingTrailLayer from "@ui/map/MakilingTrailLayer.svelte";
   import TravelTimeLegend from "@ui/TravelTimeLegend.svelte";
   import Toast from "@ui/Toast.svelte";
   import ContributionRewardWatcher from "@ui/status-bar/ContributionRewardWatcher.svelte";
@@ -532,7 +531,6 @@
         </div>
       {/if}
       <MapContextMenu />
-      <MakilingTrailLayer />
       <div class="inner-layer">
         <MainControls />
         <div class="bottom-band">

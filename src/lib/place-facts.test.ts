@@ -10,26 +10,10 @@ import {
 const THU_1030 = new Date("2026-10-08T02:30:00Z");
 
 describe("expandCampusAbbreviations", () => {
-  test("spells out OPark and Oble", () => {
+  test("passes text through while no campus abbreviations are configured", () => {
     expect(
-      expandCampusAbbreviations(
-        "Located beside Physical Sciences, on the left side of OPark when facing the Oblation.",
-      ),
-    ).toBe(
-      "Located beside Physical Sciences, on the left side of Oblation Park when facing the Oblation.",
-    );
-    expect(
-      expandCampusAbbreviations("The 2-storey building to the left of Oble."),
-    ).toBe("The 2-storey building to the left of the Oblation.");
-  });
-
-  test("leaves other words and whole names alone", () => {
-    expect(expandCampusAbbreviations("Beside OPark Annex, near Obleton")).toBe(
-      "Beside Oblation Park Annex, near Obleton",
-    );
-    expect(expandCampusAbbreviations("Next to the Oble statue")).toBe(
-      "Next to the Oblation statue",
-    );
+      expandCampusAbbreviations("Located beside the science buildings."),
+    ).toBe("Located beside the science buildings.");
   });
 });
 

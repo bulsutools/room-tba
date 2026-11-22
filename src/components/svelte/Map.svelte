@@ -29,7 +29,6 @@
     additionProposalStore,
     buildingTypeFilter,
     terrainStore,
-    trailStore,
     travelTimeStore,
     measureRouteStore,
     scheduleRouteStore,
@@ -766,7 +765,7 @@
 
     if (!map.getLayer(MEASURE_ROUTE_LAYER_ID)) {
       // Dashed violet: deliberately unlike the solid casing-backed jeepney
-      // red / event maroon / trail green lines and the stock blue OSRM
+      // red / event maroon lines and the stock blue OSRM
       // directions polyline — this is a measurement, not a route suggestion.
       map.addLayer({
         id: MEASURE_ROUTE_LAYER_ID,
@@ -3508,13 +3507,10 @@
           });
         }
       } else if (category === null) {
-        // The trail sheet frames its own view; going home would undo it.
-        if (!trailStore.sheetOpen) {
-          flyToCamera(
-            map,
-            isTerrainEnabled ? TERRAIN_CAMERA : CAMPUS_DEFAULT_CAMERA,
-          );
-        }
+        flyToCamera(
+          map,
+          isTerrainEnabled ? TERRAIN_CAMERA : CAMPUS_DEFAULT_CAMERA,
+        );
         if (directions) directions.clear();
       } else if (category === "room") {
         // A deep link already loaded this room; refetching blanked the panel

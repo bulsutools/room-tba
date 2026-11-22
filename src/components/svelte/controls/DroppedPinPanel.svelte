@@ -10,6 +10,7 @@
   import { copyTextToClipboard } from "@lib/clipboard";
   import { droppedPinStore, formatPinCoords } from "@lib/dropped-pin.svelte";
   import { getTransitMapPath } from "@lib/route-links";
+  import { campusTransit } from "../../../campus.config";
   import {
     additionProposalStore,
     directionsStore,
@@ -105,15 +106,17 @@
           <Crosshair size={14} aria-hidden="true" />
           Directions from here
         </MapChromeActionChip>
-        <a
-          class="map-chrome-action-chip map-chrome-action-chip--toolbar dropped-pin__link"
-          href={getTransitMapPath({ lat: at.lat, lon: at.lng })}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <Printer size={14} aria-hidden="true" />
-          Printable jeep map
-        </a>
+        {#if campusTransit.enabled}
+          <a
+            class="map-chrome-action-chip map-chrome-action-chip--toolbar dropped-pin__link"
+            href={getTransitMapPath({ lat: at.lat, lon: at.lng })}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Printer size={14} aria-hidden="true" />
+            Printable jeep map
+          </a>
+        {/if}
       </div>
     </header>
   </div>

@@ -20,11 +20,9 @@
  * billable image. Always gate an image request on it: without the check,
  * Google bills for a request that returns its grey "no imagery" placeholder.
  *
- * UPLB coverage measured 2026-08-05 was 52/52 buildings within 100m, so on
- * this campus the check will usually pass. It still has to run, both because
- * coverage is not guaranteed for new pins and because the response carries the
+ * Coverage is not guaranteed for new pins, and the response carries the
  * capture date, which is worth showing next to a photo that may be a decade
- * old (campus imagery here ranges from 2015 to 2026).
+ * old.
  */
 
 const STATIC_ENDPOINT = "https://maps.googleapis.com/maps/api/streetview";

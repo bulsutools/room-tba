@@ -41,7 +41,7 @@ export const MAP_REGION_MAX_BOUNDS: [[number, number], [number, number]] = [
   [120.3, 13.3],
   [122.2, 15.3],
 ];
-/** Low enough to frame Los Baños to UP Diliman on a phone. */
+/** Low enough to frame a metro-area campus region on a phone. */
 export const MAP_REGION_MIN_ZOOM = 8;
 
 export const TERRAIN_MAX_BOUNDS: [[number, number], [number, number]] =

@@ -16,7 +16,6 @@
   import Megaphone from "@lucide/svelte/icons/megaphone";
   import MessageSquare from "@lucide/svelte/icons/message-square";
   import MessagesSquare from "@lucide/svelte/icons/messages-square";
-  import Phone from "@lucide/svelte/icons/phone";
   import Printer from "@lucide/svelte/icons/printer";
   import Users from "@lucide/svelte/icons/users";
   import Star from "@lucide/svelte/icons/star";
@@ -34,7 +33,7 @@
   import {
     DISCORD_URL,
     MESSENGER_CONTRIBUTE_TARGET,
-    UPLB_TOOLS_URL,
+    ORG_URL,
   } from "@constants/community-links";
   import OnlineCounter from "../OnlineCounter.svelte";
   import Avatar from "../Avatar.svelte";
@@ -447,11 +446,6 @@
               badge={announcementsStore.unread}
               onclick={then(() => modalStore.openModal("announcements"))}
             />
-            <SettingsRow
-              icon={Phone}
-              label="Emergency hotlines"
-              onclick={then(() => modalStore.openModal("hotlines"))}
-            />
             {#if campusTransit.enabled}
               <SettingsRow
                 icon={Printer}
@@ -532,7 +526,7 @@
             <SettingsRow
               icon={Globe}
               label="BulSU Tools"
-              href={UPLB_TOOLS_URL}
+              href={ORG_URL}
               external
             />
           </SettingsSection>

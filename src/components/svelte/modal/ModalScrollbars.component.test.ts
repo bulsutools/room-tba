@@ -65,16 +65,7 @@ describe("modal scroll chrome", () => {
       "https://upsked.com/",
     );
     expect(screen.getByText(/John Paul Poliquit/)).toBeVisible();
-    expect(screen.getByRole("link", { name: "UPLB Trail" })).toHaveAttribute(
-      "href",
-      "https://uplb-trail.vercel.app/",
-    );
-    expect(screen.getByText(/Bernard Jezua Tandang/)).toBeVisible();
-    expect(screen.getByRole("link", { name: "AMISSU" })).toHaveAttribute(
-      "href",
-      "https://chromewebstore.google.com/detail/amissu/mkdgckblaojfigmbnknehcmnjpkcehcj",
-    );
-    expect(screen.getByText(/Garth Hendrich Lapitan/)).toBeVisible();
+    expect(screen.queryByRole("link", { name: /trail/i })).toBeNull();
   });
 
   test("contributors renders live editor credits with optional profile links", async () => {

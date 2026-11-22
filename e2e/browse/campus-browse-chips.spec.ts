@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { campusTransit } from "../../src/campus.config";
 import { gotoHome, waitForAppBoot } from "../helpers/app";
 import { openCampusDirectory } from "../helpers/map-tools";
 
@@ -107,6 +108,7 @@ test.describe("campus browsing", () => {
   });
 
   test("Jeep & bus routes opens the transit browse panel", async ({ page }) => {
+    test.skip(!campusTransit.enabled, "campus transit is disabled");
     // The route line, stop circles and direction arrows are drawn in one
     // pass; a failed draw logs this warning instead of throwing.
     const drawFailures: string[] = [];

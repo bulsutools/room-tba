@@ -17,7 +17,7 @@ function asString(value: unknown): string | null {
   return null;
 }
 
-/** True when an object looks like one AMIS class row (not a page envelope). */
+/** True when an object looks like one class row (not a page envelope). */
 function looksLikeClassRow(value: unknown): value is AmisClassRow {
   const row = asRecord(value);
   if (!row) return false;
@@ -34,7 +34,7 @@ function looksLikeClassRow(value: unknown): value is AmisClassRow {
 function extractRawClassRows(payload: unknown): AmisClassRow[] {
   if (payload == null) return [];
 
-  // Bare list of class rows (common when someone dumps AMIS `data` to a file).
+  // Bare list of class rows (common when someone dumps the export `data` to a file).
   // Must not recurse into each row as if it were another envelope — that yields
   // zero rows and --scrub-exports would wipe the file to classes: [].
   if (Array.isArray(payload)) {
@@ -73,7 +73,7 @@ function extractRawClassRows(payload: unknown): AmisClassRow[] {
 }
 
 /**
- * AMIS lists child sections (LAB/RCT/CPT) but omits their parent LEC as its own
+ * The source lists child sections (LAB/RCT/CPT) but omits their parent LEC as its own
  * list row — the lecture only appears embedded in each child's `parent` field.
  * Surface those parents (deduped by id, skipping any already listed) so lectures
  * actually import. The embedded parent lacks course_code/course, so inherit them
@@ -97,8 +97,8 @@ function withEmbeddedParents(rows: AmisClassRow[]): AmisClassRow[] {
   return parents.size > 0 ? [...rows, ...parents.values()] : rows;
 }
 
-/** Unwrap paginated / nested AMIS responses into flat class rows, including the
- *  parent lectures AMIS only embeds inside child sections. */
+/** Unwrap paginated / nested export responses into flat class rows, including the
+ *  parent lectures the source only embeds inside child sections. */
 export function extractClassRows(payload: unknown): AmisClassRow[] {
   return withEmbeddedParents(extractRawClassRows(payload));
 }
@@ -138,7 +138,7 @@ function scheduleFromClassDates(row: AmisClassRow): string[] | null {
 }
 
 /**
- * Fallback for terms (e.g. CRS 1231) where AMIS leaves `class_dates` empty and
+ * Fallback for terms (e.g. term 1231) where the source leaves `class_dates` empty and
  * carries the single meeting slot on the row itself as `date` + `start_time` /
  * `end_time`. Same output shape as {@link scheduleFromClassDates}.
  */

@@ -6,10 +6,10 @@
   import EntityPanelHeader from "./EntityPanelHeader.svelte";
   import EntityPagination from "./EntityPagination.svelte";
   import { fetchClassPage } from "@lib/classes-api";
-  import { CLASS_BROWSE_SCOPE_NOTE } from "@lib/amis/room-scheduled-types";
+  import { CLASS_BROWSE_SCOPE_NOTE } from "@lib/class-import/room-scheduled-types";
   import { queryStore, sidePanelStore, termStore } from "@lib/store.svelte";
   import ScheduleFreshnessNote from "@ui/ScheduleFreshnessNote.svelte";
-  import { formatClassesImportedAt } from "@lib/amis/term-schedule-freshness";
+  import { formatClassesImportedAt } from "@lib/class-import/term-schedule-freshness";
   import Info from "@lucide/svelte/icons/info";
   import type { ClassMapValue } from "@lib/types";
   import { onMount } from "svelte";

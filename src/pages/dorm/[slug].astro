@@ -30,7 +30,7 @@ const canonicalPath = `/dorm/${getDormRouteSlug(dorm)}/`;
 const title = `${dorm.dormName} | Dorm at BulSU | Room TBA`;
 const description = [
   `Find ${dorm.dormName} at BulSU on Room TBA.`,
-  dorm.isUpManaged ? "It's a UP-managed housing listing." : "It's a private housing listing.",
+  dorm.isUpManaged ? "It's a Campus-managed housing listing." : "It's a private housing listing.",
   dorm.priceRange ? `The price range is ${dorm.priceRange}.` : null,
 ]
   .filter((value): value is string => Boolean(value))
@@ -40,7 +40,7 @@ const intro = `${dorm.dormName} is listed in Room TBA. Open this page to jump st
 const facts = [
   dorm.shortName ? `Short name: ${dorm.shortName}` : null,
   dorm.gender ? `Assigned housing: ${dorm.gender}` : null,
-  dorm.isUpManaged ? "UP-managed dorm" : "Private dorm",
+  dorm.isUpManaged ? "Campus-managed dorm" : "Private dorm",
   dorm.capacity ? `${dorm.capacity} beds listed` : null,
   dorm.priceRange ? `Price range: ${dorm.priceRange}` : null,
   dorm.managingOffice ? `Managing office: ${dorm.managingOffice}` : null,
@@ -62,8 +62,8 @@ const structuredData = jsonLd(
     image: ogImageUrl(dorm.imageUrl ?? undefined),
     address: {
       "@type": "PostalAddress",
-      addressLocality: "Los Banos",
-      addressRegion: "Laguna",
+      addressLocality: "Malolos",
+      addressRegion: "Bulacan",
       addressCountry: "PH",
     },
     geo:
@@ -87,7 +87,7 @@ const structuredData = jsonLd(
     : null}
   ogCard={{
     title: dorm.dormName,
-    subtitle: `${dorm.isUpManaged ? "UP-managed" : "Private"} housing${dorm.priceRange ? `, ${dorm.priceRange}` : ""}${dorm.gender ? `, ${dorm.gender}` : ""}`,
+    subtitle: `${dorm.isUpManaged ? "Campus-managed" : "Private"} housing${dorm.priceRange ? `, ${dorm.priceRange}` : ""}${dorm.gender ? `, ${dorm.gender}` : ""}`,
     kicker: "Dorm at BulSU",
   }}
   heading={`${dorm.dormName} at BulSU`}

@@ -178,6 +178,7 @@ export type JourneyPlan = {
 /** Nearest node, or null when the point is too far off the mapped network. */
 function snapEndpoint(graph: TravelGraph, point: LatLng): number | null {
   const node = nearestNodeIndex(graph, point.lat, point.lng);
+  if (node < 0) return null;
   const snapMeters = distanceMeters(
     { lat: point.lat, lon: point.lng },
     { lat: graph.lat[node], lon: graph.lng[node] },

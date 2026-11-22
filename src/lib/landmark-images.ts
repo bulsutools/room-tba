@@ -66,7 +66,14 @@ export type LandmarkImage = {
   source: "contributor" | "street-view" | "commons";
 };
 
-const LANDMARK_IMAGES = manifest as LandmarkImagesManifest;
+let landmarkImagesManifest = manifest as LandmarkImagesManifest;
+
+/** Test hook: run landmarkImages against a fixture manifest. */
+export function setLandmarkImagesManifestForTests(
+  fixture: LandmarkImagesManifest | null,
+) {
+  landmarkImagesManifest = fixture ?? (manifest as LandmarkImagesManifest);
+}
 
 export type LandmarkKind = "building" | "dorm" | "place" | "organization";
 
@@ -99,7 +106,7 @@ export function needsStreetViewLookup(input: LandmarkImagesInput): boolean {
     lat != null &&
     lon != null &&
     panoId === undefined &&
-    !LANDMARK_IMAGES[`${kind}:${name}`]
+    !landmarkImagesManifest[`${kind}:${name}`]
   );
 }
 
@@ -111,7 +118,7 @@ export function needsStreetViewLookup(input: LandmarkImagesInput): boolean {
  */
 export function landmarkImages(input: LandmarkImagesInput): LandmarkImage[] {
   const { kind = "building", name, imageUrl, lat, lon, googleKey } = input;
-  const manifestEntry = LANDMARK_IMAGES[`${kind}:${name}`];
+  const manifestEntry = landmarkImagesManifest[`${kind}:${name}`];
   const lookedUp = manifestEntry ? null : input.lookedUpPano;
   // A looked-up pano slots in as a one-heading manifest entry, so ordering and
   // uploader credit follow the same rules.

@@ -3,9 +3,9 @@ import { E2E_FIXTURES } from "../../scripts/e2e-reset-db";
 import { expandDetailsSheet, gotoHome, waitForAppBoot } from "../helpers/app";
 import { openBuilding, searchSuggestions } from "../helpers/search";
 
-// Any point on the map can be the start of directions and the "You are here"
-// of the printable jeepney map: right-click on desktop, long-press on phones
-// drops a pin and opens the Dropped pin sheet (Google Maps).
+// Any point on the map can be the start of directions: right-click on
+// desktop, long-press on phones drops a pin and opens the Dropped pin sheet
+// (Google Maps).
 
 async function mapCanvasPoint(page: Page, fx: number, fy: number) {
   const canvas = page.locator(".maplibregl-canvas");
@@ -49,11 +49,8 @@ async function dropPin(page: Page, isMobile: boolean) {
   return menu;
 }
 
-test.describe("directions and printable map from any point", () => {
-  test("a spot on the map prints a jeep map and starts directions", async ({
-    page,
-    isMobile,
-  }) => {
+test.describe("directions from any point", () => {
+  test("a spot on the map starts directions", async ({ page, isMobile }) => {
     const pageErrors: Error[] = [];
     page.on("pageerror", (error) => pageErrors.push(error));
     await gotoHome(page);
@@ -61,15 +58,6 @@ test.describe("directions and printable map from any point", () => {
 
     const menu = await dropPin(page, isMobile);
     await expect(menu.getByText(/^1?\d\.\d{5}, 1\d{2}\.\d{5}$/)).toBeVisible();
-    const printLink = menu.getByRole("link", { name: "Printable jeep map" });
-    const href = await printLink.getAttribute("href");
-    expect(href).toMatch(
-      /^\/api\/transit-map\?lat=-?\d+\.\d{5}&lon=-?\d+\.\d{5}$/,
-    );
-    const pdf = await page.request.get(href as string);
-    expect(pdf.status()).toBe(200);
-    expect(pdf.headers()["content-type"]).toBe("application/pdf");
-
     await menu.getByRole("button", { name: "Directions from here" }).click();
     await expect(menu).toBeHidden();
     const stops = page.getByRole("list", { name: "Directions stop sequence" });

@@ -230,7 +230,7 @@
     border-radius: 999px;
   }
 
-  /* A partner link in the row (Kubo) is a pill like the rest, on one line. */
+  /* A partner link in the row is a pill like the rest, on one line. */
   .place-sheet-header__actions :global(a.entity-footer__link--button) {
     box-sizing: border-box;
     align-items: center;
@@ -242,14 +242,6 @@
     font-size: 0.875rem;
     white-space: nowrap;
     text-decoration: none;
-  }
-
-  /* Kubo's dark brown is unreadable on the dark card (about 1.3:1). */
-  :global(:root[data-theme="dark"])
-    .place-sheet-header__actions
-    :global(a.entity-footer__link--kubo) {
-    color: var(--theme-text, #efe9e4);
-    border-color: var(--theme-border-strong, hsl(0, 0%, 52%));
   }
 
   .place-sheet-header__actions :global(.map-chrome-action-chip svg),

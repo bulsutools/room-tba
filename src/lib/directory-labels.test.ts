@@ -48,9 +48,9 @@ describe("directory labels", () => {
     expect(
       displayOrgName("ALLIANCE OF DEVELOPMENT COMMUNICATION STUDENTS (ADCS)"),
     ).toBe("Alliance of Development Communication Students (ADCS)");
-    expect(displayOrgName("ALYANSA NG MGA KABITENYO SA BULSU (ANAK-BULSU)")).toBe(
-      "Alyansa ng mga Kabitenyo sa BULSU (ANAK-BULSU)",
-    );
+    expect(
+      displayOrgName("ALYANSA NG MGA KABITENYO SA BULSU (ANAK-BULSU)"),
+    ).toBe("Alyansa ng mga Kabitenyo sa BULSU (ANAK-BULSU)");
     expect(displayOrgName("CALAMBEÑOS (UP CALAMBEÑOS)")).toBe(
       "Calambeños (UP CALAMBEÑOS)",
     );

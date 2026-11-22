@@ -7,7 +7,6 @@ import CoverageModal from "@ui/modal/CoverageModal.svelte";
 import EditorToolsModal from "@ui/modal/EditorToolsModal.svelte";
 import EntityHistoryModal from "@ui/modal/EntityHistoryModal.svelte";
 import FeedbackPanel from "@ui/modal/FeedbackPanel.svelte";
-import HotlinesModal from "@ui/modal/HotlinesModal.svelte";
 import JeepneyRouteModal from "@ui/modal/JeepneyRouteModal.svelte";
 import LandingModal from "@ui/modal/LandingModal.svelte";
 import LeaderboardModal from "@ui/modal/LeaderboardModal.svelte";
@@ -137,13 +136,6 @@ export const MODAL_REGISTRY: Record<ModalType, ModalEntry> = {
     label: "Offline maps & storage",
     labelledBy: "offline-maps-modal-title",
     closeLabel: "Close offline maps",
-  },
-  hotlines: {
-    component: HotlinesModal,
-    size: "reading",
-    label: "Emergency hotlines",
-    labelledBy: "hotlines-modal-title",
-    closeLabel: "Close emergency hotlines",
   },
   "entity-history": {
     component: EntityHistoryModal,

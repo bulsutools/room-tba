@@ -19,6 +19,7 @@ import {
 } from "@lib/services/transit-report-service";
 import { getTransitRouteForPage } from "@lib/services/transit-service";
 import { routeDirections } from "@lib/transit-direction";
+import { campusTransit } from "../../../campus.config";
 import {
   enforceReportIpLimit,
   isReportTooFar,
@@ -46,6 +47,7 @@ function json(body: unknown, status = 200, headers?: HeadersInit): Response {
 }
 
 export const POST: APIRoute = async ({ request }) => {
+  if (!campusTransit.enabled) return json({ error: "Not found." }, 404);
   const denied = enforceReportIpLimit(clientIp(request));
   if (denied) {
     return rateLimitResponse(
@@ -100,6 +102,9 @@ export const POST: APIRoute = async ({ request }) => {
 };
 
 export const GET: APIRoute = async ({ request, url }) => {
+  if (!campusTransit.enabled) {
+    return json({ now: new Date().toISOString(), reports: [] });
+  }
   const limited = checkRateLimit(
     `read:transit-reports:${clientIp(request)}`,
     120,

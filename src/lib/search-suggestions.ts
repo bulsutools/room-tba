@@ -8,10 +8,8 @@ import type {
 } from "./types";
 import type { QueryStoreState } from "./store.svelte";
 
-/** Query categories, plus the Makiling trail and its stops (not entities). */
-export type SuggestionCategory =
-  | Exclude<QueryStoreState["category"], null>
-  | "trail";
+/** Query categories (the searchable entity types). */
+export type SuggestionCategory = Exclude<QueryStoreState["category"], null>;
 
 export type Suggestion = {
   value: string;
@@ -29,8 +27,6 @@ export type Suggestion = {
   roomCode?: string | null;
   /** Relevance, lower is better (see MATCH). */
   score?: number;
-  /** Trail rows: the stop it opens, or the trail whose overview it opens. */
-  trailStopId?: string | null;
 };
 
 /**
@@ -366,7 +362,6 @@ const CATEGORY_ORDER: SuggestionCategory[] = [
   "room",
   "class",
   "dorm",
-  "trail",
   "place",
   "college",
   "division",
@@ -380,7 +375,7 @@ function categoryRank(category: SuggestionCategory): number {
 }
 
 function suggestionKey(s: Suggestion): string {
-  return `${s.category}:${s.eventSlug ?? s.trailStopId ?? s.value}`;
+  return `${s.category}:${s.eventSlug ?? s.value}`;
 }
 
 /** Dedupe (best score wins), sort by relevance, cap per category and overall. */
@@ -431,7 +426,6 @@ const GROUP_LABEL: Partial<Record<SuggestionCategory, string>> = {
   building: "Places",
   dorm: "Places",
   place: "Places",
-  trail: "Places",
   room: "Rooms",
   class: "Classes",
   college: "Offices and orgs",

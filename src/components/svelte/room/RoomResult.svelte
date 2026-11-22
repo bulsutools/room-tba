@@ -43,7 +43,7 @@
   import EntityLastUpdated from "../EntityLastUpdated.svelte";
   import MapChromeActionChip from "../map-chrome/MapChromeActionChip.svelte";
   import { getRoomShareUrl } from "@lib/share-links";
-  import { ROOM_SCHEDULE_SCOPE_NOTE } from "@lib/amis/room-scheduled-types";
+  import { ROOM_SCHEDULE_SCOPE_NOTE } from "@lib/class-import/room-scheduled-types";
   import { fetchFinalExams, FINALS_SCOPE_NOTE } from "@lib/final-exams";
   import {
     ROOM_CATEGORIES,

@@ -2,7 +2,7 @@
 
 **Human developers and campus volunteers:** start with [CONTRIBUTING.md](CONTRIBUTING.md). You do not need this file.
 
-> **Org template:** Other [uplbtools](https://github.com/uplbtools) repos maintain a shorter `AGENTS.md` adapted from this file for their stack (discord-bot, gradesim, website, punta, iskedyul, laro-tayo, …).
+> **Org template:** Other [bulsutools](https://github.com/bulsutools) repos maintain a shorter `AGENTS.md` adapted from this file for their stack (discord-bot, gradesim, website, punta, iskedyul, laro-tayo, …).
 
 ## Doc map
 
@@ -17,7 +17,6 @@ Read the right doc for the task; do not rely on this file alone for detailed che
 | Caveman, Ponytail, Hallmark, token efficiency, Claude/Codex | [docs/agent-tooling.md](docs/agent-tooling.md) + [docs/agent-contract.md](docs/agent-contract.md)                                              |
 | Contributor proposals, review queue, suggest edit | [.cursor/skills/contributor-proposals/SKILL.md](.cursor/skills/contributor-proposals/SKILL.md)                                                 |
 | Discord notifications (room-tba + discord-bot)    | [.cursor/skills/discord-notifications/SKILL.md](.cursor/skills/discord-notifications/SKILL.md)                                                 |
-| AMIS class import, term_id triage                 | [.cursor/skills/amis-term-import/SKILL.md](.cursor/skills/amis-term-import/SKILL.md)                                                           |
 | Vercel env, deploy guards, Supabase migrations    | [.cursor/skills/vercel-supabase-ops/SKILL.md](.cursor/skills/vercel-supabase-ops/SKILL.md)                                                     |
 | Playwright E2E, integration CI, `run/e2e` label   | [.cursor/skills/playwright-e2e-ci/SKILL.md](.cursor/skills/playwright-e2e-ci/SKILL.md)                                                         |
 | Worktrees, multiple agents, push to `staging`     | [AGENTS.md § Worktrees and multiple agents](#worktrees-and-multiple-agents)                                                                    |
@@ -59,7 +58,7 @@ Estimate like **Composer with repo + shell access**, not like a human developer 
 
 - **Do not quote human-day timelines** (“this will take a day”) for scoped repo work. Prefer **“I’ll do it in this session”** or split by **deliverable** (PR1, PR2), not calendar days.
 - **Scoped + discoverable path** (one feature, known files, existing patterns) → usually **minutes to one session**, not hours/days of “dev time.” Examples: env wiring, a Playwright smoke slice, a map chrome fix, one API route.
-- **Reserve multi-session / multi-PR** for true epics: broad refactors, full test matrices, ship pipeline (`staging` → `main`) with review, or hard external blocks (AMIS token, legal, prod credentials).
+- **Reserve multi-session / multi-PR** for true epics: broad refactors, full test matrices, ship pipeline (`staging` → `main`) with review, or hard external blocks (registrar credentials, legal, prod credentials).
 - **Say “blocked on you”** when waiting on secrets, passwords, or product decisions: not “implementation takes a day.”
 - **Infra cooldowns (rate limits, Supabase circuit breaker):** try once → if blocked, **~5 minutes + one retry** → report and parallelize other work. Do **not** default to “wait 30–60 minutes” unless a second failure proves a longer lockout.
 
@@ -319,7 +318,7 @@ When in doubt, ask the user: "Does this issue require external coordination, or 
 | API route / service        | `integration/http/*` or `integration/services/*`                                |
 | Map chrome / side panel UI | Vitest `@320px` component test + Playwright browse/admin spec when user-visible |
 | Editor / PATCH / 409       | Integration stale-version test + E2E when UI surfaces conflict                  |
-| `data` / AMIS import       | Fixture JSON unit test only: **never** live `, fetch` in CI                     |
+| `data` / class import      | Fixture JSON unit test only: **never** live `, fetch` in CI                     |
 | Subjective design / whimsy | Component layout guards + manual QA note in PR; do not skip all automation      |
 
 ### Issue acceptance criteria template
@@ -339,7 +338,7 @@ Check these off in the issue when the PR merges.
 
 ### What not to automate
 
-Partnerships, legal/MOUs, AMIS live fetch, subjective animation “feel,” prod-only data spot-checks: see [docs/testing.md § Manual only](docs/testing.md#manual-only).
+Partnerships, legal/MOUs, registrar live fetch, subjective animation “feel,” prod-only data spot-checks: see [docs/testing.md § Manual only](docs/testing.md#manual-only).
 
 ## Verify before done
 
@@ -471,46 +470,6 @@ Map and side-panel layout rules are detailed in glob-scoped Cursor rules; read t
 - **Direct-database edits record history too.** A merge script, one-off SQL, or import fixup that changes campus data must write `editor_history` rows in the same run — `bun run record:bulk-history` or `recordBulkHistory()` in [`src/lib/services/bulk-history.ts`](src/lib/services/bulk-history.ts). See [docs/bulk-data-history.md](docs/bulk-data-history.md).
 - Reverts should create new history entries instead of rewriting or deleting old history.
 - Every admin write should refresh the relevant sync key so clients can detect changed data.
-
-## AMIS class imports
-
-### CRS term IDs (source of truth)
-
-CRS/AMIS `term_id` values are **chronological within the academic year**: the number is not a semantic label:
-
-| CRS id   | Period       | Typical dates (AY 2025–2026) |
-| -------- | ------------ | ---------------------------- |
-| **1251** | 1st semester | Aug–Dec                      |
-| **1252** | 2nd semester | Jan–May                      |
-| **1253** | Midyear      | Jun–Jul                      |
-
-- **`terms.id` must equal the CRS id** you pass to `, term-id` / AMIS fetch. Fix labels and calendar dates in the `terms` row; **never move class rows between ids** to “fix” a naming mix-up.
-- Import commands: 2nd sem `, term-id 1252, fetch`; midyear `, term-id 1253, fetch`.
-- **Do not re-apply** [`drizzle/0012_reassign_second_sem_classes.sql`](drizzle/0012_reassign_second_sem_classes.sql): it assumed 1252 was mislabeled 2nd sem data. That was wrong. Term metadata is corrected in [`0013_fix_crs_term_labels.sql`](drizzle/0013_fix_crs_term_labels.sql). Migrations `0009`/`0010` had the same backwards assumption; do not copy their label/date mapping into new code.
-
-### Pitfalls (read before triaging “wrong term” bugs)
-
-1. **Do not infer term type from row count.** A term with 3k+ rows is not automatically “2nd sem”; a term with ~200 rows is not automatically “broken.” Check **schedule patterns** in `classes.schedule`:
-
-- **Midyear (1253):** intensive daily blocks: `MTWTHFS`, `MTWTHF`, `TTHS`, Saturday-heavy slots.
-- **2nd sem (1252):** regular semester: mostly `TTH`, `MWF`, single-day weekly slots.
-
-2. **Do not conflate CRS id with English name.** Early agents assumed “1252 sounds like midyear slot”: wrong. Always trust the chronological table above and what AMIS returns for that numeric id.
-3. **Thousands fetched, hundreds imported is normal.** AMIS returns every section type; Room TBA imports only **LEC/LAB with a matched room** (see below). A 12k fetch → ~3k import for 2nd sem is expected; a 6k fetch → ~120 for midyear can be expected too.
-4. **Two different “skipped row” buckets**: do not treat them as the same bug:
-
-- **By design:** THE (thesis), SPR (special problem), PRA (practicum), DSR (dissertation), IND, etc. usually have **no `facility_id`** in AMIS. Skipped on purpose; users are told on the room panel. See `src/lib/amis/room-scheduled-types.ts`.
-- **Data gap (#300):** LEC/LAB rows **with** a facility string that does not match `rooms.room_code` (aliases, typos, `PSLH-A` vs `PSLH A`). Needs alias work, not term-id surgery.
-
-5. **Validate before “re-import to fix term”.** Query sample schedules per `term_id`, confirm `/api/terms` labels match CRS table, then re-import the **correct CRS id** with `, replace`. Do not run 0012-style mass `UPDATE term_id`.
-
-### Workflow
-
-- **Fetch once, reuse cache:** `bun run import:amis-classes,, term-id <id>, fetch` saves sanitized rows to `data/amis-*-<id>.json` (gitignored). Re-import with the same command **without** `, fetch`: no AMIS hammering.
-- **Short-lived tokens:** `AMIS_BEARER_TOKEN` from a logged-in AMIS session expires in about an hour. Copy a fresh token right before `, fetch`; do not rely on a token saved in `.env` from yesterday. Cached JSON imports do not need a token. Never commit tokens or paste them into issues or chat logs.
-- **Never store or commit instructor names.** AMIS responses embed faculty/user PII. `sanitizeAmisRow()` strips it before any JSON is written. Do not commit `data/amis-*.json`, raw AMIS dumps, or DB exports that include `faculty`, `first_name`, `formatted_name`, etc.
-- The app DB stores only course code, section, type, title, schedule slots, room, and term: never instructor fields.
-- If unsanitized exports exist locally, run `bun run import:amis-classes,, scrub-exports`.
 
 ## Database and APIs
 

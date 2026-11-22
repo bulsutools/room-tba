@@ -116,7 +116,7 @@ describe("matchRoomId", () => {
     });
   });
 
-  test("AMIS 10-char truncation completes to a unique room", () => {
+  test("10-char facility-id truncation completes to a unique room", () => {
     const truncLookup = buildRoomLookup([{ id: 9, code: "ASILH B125" }], []);
     expect(matchRoomId(truncLookup, "ASILH B-12")).toEqual({
       roomId: 9,
@@ -369,7 +369,7 @@ describe("formatImportReport", () => {
       },
       unmatched: new Map([
         ["(missing facility)", 30],
-        ["PSLH-Z", 10],
+        ["LH-Z", 10],
       ]),
     });
 

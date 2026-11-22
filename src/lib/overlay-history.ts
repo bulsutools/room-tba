@@ -253,7 +253,7 @@ export function navigateAppHistory(
 ) {
   installOverlayHistory();
   schedule(() => {
-    // Map layers the rider turned on (?layers=trail) follow them around.
+    // Map layers the rider turned on (?layers=) follow them around.
     const url = carryLayersParam(target, currentUrl());
     const current = readState();
     const top = stack.at(-1);

@@ -84,17 +84,18 @@ describe("buildPlanIcs", () => {
     expect(ics).toContain("LOCATION:Room A\\; B\\, C");
   });
 
-  it("takes first and last class day from the registrar calendar", () => {
+  it("falls back to the term window while no registrar calendar is imported", () => {
+    // CALENDARS is empty on this fork, so classWindow() finds no "Start of
+    // classes"/"End of classes" rows and the plan's own term dates bound the
+    // recurrence instead.
     const ics = buildPlanIcs({ ...plan, termId: 1261 }, term, { now });
-    expect(ics).toContain("DTSTART;TZID=Asia/Manila:20260803T080000");
-    expect(ics).toContain("UNTIL=20261127T155900Z");
+    expect(ics).toContain("DTSTART;TZID=Asia/Manila:20260119T080000");
+    expect(ics).toContain("UNTIL=20260530T155900Z");
   });
 
-  it("excludes holidays and breaks on the days the class meets", () => {
+  it("emits no EXDATEs while the holiday calendar is empty", () => {
     const ics = buildPlanIcs({ ...plan, termId: 1261 }, term, { now });
-    expect(ics).toContain(
-      "EXDATE;TZID=Asia/Manila:20260821T080000,20260831T080000,20261030T080000",
-    );
+    expect(ics).not.toContain("EXDATE");
   });
 
   it("adds no EXDATE when no holiday falls on a class day", () => {

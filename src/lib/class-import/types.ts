@@ -1,11 +1,11 @@
-/** Loose AMIS class payload before normalization. */
+/** Loose registrar class payload before normalization. */
 export type AmisClassRow = Record<string, unknown>;
 
 export type AmisFetchOptions = {
   termId: number;
   bearerToken: string;
   sessionId?: string;
-  /** Rows per AMIS page (default 10000). */
+  /** Rows per source page (default 10000). */
   pageSize?: number;
   /** Delay between page requests in ms (default 400). */
   pageDelayMs?: number;
@@ -19,8 +19,8 @@ export type NormalizedAmisClass = {
   schedule: string[];
   termId: number;
   facilityCode: string | null;
-  /** AMIS college code, e.g. "CAS" (#846). */
+  /** College code as the source reports it,, e.g. "CAS" (#846). */
   acadGroup: string | null;
-  /** AMIS PeopleSoft department code, e.g. "LBICS" (#846). */
+  /** Department code as the source reports it,, e.g. "LBICS" (#846). */
   acadOrg: string | null;
 };

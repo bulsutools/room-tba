@@ -40,7 +40,7 @@ describe("buildProposalDigest", () => {
       [
         {
           entityType: "dorm",
-          entityLabel: "Makiling Hall",
+          entityLabel: "Riverside Hall",
           submitterName: "Stimmie",
           status: "pending",
         },

@@ -51,7 +51,7 @@ describe("SettingsModal", () => {
     for (const gone of [
       "Map style",
       "Basemap",
-      "Makiling terrain",
+      "Terrain",
       "Pins",
       "Highlight my class buildings",
       "Camera details",

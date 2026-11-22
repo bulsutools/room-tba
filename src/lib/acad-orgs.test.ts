@@ -3,16 +3,11 @@ import rawAcadOrgs from "../../data/acad-orgs.json";
 import { decodeAcadOrg } from "./acad-orgs";
 
 describe("decodeAcadOrg (#846)", () => {
-  it("decodes a curated code", () => {
-    expect(decodeAcadOrg("LBICS")).toEqual({
-      name: "Institute of Computer Science",
-      collegeCode: "CAS",
-    });
-  });
-
-  it("matches mixed-case AMIS codes case-insensitively", () => {
-    expect(decodeAcadOrg("LBIoP")?.name).toBe("Institute of Physics");
-    expect(decodeAcadOrg("lbics")?.name).toBe("Institute of Computer Science");
+  it("returns null for every code while the data file is empty", () => {
+    // The upstream acad_org table was removed; BulSU codes land here as a class
+    // importer produces them.
+    expect(decodeAcadOrg("LBICS")).toBeNull();
+    expect(decodeAcadOrg("LBIoP")).toBeNull();
   });
 
   it("returns null for uncurated, blank, and null codes", () => {

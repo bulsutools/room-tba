@@ -1,7 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import BuildingPhoto from "@ui/controls/BuildingPhoto.svelte";
 import { resetStreetViewLookupCache } from "@lib/street-view-lookup";
+import {
+  setLandmarkImagesManifestForTests,
+  type LandmarkImagesManifest,
+} from "@lib/landmark-images";
 
 // "building:Veterinary Teaching Hospital" ships in the committed manifest (three Street View
 // headings plus Commons photos), so the real manifest is the fixture. Street
@@ -14,7 +18,55 @@ const VET_HOSPITAL = {
   panoId: "pano",
 };
 
+// The committed manifest is empty on this fork; tests install a fixture so
+// the gallery paths still run.
+const FIXTURE_MANIFEST: LandmarkImagesManifest = {
+  "building:Veterinary Teaching Hospital": {
+    streetViewHeadings: [0, 90, 180],
+    commons: [
+      {
+        url: "https://upload.wikimedia.org/vet-hall-1.jpg",
+        pageUrl: "https://commons.wikimedia.org/wiki/File:VetHall1.jpg",
+        artist: "Juan Dela Cruz",
+        license: "CC BY-SA 4.0",
+      },
+      {
+        url: "https://upload.wikimedia.org/vet-hall-2.jpg",
+        pageUrl: "https://commons.wikimedia.org/wiki/File:VetHall2.jpg",
+        artist: "Maria Santos",
+        license: "CC BY 4.0",
+      },
+    ],
+  },
+  "place:Church Among the Palms": {
+    commons: [
+      {
+        url: "https://upload.wikimedia.org/church-palms.jpg",
+        pageUrl: "https://commons.wikimedia.org/wiki/File:ChurchPalms.jpg",
+        artist: "Pedro Reyes",
+        license: "CC BY-SA 4.0",
+      },
+    ],
+  },
+  "organization:BulSU Student Council": {
+    commons: [
+      {
+        url: "https://upload.wikimedia.org/sc-logo.jpg",
+        pageUrl: "https://commons.wikimedia.org/wiki/File:ScLogo.jpg",
+        artist: "Ana Lim",
+        license: "CC BY 4.0",
+      },
+    ],
+  },
+};
+
 describe("BuildingPhoto", () => {
+  beforeEach(() => {
+    setLandmarkImagesManifestForTests(FIXTURE_MANIFEST);
+  });
+  afterEach(() => {
+    setLandmarkImagesManifestForTests(null);
+  });
   test("renders nothing when no source has an image", () => {
     const { container } = render(BuildingPhoto, {
       props: { name: "Ghost Hall", panoId: null },
@@ -197,9 +249,16 @@ describe("BuildingPhoto", () => {
     unmount();
 
     render(BuildingPhoto, {
-      props: { kind: "organization", name: "UP Open University (UPOU)" },
+      props: {
+        kind: "organization",
+        name: "BulSU Student Council",
+      },
     });
-    expect(screen.getByRole("img", { name: /UPOU.*Commons/i })).toBeTruthy();
+    expect(
+      screen.getByRole("img", {
+        name: /BulSU Student Council.*Commons/i,
+      }),
+    ).toBeTruthy();
   });
 
   test("a name under the wrong kind finds nothing", () => {
@@ -211,6 +270,9 @@ describe("BuildingPhoto", () => {
 });
 
 describe("BuildingPhoto runtime Street View", () => {
+  beforeEach(() => {
+    setLandmarkImagesManifestForTests(FIXTURE_MANIFEST);
+  });
   // A food spot with coordinates but no manifest entry.
   const CANTEEN = {
     kind: "place" as const,
@@ -232,6 +294,7 @@ describe("BuildingPhoto runtime Street View", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+    setLandmarkImagesManifestForTests(null);
     resetStreetViewLookupCache();
     localStorage.clear();
   });

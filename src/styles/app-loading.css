@@ -17,12 +17,9 @@
   padding: 1.5rem;
   pointer-events: auto;
   background-color: hsl(5, 22%, 96%);
-  background-image: url("/uplb-bg.webp");
-  background-size: cover;
-  background-position: center;
 }
 
-/* Wash keeps the error card readable; photo peeks at the edges. */
+/* Wash keeps the error card readable over the flat field. */
 .app-loading-shell::before {
   content: "";
   position: absolute;

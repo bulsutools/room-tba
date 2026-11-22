@@ -75,7 +75,7 @@ describe("share codec", () => {
 describe("gradesimTakeUrl", () => {
   it("lists each course once with the plan's term", () => {
     expect(gradesimTakeUrl(plan)).toBe(
-      "https://gradesim.uplb.tools/?take=CMSC%20128&term=1252#planner",
+      "https://gradesim.bulsu.tools/?take=CMSC%20128&term=1252#planner",
     );
   });
 

@@ -200,7 +200,7 @@ describe("rankSuggestions", () => {
       ...scoreEntities("phys", { ...emptyData, filteredBuildings: buildings }),
       ...scoreAliases(
         "phys",
-        [{ alias: "PhySci", value: "Physical Sciences Building" }],
+        [{ alias: "SciHall", value: "Physical Sciences Building" }],
         buildings,
       ),
     ]);
@@ -210,16 +210,16 @@ describe("rankSuggestions", () => {
 
   it("resolves a place alias to the place", () => {
     const [hit] = scoreAliases(
-      "oble",
-      [{ alias: "Oble", value: "Oblation", targetType: "place" }],
+      "rm",
+      [{ alias: "RM", value: "Rizal Monument", targetType: "place" }],
       [],
-      [{ name: "Oblation", lat: 14.165, lon: 121.24 }],
+      [{ name: "Rizal Monument", lat: 14.165, lon: 121.24 }],
     );
     expect(hit).toMatchObject({
-      value: "Oblation",
+      value: "Rizal Monument",
       category: "place",
       lat: 14.165,
-      secondary: "Oble",
+      secondary: "RM",
       score: MATCH.exact,
     });
   });
@@ -362,39 +362,5 @@ describe("enterAction", () => {
         { value: "Kinetics", category: "building", score: 3 },
       ]),
     ).toEqual({ kind: "expand" });
-  });
-});
-
-describe("trail rows", () => {
-  it("rank with places and stay distinct per stop", () => {
-    const ranked = rankSuggestions([
-      {
-        value: "Maria Makiling Trail Station 1 (trailhead)",
-        category: "place",
-        score: MATCH.wordPrefix,
-      },
-      {
-        value: "Makiling Trail",
-        category: "trail",
-        trailStopId: null,
-        score: MATCH.exact,
-      },
-      {
-        value: "Station 13",
-        category: "trail",
-        trailStopId: "station-13",
-        score: MATCH.prefix,
-      },
-    ]);
-    expect(ranked.map((s) => s.value)).toEqual([
-      "Makiling Trail",
-      "Station 13",
-      "Maria Makiling Trail Station 1 (trailhead)",
-    ]);
-    expect(groupSuggestions(ranked)).toEqual([{ label: null, items: ranked }]);
-    expect(enterAction(ranked)).toEqual({
-      kind: "select",
-      suggestion: ranked[0],
-    });
   });
 });

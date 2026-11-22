@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { designers } from "@constants/contributors";
   import {
-    UPLB_TOOLS_URL,
+    ORG_URL,
     DISCORD_URL,
     MESSENGER_CONTRIBUTE_TARGET,
     MESSENGER_MAINTAIN_TARGET,
@@ -24,22 +24,6 @@
    * join in. It used to be a tab of the welcome tour, so "Contributors"
    * opened the tour.
    */
-  /** Similar campus map initiatives (#108). */
-  const SIMILAR_MAPS = [
-    {
-      label: "Malayo Ba 'Yan?",
-      href: "https://umap.openstreetmap.fr/en/map/ati-ntc-rh-malayo-ba-yan-maps-and-directions_1245231",
-    },
-    {
-      label: "UPLB Lower Campus",
-      href: "https://umap.openstreetmap.fr/en/map/uplb-lower-campus_1180826",
-    },
-    {
-      label: "UPLB ScribbleMaps",
-      href: "https://www.scribblemaps.com/maps/view/UPLB-Map/8fmzCgyQ4y",
-    },
-  ];
-
   type EditorCredit = {
     name: string;
     avatarUrl: string | null;
@@ -163,7 +147,7 @@
         </li>
         <li>
           <a
-            href={UPLB_TOOLS_URL}
+            href={ORG_URL}
             target="_blank"
             rel="noopener noreferrer"
             class="inline-link">bulsutools</a
@@ -201,34 +185,6 @@
           >
           by John Paul Poliquit
         </li>
-        <li>
-          <a
-            href="https://uplb-trail.vercel.app/"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-link">UPLB Trail</a
-          >
-          by Bernard Jezua Tandang
-        </li>
-        <li>
-          <a
-            href="https://chromewebstore.google.com/detail/amissu/mkdgckblaojfigmbnknehcmnjpkcehcj"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-link">AMISSU</a
-          >
-          by Garth Hendrich Lapitan
-        </li>
-        {#each SIMILAR_MAPS as item (item.href)}
-          <li>
-            <a
-              href={item.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-link">{item.label}</a
-            >
-          </li>
-        {/each}
       </ul>
     </section>
   </div>

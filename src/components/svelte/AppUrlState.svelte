@@ -21,8 +21,6 @@
   import { replaceAppUrl } from "@lib/overlay-history";
   import { trackOverlay } from "@lib/track-overlay.svelte";
   import { droppedPinStore } from "@lib/dropped-pin.svelte";
-  import { trailUrlValue } from "@lib/makiling-trail";
-  import { closeTrailSheet, openTrailSheet } from "@lib/trail-sheet";
   import { slugifySegment } from "@lib/site";
   import {
     YOUR_LOCATION_LABEL,
@@ -42,7 +40,6 @@
     queryStore,
     sidePanelStore,
     sidebarStore,
-    trailStore,
   } from "@lib/store.svelte";
 
   const appData = getAppData();
@@ -78,36 +75,6 @@
     () => droppedPinStore.at !== null,
     sidePanelStore.closePanel,
   );
-
-  // ── Makiling trail: ?layers=trail, ?trail=overview | <stop> ────────────
-  // The sheet takes one entry and a stop another on top, so Back steps from
-  // a stop to the overview, then closes the sheet.
-  trackOverlay("trail", () => trailStore.sheetOpen, closeTrailSheet, () => ({
-    url: (url) =>
-      withAppState(url, { trail: trailUrlValue(trailStore.trailId, null) }),
-  }));
-  trackOverlay(
-    "trail-stop",
-    () => trailStore.sheetOpen && trailStore.selectedStopId !== null,
-    () => trailStore.selectStop(null),
-    () => ({
-      url: (url) =>
-        withAppState(url, {
-          trail: trailUrlValue(trailStore.trailId, trailStore.selectedStopId),
-        }),
-    }),
-  );
-  // Prev / Next swap the stop, and the picker the trail, in place.
-  $effect(() => {
-    const value = trailUrlValue(trailStore.trailId, trailStore.selectedStopId);
-    if (!trailStore.sheetOpen) return;
-    replaceAppUrl((url) => withAppState(url, { trail: value }));
-  });
-  // The layer is shareable state: on the URL while it is drawn.
-  $effect(() => {
-    const layers = trailStore.enabled ? "trail" : null;
-    replaceAppUrl((url) => withAppState(url, { layers }));
-  });
 
   // ── Directions: /…?dir=<from>/<to> ─────────────────────────────────────
   type Named = { name: string; lat: number | null; lon: number | null };
@@ -225,10 +192,6 @@
       : null;
   let cameraRestored = false;
 
-  // ?layers=trail turns the trail on (the toggle is also remembered). Before
-  // any effect runs, so the layers effect never writes the param away first.
-  if (initial?.state.layers.includes("trail")) trailStore.enable();
-
   $effect(() => {
     const map = mapStore.mapInstance;
     if (!map) return;
@@ -300,12 +263,6 @@
     // (Search restores ?q= itself; it owns the draft text.)
     if (state.dir) {
       replaceAppUrl((url) => withAppState(url, { dir: null, mode: null }));
-    }
-
-    // ?trail= reopens the trail sheet over a bare entry, like ?dir= above.
-    if (state.trail) {
-      replaceAppUrl((url) => withAppState(url, { trail: null }));
-      openTrailSheet(state.trail, { overPlace: true });
     }
 
     if (state.browse === "events") {

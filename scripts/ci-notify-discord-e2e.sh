@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# POST Playwright workflow_run results to uplbtools/discord-bot /notifications.
+# POST Playwright workflow_run results to bulsutools/discord-bot /notifications.
 # Invoked from .github/workflows/discord-notify-e2e.yml (workflow_run listener).
 set -euo pipefail
 

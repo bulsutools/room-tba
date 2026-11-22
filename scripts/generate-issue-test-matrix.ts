@@ -103,7 +103,7 @@ function inferTiers(issue: Issue): {
     tiers.add("integration");
     spec =
       spec || "Fixture/import unit test; optional staging data-fidelity smoke";
-    notes = notes || "No live AMIS fetch in CI";
+    notes = notes || "No live registrar fetch in CI";
   }
 
   if (hasLabel(labels, "bug")) {
@@ -129,12 +129,14 @@ function inferTiers(issue: Issue): {
     spec = spec || "integration/services or integration/http";
   }
 
-  if (/amis|import.*class|schedule import|term_id|1252|1253/i.test(text)) {
+  if (/class.?import|schedule import|term_id/i.test(text)) {
     tiers.add("unit");
-    spec = spec || "Fixture JSON unit tests in src/lib/amis or schedule-import";
+    spec =
+      spec ||
+      "Fixture JSON unit tests in src/lib/class-import or schedule-import";
     notes = notes
-      ? `${notes}; AMIS --fetch manual only`
-      : "AMIS --fetch manual only";
+      ? `${notes}; registrar live fetch manual only`
+      : "registrar live fetch manual only";
   }
 
   if (/a11y|accessibility|axe|contrast|screen reader/i.test(text)) {

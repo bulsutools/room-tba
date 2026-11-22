@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { JeepneyRoute } from "@constants/jeepney-routes";
+import { setRouteDirectionsForTests } from "@constants/jeepney-routes";
 import {
   JEEPNEY_WAIT_SECONDS,
   MAX_ACCESS_WALK_METERS,
@@ -105,17 +106,27 @@ describe("planJourneys", () => {
   });
 
   test("names the direction of a two-way route ridden backwards", () => {
-    const { journeys } = planJourneys({
-      graph,
-      origin: nodeAt(4),
-      destination: nodeAt(0),
-      routes: [{ ...corridorRoute, id: "kaliwa-kanan" }],
+    setRouteDirectionsForTests({
+      "kaliwa-kanan": {
+        forward: { label: "Kanan", summary: "test" },
+        reverse: { label: "Kaliwa", summary: "test" },
+      },
     });
-    const ride = journeys
-      .flatMap((j) => j.legs)
-      .find((leg): leg is RideLeg => leg.kind === "ride");
-    expect(ride?.boardStopName).toBe("Stop 4");
-    expect(ride?.directionLabel).toBe("Kaliwa");
+    try {
+      const { journeys } = planJourneys({
+        graph,
+        origin: nodeAt(4),
+        destination: nodeAt(0),
+        routes: [{ ...corridorRoute, id: "kaliwa-kanan" }],
+      });
+      const ride = journeys
+        .flatMap((j) => j.legs)
+        .find((leg): leg is RideLeg => leg.kind === "ride");
+      expect(ride?.boardStopName).toBe("Stop 4");
+      expect(ride?.directionLabel).toBe("Kaliwa");
+    } finally {
+      setRouteDirectionsForTests(null);
+    }
   });
 
   test("suppresses a ride that barely beats walking", () => {

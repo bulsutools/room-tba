@@ -54,5 +54,5 @@ describe("sliceRouteLine", () => {
   });
 });
 
-// The "real route geometry" suite upstream ships here needs bundled UPLB
+// The "real route geometry" suite upstream ships here needs bundled
 // route data; BulSU ships JEEPNEY_ROUTES empty until Malolos transit lands.

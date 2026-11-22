@@ -30,7 +30,7 @@ Include:
 - Room or building name (e.g. Federizo, COE Building 2)
 - Term, if it is schedule-related
 - What is wrong and what it should be
-- How you verified (walked there, SAIS, org page, photo)
+- How you verified (walked there, registrar portal, org page, photo)
 
 **You do not need to open a pull request.** Someone else will ship the fix and reply on the issue.
 

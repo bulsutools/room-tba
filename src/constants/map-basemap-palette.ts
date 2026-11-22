@@ -1,7 +1,7 @@
 /**
  * Experimental basemap palette — Jun 2026.
  *
- * UPLB campus viewing: airy green-tinted ground, natural lawn, light campus
+ * Campus viewing: airy green-tinted ground, natural lawn, light campus
  * stone buildings that read architectural against grass. Applied at runtime
  * via applyBasemapPalette() and mirrored in public/liberty-customized.json
  * for offline tiles. Pin/label colors are unchanged; maroon pins (#7b1113) stay
@@ -60,10 +60,10 @@ import type { ExpressionSpecification } from "maplibre-gl";
  */
 // export const MAP_BASEMAP_PALETTE = { ... } as const; // cool-paper-rejected
 
-/** Prior alternate — morning-mist ground with warm stone buildings (superseded by uplbRefreshing):
+/** Prior alternate — morning-mist ground with warm stone buildings (superseded by campusRefreshing):
  *  background rgb(232,237,230); grass rgba(156,184,150,0.24); building #e2ddd4; extrusion #d4cec4
  */
-export const uplbFresh = {
+export const campusFresh = {
   background: "rgb(232, 237, 230)",
   grassFill: "rgba(156, 184, 150, 1)",
   grassOpacity: 0.24,
@@ -138,12 +138,12 @@ export const campusGreige = {
   roadMotorwayCasing: "rgba(158, 148, 132, 0.85)",
 } as const;
 
-/** Active preset — uplbRefreshing: green campus, fresh campus stone buildings.
+/** Active preset — campusRefreshing: green campus, fresh campus stone buildings.
  *  background #EEF4EC; grass #7CB87A @ 0.38; park #8FBF8A; wood forest rgba(62,96,58,0.48)
  *  water #6BA3B8; building #E8E4DC; extrusion #D8D4CC; outline #B8B4AC; roads #C5C5C0
  *  Jun 2026 (#285): POI layers hidden at runtime; softer labels + lower extrusion so native pins read first.
  */
-export const uplbRefreshing = {
+export const campusRefreshing = {
   background: "rgb(238, 244, 236)",
   grassFill: "rgba(124, 184, 122, 1)",
   grassOpacity: 0.38,
@@ -179,23 +179,23 @@ export const uplbRefreshing = {
   roadMotorwayCasing: "rgba(160, 160, 154, 0.72)",
 } as const;
 
-export const MAP_BASEMAP_PALETTE = uplbRefreshing;
+export const MAP_BASEMAP_PALETTE = campusRefreshing;
 
 export type BasemapPalette = {
-  [K in keyof typeof uplbRefreshing]: (typeof uplbRefreshing)[K] extends number
+  [K in keyof typeof campusRefreshing]: (typeof campusRefreshing)[K] extends number
     ? number
     : string;
 };
 
 /**
- * Dark-mode preset (Jakob audit macro 13) — uplbNight: the same campus
- * hierarchy as uplbRefreshing at night. Ground sits darker than the dark
+ * Dark-mode preset (Jakob audit macro 13) — campusNight: the same campus
+ * hierarchy as campusRefreshing at night. Ground sits darker than the dark
  * chrome surface (#211d1c) so sheets and chips lift off the map; lawns stay
  * a muted green, buildings warm stone a step above the ground, roads lighter
  * than both so the street grid still reads. Labels flip to light text on a
  * dark halo. Maroon pins keep their white ring, so they stay legible.
  */
-export const uplbNight: BasemapPalette = {
+export const campusNight: BasemapPalette = {
   background: "rgb(25, 24, 23)",
   grassFill: "rgba(70, 110, 72, 1)",
   grassOpacity: 0.32,
@@ -239,9 +239,9 @@ const DARK_BUILDING_SIZE_COLORS: ExpressionSpecification = [
   3,
   "#2e2b28",
   8,
-  uplbNight.buildingFill,
+  campusNight.buildingFill,
   18,
-  uplbNight.buildingExtrusion,
+  campusNight.buildingExtrusion,
   45,
   "#4f4945",
 ];
@@ -261,7 +261,7 @@ export const MAP_BASEMAP_BUILDING_SIZE_COLORS = true;
  * Data-driven building color by OpenMapTiles `render_height` (meters).
  * OMT derives this from OSM height, building:levels × 3.66, or defaults to 5 m.
  * At z13 generalized blocks omit render_height — coalesce falls back to 5 (light cream).
- * Probed UPLB z14 tiles (Jun 2026): ~90 footprints, heights 1–85 m, ~10% at default 5 m.
+ * Probed campus z14 tiles (Jun 2026): ~90 footprints, heights 1–85 m, ~10% at default 5 m.
  * Smaller footprints read lighter cream; taller blocks read grey-limestone on green lawn.
  */
 export function buildingSizeColorExpression(
@@ -447,7 +447,7 @@ export const BASEMAP_LAYER_PAINT = basemapLayerPaint(MAP_BASEMAP_PALETTE);
 
 /** Dark basemap paint (Settings → Appearance → Dark, or system dark). */
 export const BASEMAP_DARK_LAYER_PAINT = basemapLayerPaint(
-  uplbNight,
+  campusNight,
   DARK_BUILDING_SIZE_COLORS,
   DARK_BUILDING_SIZE_COLORS,
   "#9a928b",
@@ -459,9 +459,9 @@ export const BASEMAP_DARK_LAYER_PAINT = basemapLayerPaint(
  * type. Matched by id so one rule covers OpenFreeMap and MapTiler styles.
  */
 export const BASEMAP_DARK_GENERIC = {
-  symbolText: uplbNight.labelText,
-  symbolHalo: uplbNight.labelHaloColor,
-  casing: uplbNight.roadMinorCasing,
-  road: uplbNight.roadSecondaryTertiary,
+  symbolText: campusNight.labelText,
+  symbolHalo: campusNight.labelHaloColor,
+  casing: campusNight.roadMinorCasing,
+  road: campusNight.roadSecondaryTertiary,
   fill: "rgb(31, 30, 29)",
 } as const;

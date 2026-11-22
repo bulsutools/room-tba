@@ -1,4 +1,4 @@
-/** AMIS class types that normally meet in a campus room (import + room schedules). */
+/** Class types that normally meet in a campus room (import + room schedules). */
 export const ROOM_SCHEDULED_CLASS_TYPES = new Set([
   "LEC",
   "LAB",
@@ -6,17 +6,17 @@ export const ROOM_SCHEDULED_CLASS_TYPES = new Set([
   "CPT", // computime / computer lab sibling of LAB
 ]);
 
-/** AMIS types imported without a required room (thesis, SP, etc.). */
+/** Class types imported without a required room (thesis, SP, etc.). */
 export const NON_ROOM_CLASS_TYPES: Readonly<
   Record<string, { label: string; description: string }>
 > = {
   THE: {
     label: "Thesis",
-    description: "Thesis sections usually have no fixed room in AMIS.",
+    description: "Thesis sections usually have no fixed room.",
   },
   SPR: {
     label: "Special problem",
-    description: "Special-problem sections usually have no fixed room in AMIS.",
+    description: "Special-problem sections usually have no fixed room.",
   },
   PRA: {
     label: "Practicum",
@@ -25,11 +25,11 @@ export const NON_ROOM_CLASS_TYPES: Readonly<
   },
   DSR: {
     label: "Dissertation",
-    description: "Dissertation sections usually have no fixed room in AMIS.",
+    description: "Dissertation sections usually have no fixed room.",
   },
   IND: {
     label: "Independent study",
-    description: "Independent study usually has no fixed room in AMIS.",
+    description: "Independent study usually has no fixed room.",
   },
   SEM: {
     label: "Seminar",
@@ -47,11 +47,11 @@ export const NON_ROOM_CLASS_TYPES: Readonly<
 
 /** Short copy for room schedule panels (per-room class lists). */
 export const ROOM_SCHEDULE_SCOPE_NOTE =
-  "Schedules list lecture, lab, recitation, and similar sections with assigned rooms. Thesis, special problem, dissertation, and similar sections usually are not tied to a room in AMIS, so they don't appear here.";
+  "Schedules list lecture, lab, recitation, and similar sections with assigned rooms. Thesis, special problem, dissertation, and similar sections usually are not tied to a room, so they don't appear here.";
 
 /** Short copy for class browse / course-prefix search. */
 export const CLASS_BROWSE_SCOPE_NOTE =
-  "Class search lists lecture, lab, recitation, thesis, special problem, dissertation, and similar sections. Sections without a room in AMIS show as unassigned. Open a room only when a room code is listed.";
+  "Class search lists lecture, lab, recitation, thesis, special problem, dissertation, and similar sections. Sections without a room show as unassigned. Open a room only when a room code is listed.";
 
 export const NO_ASSIGNED_ROOM_LABEL = "No assigned room";
 

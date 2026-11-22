@@ -3,7 +3,7 @@ import {
   COMMUNITY_LINKS,
   LEGAL_LINKS,
   ORG_LABEL,
-  UPLB_TOOLS_URL,
+  ORG_URL,
   DONATE_URL,
 } from "@constants/community-links";
 import {
@@ -13,7 +13,7 @@ import {
 import SponsorStrip from "./SponsorStrip.astro";
 
 const externalCommunityLinks = COMMUNITY_LINKS.filter(
-  (link) => link.href !== UPLB_TOOLS_URL,
+  (link) => link.href !== ORG_URL,
 );
 ---
 
@@ -29,7 +29,7 @@ const externalCommunityLinks = COMMUNITY_LINKS.filter(
     </span>
     <span class="site-footer__sep" aria-hidden="true">/</span>
     <span class="site-footer__group">
-      <a href={UPLB_TOOLS_URL} target="_blank" rel="noopener noreferrer">
+      <a href={ORG_URL} target="_blank" rel="noopener noreferrer">
         {ORG_LABEL}
       </a>
       {
@@ -43,7 +43,7 @@ const externalCommunityLinks = COMMUNITY_LINKS.filter(
   </nav>
   <p class="site-footer__note">
     Room TBA is a student-run project under <a
-      href={UPLB_TOOLS_URL}
+      href={ORG_URL}
       target="_blank"
       rel="noopener noreferrer">{ORG_LABEL}</a
     >. It isn't an official Bulacan State University website. Fork of the

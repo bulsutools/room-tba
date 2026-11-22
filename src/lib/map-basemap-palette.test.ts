@@ -4,7 +4,7 @@ import {
   BASEMAP_DARK_GENERIC,
   BASEMAP_DARK_LAYER_PAINT,
   BASEMAP_LAYER_PAINT,
-  uplbNight,
+  campusNight,
 } from "@constants/map-basemap-palette";
 import {
   applyBasemapPalette,
@@ -65,7 +65,7 @@ describe("applyBasemapPalette", () => {
     const { map, state } = fakeMap(LAYERS, STYLE_PAINT);
     applyBasemapPalette(map, "dark");
     expect(state["background"]?.["background-color"]).toBe(
-      uplbNight["background"],
+      campusNight["background"],
     );
     expect(state["road_label"]?.["text-color"]).toBe(
       BASEMAP_DARK_GENERIC.symbolText,
