@@ -149,6 +149,42 @@ export function validateCreateProposalPatch(
       }
       return;
     }
+    case "create_class": {
+      // ALAB bridge contributions (#16). The signed endpoint validates the
+      // full payload first; this guards the proposal row itself.
+      const courseCode =
+        typeof patch["courseCode"] === "string"
+          ? patch["courseCode"].trim()
+          : "";
+      const section =
+        typeof patch["section"] === "string"
+          ? patch["section"].trim()
+          : "";
+      const type =
+        typeof patch["type"] === "string" ? patch["type"].trim() : "";
+      if (!courseCode || !section || !type) {
+        throw new ProposalValidationError(
+          "Class course code, section, and type are required.",
+        );
+      }
+      const termId = Number(patch["termId"]);
+      if (!Number.isInteger(termId) || termId < 1) {
+        throw new ProposalValidationError("Class term is required.");
+      }
+      if (
+        !Array.isArray(patch["schedule"]) ||
+        patch["schedule"].some((slot) => typeof slot !== "string")
+      ) {
+        throw new ProposalValidationError("Class schedule is invalid.");
+      }
+      if (
+        typeof patch["dedupeKey"] !== "string" ||
+        patch["dedupeKey"].trim() === ""
+      ) {
+        throw new ProposalValidationError("Class dedupe key is required.");
+      }
+      return;
+    }
     case "create_jeepney_stop": {
       const routeId =
         typeof patch.routeId === "string" ? patch.routeId.trim() : "";

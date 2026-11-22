@@ -329,6 +329,14 @@ export default defineConfig({
         context: "server",
         optional: true,
       }),
+      // ALAB schedule bridge (#16): HMAC secret shared with the
+      // GradeSim/ALAB exporter. /api/contributions/alab-schedule returns 503
+      // while unset.
+      ALAB_BRIDGE_SECRET: envField.string({
+        access: "secret",
+        context: "server",
+        optional: true,
+      }),
       // Vercel injects CRON_SECRET; /api/cron/* requires it as a Bearer token.
       CRON_SECRET: envField.string({
         access: "secret",

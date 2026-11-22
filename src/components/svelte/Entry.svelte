@@ -30,6 +30,11 @@
   import { isRecentSearch } from "@lib/locStorage";
   import { decodeSharePlan } from "@lib/planner/share-codec";
   import { resolveSharedPlan } from "@lib/planner/import-shared";
+  import { decodeScheduleFragment } from "@lib/alab-schedule/fragment";
+  import {
+    plannedSectionsFromPayload,
+    resolvePayloadTermId,
+  } from "@lib/alab-schedule/payload";
   import Modal from "@ui/modal/Modal.svelte";
   import MainControls from "@ui/controls/MainControls.svelte";
   import Map from "@ui/Map.svelte";
@@ -283,6 +288,35 @@
             }
           });
       }
+    }
+
+    // #schedule= fragment (ALAB bridge personal view, #16): decode client-side
+    // only — the payload is never POSTed or published. It becomes an ordinary
+    // planner plan, same as a ?plan= share.
+    const scheduleFragment = decodeScheduleFragment(window.location.hash);
+    if (scheduleFragment) {
+      window.history.replaceState({}, "", window.location.pathname);
+      void termStore.init().then(() => {
+        const termId = resolvePayloadTermId(
+          scheduleFragment.payload,
+          termStore.terms,
+        );
+        if (termId === null) {
+          toastStore.show(
+            "That schedule link's term is not on Room TBA yet.",
+            "error",
+          );
+          return;
+        }
+        const sections = plannedSectionsFromPayload(scheduleFragment.payload);
+        plannerStore.importShared(termId, sections);
+        termStore.setTerm(termId);
+        sidebarStore.changeOpened("planner");
+        toastStore.show(
+          `Imported ${sections.length} class${sections.length === 1 ? "" : "es"} from the ALAB schedule link.`,
+          "success",
+        );
+      });
     }
   });
 

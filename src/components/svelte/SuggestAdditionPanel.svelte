@@ -497,6 +497,10 @@
           collegeId:
             divisionCollegeDraft === "" ? null : Number(divisionCollegeDraft),
         };
+      case "create_class":
+        // Not offered in this panel (#16); class proposals come from the
+        // signed ALAB bridge endpoint only.
+        throw new Error("create_class is not a suggest-addition kind.");
     }
   }
 
