@@ -4,6 +4,7 @@ import {
   ROUTE_GEOMETRY_NOTES,
   deriveRouteLineFromStops,
   resolveRouteGeometry,
+  transitOperatorLabel,
   type JeepneyStop,
   type StoredRouteGeometry,
 } from "./jeepney-routes.js";
@@ -138,6 +139,15 @@ describe("jeepney-geometries.json", () => {
         "stops-only",
       );
     }
+  });
+});
+
+describe("transitOperatorLabel", () => {
+  test("labels each operator and defaults legacy rows to jeepney", () => {
+    expect(transitOperatorLabel("jeepney")).toBe("Jeepney");
+    expect(transitOperatorLabel("bus")).toBe("Bus");
+    expect(transitOperatorLabel("tricycle")).toBe("Tricycle");
+    expect(transitOperatorLabel(undefined)).toBe("Jeepney");
   });
 });
 

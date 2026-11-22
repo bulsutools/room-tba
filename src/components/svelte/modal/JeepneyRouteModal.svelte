@@ -5,6 +5,7 @@
   import {
     JEEPNEY_FARE_NOTE,
     resolveRouteGeometry,
+    transitOperatorLabel,
     type StoredRouteGeometry,
   } from "@constants/jeepney-routes";
   import jeepneyGeometries from "@constants/jeepney-geometries.json";
@@ -69,7 +70,11 @@
         style:background-color={route.color}
         aria-hidden="true"
       ></span>
-      <h2 class="jeepney-modal__title">{route.name} jeepney route</h2>
+      <h2 class="jeepney-modal__title">
+        {route.name}
+        {transitOperatorLabel(route.operator).toLowerCase()} route{#if route.number}
+          · {route.number}{/if}
+      </h2>
     </header>
 
     <div class="jeepney-modal__scroll">
@@ -108,6 +113,11 @@
             >
               <span class="jeepney-modal__stop-index">{i + 1}</span>
               <span class="jeepney-modal__stop-name">{stop.name}</span>
+              {#if stop.fare}
+                <span class="jeepney-modal__stop-fare"
+                  >from prev. ₱{stop.fare.regular}</span
+                >
+              {/if}
             </button>
           </li>
         {/each}
@@ -293,6 +303,14 @@
 
   .jeepney-modal__stop:hover {
     background: color-mix(in srgb, var(--route-color, #7b1113) 10%, white);
+  }
+
+  .jeepney-modal__stop-fare {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: hsl(0, 0%, 40%);
   }
 
   .jeepney-modal__stops li::before {

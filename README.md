@@ -48,7 +48,7 @@ No account needed to browse. Editors fix pins in the same app (`/?editor=login`)
 | Move building pins | Map edit mode (pencil) |
 | Add landmarks / services | **Add something to the map** or side-panel editor |
 | Fix building/college copy | Side panel → Edit |
-| Add jeepney routes | `src/constants/jeepney-routes.ts` + DB seed, or editor when wired |
+| Add jeepney routes | `data/transit/routes.json` + `bun run scripts/seed-bulsu-transit.ts` ([#7](https://github.com/bulsutools/room-tba/issues/7) pending) |
 
 Login: **`/?editor=login`**. First login with `ADMIN_PASSWORD` bootstraps user `admin`.
 
@@ -102,7 +102,7 @@ Dry-run: `bun run seed:bulsu -- --dry-run`
 | Surface | Where |
 | --- | --- |
 | Building / place pins | Map editor (seed file leaves these empty on purpose) |
-| Jeepney routes | `src/constants/jeepney-routes.ts` (empty today) |
+| Jeepney routes | `data/transit/routes.json` (empty until #7 field data lands) |
 | College / building copy | Side panel editor |
 | Photos | Event/image upload when R2 is configured |
 | Class schedules | Future registrar importer (not AMIS) |

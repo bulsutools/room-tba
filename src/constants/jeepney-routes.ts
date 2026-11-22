@@ -3,6 +3,22 @@
 
 import type { LineString } from "geojson";
 
+/** Vehicle class running a route; absent rows predate the column and mean jeepney. */
+export type TransitOperator = "jeepney" | "bus" | "tricycle";
+
+export const TRANSIT_OPERATOR_LABELS: Record<TransitOperator, string> = {
+  jeepney: "Jeepney",
+  bus: "Bus",
+  tricycle: "Tricycle",
+};
+
+/** Display label for a route's operator; defaults to jeepney for legacy rows. */
+export function transitOperatorLabel(
+  operator: TransitOperator | undefined,
+): string {
+  return TRANSIT_OPERATOR_LABELS[operator ?? "jeepney"];
+}
+
 export type JeepneyStop = {
   /** Database id; absent only in the bundled offline fallback. */
   id?: number;
@@ -13,6 +29,12 @@ export type JeepneyStop = {
   sortOrder?: number;
   version?: number;
   updatedAt?: string;
+  /**
+   * Optional per-segment fare: what it costs to ride from the previous stop
+   * to this one. Only meaningful on stops after the first; when absent the
+   * route's flat `fare` applies.
+   */
+  fare?: JeepneyFare;
 };
 
 export type JeepneyFare = {
@@ -25,10 +47,14 @@ export type JeepneyFare = {
 export type JeepneyRoute = {
   id: string;
   name: string;
+  /** Operator-side route number/signboard text (e.g. "BACO"); not always numeric. */
+  number?: string;
   description: string;
   /** How to read the stop order (e.g. opposite loop directions). */
   directionNote?: string;
   color: string;
+  /** Vehicle class; absent means jeepney (pre-migration rows and old caches). */
+  operator?: TransitOperator;
   fare: JeepneyFare;
   stops: JeepneyStop[];
 };

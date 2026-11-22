@@ -35,39 +35,65 @@ export async function getLocalJeepneyRoutes(): Promise<
     await localDB.waitReady;
     const [routes, stops] = await Promise.all([
       localDB.query(`
-        SELECT id, name, description, direction_note AS "directionNote", color,
+        SELECT id, name, route_number AS "routeNumber", description,
+          direction_note AS "directionNote", color, operator,
           fare_regular AS "fareRegular", fare_discounted AS "fareDiscounted"
         FROM jeepney_routes ORDER BY name;
       `) as Promise<
         Results<{
           id: string;
           name: string;
+          routeNumber: string | null;
           description: string;
           directionNote: string | null;
           color: string;
+          operator: string | null;
           fareRegular: number;
           fareDiscounted: number;
         }>
       >,
       localDB.query(`
         SELECT id, route_id AS "routeId", name, description, lat, lon,
-          sort_order AS "sortOrder", version, updated_at AS "updatedAt"
+          sort_order AS "sortOrder", segment_fare_regular AS "segmentFareRegular",
+          segment_fare_discounted AS "segmentFareDiscounted",
+          version, updated_at AS "updatedAt"
         FROM jeepney_stops ORDER BY route_id, sort_order;
-      `) as Promise<Results<JeepneyStop & { routeId: string }>>,
+      `) as Promise<
+        Results<
+          JeepneyStop & {
+            routeId: string;
+            segmentFareRegular: number | null;
+            segmentFareDiscounted: number | null;
+          }
+        >
+      >,
     ]);
     return routes.rows.map((route) => ({
       id: route.id,
       name: route.name,
+      number: route.routeNumber ?? undefined,
       description: route.description,
       directionNote: route.directionNote ?? undefined,
       color: route.color,
+      operator:
+        route.operator === "bus" ||
+        route.operator === "tricycle" ||
+        route.operator === "jeepney"
+          ? route.operator
+          : undefined,
       fare: {
         regular: route.fareRegular,
         discounted: route.fareDiscounted,
       },
       stops: stops.rows
         .filter((stop) => stop.routeId === route.id)
-        .map(({ routeId: _, ...stop }) => stop),
+        .map(({ routeId: _, segmentFareRegular, segmentFareDiscounted, ...stop }) => ({
+          ...stop,
+          fare:
+            segmentFareRegular !== null && segmentFareDiscounted !== null
+              ? { regular: segmentFareRegular, discounted: segmentFareDiscounted }
+              : undefined,
+        })),
     }));
   } catch {
     return undefined;

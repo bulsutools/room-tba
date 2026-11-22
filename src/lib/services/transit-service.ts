@@ -12,6 +12,9 @@ export type JeepneyStopWriteInput = Partial<{
   lon: number;
   sortOrder: number;
   isActive: boolean;
+  /** Per-segment fare columns; both null/undefined = route flat fare applies. */
+  segmentFareRegular: number | null;
+  segmentFareDiscounted: number | null;
 }>;
 
 export type JeepneyStopCreateInput = Required<
@@ -40,9 +43,11 @@ export async function getAllJeepneyRoutes(): Promise<JeepneyRoute[]> {
   return routes.map((route) => ({
     id: route.id,
     name: route.name,
+    number: route.routeNumber ?? undefined,
     description: route.description,
     directionNote: route.directionNote ?? undefined,
     color: route.color,
+    operator: (route.operator ?? "jeepney") as JeepneyRoute["operator"],
     fare: {
       regular: route.fareRegular,
       discounted: route.fareDiscounted,
@@ -59,6 +64,14 @@ export async function getAllJeepneyRoutes(): Promise<JeepneyRoute[]> {
           sortOrder: stop.sortOrder,
           version: stop.version,
           updatedAt: stop.updatedAt,
+          fare:
+            stop.segmentFareRegular !== null &&
+            stop.segmentFareDiscounted !== null
+              ? {
+                  regular: stop.segmentFareRegular,
+                  discounted: stop.segmentFareDiscounted,
+                }
+              : undefined,
         }),
       ),
   }));
