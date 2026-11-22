@@ -30,6 +30,7 @@
   import GoogleCalendarIcon from "@ui/icons/GoogleCalendarIcon.svelte";
   import PlannerCourseSearch from "./PlannerCourseSearch.svelte";
   import PlannerGrid from "./PlannerGrid.svelte";
+  import TimetableAssistant from "./TimetableAssistant.svelte";
   import type { ClassMapValue, FinalExamRow } from "@lib/types";
   import { tick } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
@@ -506,6 +507,7 @@
           for each section here — saved to your account when signed in, never
           shared.
         </p>
+        <TimetableAssistant rows={courseRows} onopenroom={openRoom} />
         <ul class="planner-offerings">
           {#each courseGroups as group (group.courseCode)}
             <li class="planner-offering planner-offering--group">
