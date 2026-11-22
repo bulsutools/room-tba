@@ -11,8 +11,8 @@
 
   <div class="privacy-modal__scroll map-chrome-scroll">
     <p>
-      Room TBA is a free UPLB campus map and schedule finder maintained by
-      volunteers. It isn't an official University of the Philippines Los Baños
+      Room TBA is a free BulSU campus map and schedule finder maintained by
+      volunteers. It isn't an official Bulacan State University
       website.
     </p>
 

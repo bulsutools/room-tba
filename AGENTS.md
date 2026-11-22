@@ -108,8 +108,8 @@ When the user asks to **ship** a feature or fix, they mean the **full integratio
 
 | Stage              | PR                                                                                  | After merge                                              |
 | ------------------ | ----------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| **1: Integration** | `<feature-branch>` → **`staging`** (or equivalent PR landing the work on `staging`) | Staging preview deploy (`staging.room-tba.uplb.tools`) |
-| **2: Release**     | **`staging` → `main`**                                                              | Production deploy (`room-tba.uplb.tools`)              |
+| **1: Integration** | `<feature-branch>` → **`staging`** (or equivalent PR landing the work on `staging`) | Staging preview deploy (`staging.room-tba.bulsu.tools`) |
+| **2: Release**     | **`staging` → `main`**                                                              | Production deploy (`room-tba.bulsu.tools`)              |
 
 **Before each merge (both stages):**
 
@@ -140,7 +140,7 @@ Every push to `staging` or `main` (and every PR preview) triggers a Vercel deplo
 - **Prod schema drift (colleges/orgs API 500).** If code merged before `drizzle/*.sql` hit prod, Drizzle selects missing columns → `/api/colleges` etc. return 500 while buildings work. Release workflow now applies pending migrations first; still add new SQL files under `drizzle/` in the same release batch. Vercel production deploys on push in parallel with Actions; migrations usually finish first (~seconds vs minutes), but enable Vercel **Deployment Protection → Wait for GitHub Actions** on production if you want a hard gate.
 
 - **Tag/history divergence → first-release `v1.0.0` collision.** If `main` was ever rewritten so no `vX.Y.Z` tag is reachable from it (`git describe --tags origin/main` says "no tags can describe"), semantic-release assumes a first release, tries `git tag v1.0.0`, and dies (`already exists`). Fix: re-point the highest version tag onto `main`'s current tip as a **lightweight** tag; `git update-ref refs/tags/vX.Y.Z <main-sha>` then `git push origin refs/tags/vX.Y.Z --force`. Use `update-ref`, **not** `git tag -a`: `tag.gpgsign true` forces annotated tags, and semantic-release's ancestor check rejects annotated tags (it compares the tag-object SHA, which isn't a commit). Always **dry-run first**: on a local `staging→main` merge, `GITHUB_REF=refs/heads/main GITHUB_ACTIONS=true bunx semantic-release --dry-run --no-ci`; confirm "next release version is X.Y.Z" (not 1.0.0), and make sure the checked-out `main` ref equals the merge commit or it reads the wrong history.
-- **Version-sync PR opens but never merges.** The step that writes the bumped `package.json` + `CHANGELOG.md` back to `main` opens its PR fine — Actions is allowed to create PRs (`can_approve_pull_request_reviews: true`). It never **merges**. Ruleset `17637570` ("No push to default branch") applies `required_approving_review_count: 1` to `~DEFAULT_BRANCH`, and its only bypass actor is the **Admin repository role**. `GITHUB_TOKEN` is not an admin, GitHub forbids an actor approving its own PR, and the GitHub Actions app **cannot** be added to a repo-level ruleset bypass list (`422: must be part of the ruleset source or owner organization`). So `gh pr merge --auto` *arms* successfully and then waits forever. Diagnose with `gh pr view <n> --json mergeable,mergeStateStatus,reviewDecision` → `MERGEABLE` / `BLOCKED` / `REVIEW_REQUIRED`; step conclusions lie, check `gh api repos/uplbtools/room-tba/issues/<n>/timeline` for `auto_squash_enabled`. Symptom: `CHANGELOG.md` drifts behind the version (froze at 2.4.0 while tags reached 2.7.1, #868; earlier 1.23.0 vs 1.36.0); the in-app "What's new" / `/changelog` go stale. **Permanent fix:** set the `RELEASE_SYNC_TOKEN` secret to a repo-admin PAT (contents + pull-requests write) — `release.yml` prefers it over `GITHUB_TOKEN`, so the sync PR is opened by an actor the Admin bypass covers and auto-merge completes. **Catch-up in one shot:** pull every release body newer than the CHANGELOG top with `gh release view <tag> --json body --jq .body` and prepend newest-first, one blank line between entries — semantic-release generates the release body and the CHANGELOG entry from the same template, so the body is already the entry (h1 for minor/major, h2 for patch; no `sed` rewrite needed). **Do not** run `prettier --write CHANGELOG.md`: `biome.json` deliberately excludes the file, and prettier rewrites every current `* ` bullet to `- `.
+- **Version-sync PR opens but never merges.** The step that writes the bumped `package.json` + `CHANGELOG.md` back to `main` opens its PR fine — Actions is allowed to create PRs (`can_approve_pull_request_reviews: true`). It never **merges**. Ruleset `17637570` ("No push to default branch") applies `required_approving_review_count: 1` to `~DEFAULT_BRANCH`, and its only bypass actor is the **Admin repository role**. `GITHUB_TOKEN` is not an admin, GitHub forbids an actor approving its own PR, and the GitHub Actions app **cannot** be added to a repo-level ruleset bypass list (`422: must be part of the ruleset source or owner organization`). So `gh pr merge --auto` *arms* successfully and then waits forever. Diagnose with `gh pr view <n> --json mergeable,mergeStateStatus,reviewDecision` → `MERGEABLE` / `BLOCKED` / `REVIEW_REQUIRED`; step conclusions lie, check `gh api repos/bulsutools/room-tba/issues/<n>/timeline` for `auto_squash_enabled`. Symptom: `CHANGELOG.md` drifts behind the version (froze at 2.4.0 while tags reached 2.7.1, #868; earlier 1.23.0 vs 1.36.0); the in-app "What's new" / `/changelog` go stale. **Permanent fix:** set the `RELEASE_SYNC_TOKEN` secret to a repo-admin PAT (contents + pull-requests write) — `release.yml` prefers it over `GITHUB_TOKEN`, so the sync PR is opened by an actor the Admin bypass covers and auto-merge completes. **Catch-up in one shot:** pull every release body newer than the CHANGELOG top with `gh release view <tag> --json body --jq .body` and prepend newest-first, one blank line between entries — semantic-release generates the release body and the CHANGELOG entry from the same template, so the body is already the entry (h1 for minor/major, h2 for patch; no `sed` rewrite needed). **Do not** run `prettier --write CHANGELOG.md`: `biome.json` deliberately excludes the file, and prettier rewrites every current `* ` bullet to `- `.
 
 ### Databases, migrations, and the E2E secret: gotchas
 
@@ -179,7 +179,7 @@ git push origin staging
 - Push to **`staging`** when the user asks to land work on integration, ship to staging, or says push (and context is not a release to prod).
 - **Do not push to `main`** except via the **`staging` → `main`** release PR (or an explicit hotfix the user requested).
 - **Never `vercel deploy, prod`** unless `git branch, show-current` is `main` and matches `origin/main`. Staging integration uses `git push origin staging` only.
-- After pushing `staging`, Vercel builds the staging preview (`staging.room-tba.uplb.tools`). Preview env must have **`DATABASE_URL`** (same Supabase as production) or the build fails at prerender.
+- After pushing `staging`, Vercel builds the staging preview (`staging.room-tba.bulsu.tools`). Preview env must have **`DATABASE_URL`** (same Supabase as production) or the build fails at prerender.
 
 Feature branches remain appropriate for large or review-heavy work: `feat/…` → PR to `staging` → merge → delete branch.
 
@@ -398,7 +398,7 @@ When the agent session has **browser automation** (Cursor agentic browser, Playw
 | Map chrome at 320px / 768px viewport                                          | Subjective visual design judgment    |
 | Capture `pageerror` / console errors after navigation                         | Long editor save/conflict sessions   |
 | Dismiss landing modal, wait for bootstrap (`campus-browse-chips`, map canvas) | Production account-specific data     |
-| Staging or prod smoke after deploy (`room-tba.uplb.tools`)                  |                                      |
+| Staging or prod smoke after deploy (`room-tba.bulsu.tools`)                  |                                      |
 
 **Practices:**
 
@@ -523,7 +523,7 @@ CRS/AMIS `term_id` values are **chronological within the academic year**: the nu
 
 ## Vercel CLI and environment ops
 
-The project deploys on Vercel (`stimmie/saan-ang-room`, see `.vercel/project.json`). Production: `room-tba.uplb.tools`. Staging preview: `staging.room-tba.uplb.tools`. Git remote may redirect `smmariquit/room-tba` → **`uplbtools/room-tba`**: use `gh` against **`uplbtools/room-tba`** (`gh pr create`, `gh secret set`, `gh issue view`, etc.).
+The project deploys on Vercel (`stimmie/saan-ang-room`, see `.vercel/project.json`). Production: `room-tba.bulsu.tools`. Staging preview: `staging.room-tba.bulsu.tools`. Git remote is the BulSU fork **`bulsutools/room-tba`** (upstream: `uplbtools/room-tba`): use `gh` against **`bulsutools/room-tba`** (`gh pr create`, `gh secret set`, `gh issue view`, etc.).
 
 ### CLI default for agents
 
@@ -533,7 +533,7 @@ Maintainer sessions have **GitHub CLI** and **Vercel CLI** ready. Prefer the CLI
 | ----------------------- | --------------------------------------------------------------- | ----------------------------------------------------- |
 | Open/update PR          | `gh pr create`, `gh pr view`, `gh pr checks`                    | Asking user to open GitHub UI                         |
 | Issues                  | `gh issue view/create/edit`, `gh issue comment`                 | Manual issue paste-only                               |
-| GitHub Actions secrets  | `gh secret set`, `gh secret list, repo uplbtools/room-tba`      | “Add this in repo Settings”                           |
+| GitHub Actions secrets  | `gh secret set`, `gh secret list, repo bulsutools/room-tba`      | “Add this in repo Settings”                           |
 | Vercel env vars         | `vercel env ls`, `vercel env add … preview staging, yes, force` | Vercel UI only                                        |
 | Refresh local env hints | `vercel env pull.env.vercel, environment=preview, yes`          | Assuming empty pull means unset                       |
 | Inspect deploys         | `vercel ls`, `vercel inspect <url>`                             | :                                                     |
@@ -547,8 +547,8 @@ Maintainer sessions have **GitHub CLI** and **Vercel CLI** ready. Prefer the CLI
 
 | Git branch       | Vercel target    | URL (approx.)                   |
 | ---------------- | ---------------- | ------------------------------- |
-| `main`           | **Production**   | `room-tba.uplb.tools`         |
-| `staging`        | **Preview** only | `staging.room-tba.uplb.tools` |
+| `main`           | **Production**   | `room-tba.bulsu.tools`         |
+| `staging`        | **Preview** only | `staging.room-tba.bulsu.tools` |
 | feature branches | **Preview**      | `*.vercel.app`                  |
 
 Code reaches production **only** when `staging → main` is merged (release PR), then Vercel builds **`main`**. Confirm Vercel → Project → Settings → Git has **Production Branch = `main`**.
@@ -579,9 +579,9 @@ vercel ls
 vercel inspect <deployment-url>
 vercel deploy --prod --yes   # manual prod redeploy; only from main checkout
 
-gh secret set E2E_DATABASE_URL --repo uplbtools/room-tba --body "$E2E_DATABASE_URL"
-gh secret list --repo uplbtools/room-tba
-gh pr checks <number> --repo uplbtools/room-tba
+gh secret set E2E_DATABASE_URL --repo bulsutools/room-tba --body "$E2E_DATABASE_URL"
+gh secret list --repo bulsutools/room-tba
+gh pr checks <number> --repo bulsutools/room-tba
 ```
 
 ### Pitfalls
@@ -600,7 +600,7 @@ gh pr checks <number> --repo uplbtools/room-tba
 
 | Trap                                                 | Reality                                                                                                                                                                                                                                                                    |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Map renders flat (no 3D building extrusions) locally | `PUBLIC_MAPTILER_KEY` unset **or rejected** → `loadCampusMapStyle` returns the keyless fallback (OpenFreeMap positron, `FALLBACK_MAP_STYLE_URL`; bare OSM raster if that host is unreachable too). **Not a regression**; prod has the key; local `.env` usually doesn't. The prod key is domain-restricted to `*.uplb.tools`, so it 403s on localhost and `*.vercel.app` previews and you get the fallback there by design (#863). Verify prod on `room-tba.uplb.tools` (loads `api.maptiler.com/tiles/v3-openmaptiles`). |
+| Map renders flat (no 3D building extrusions) locally | `PUBLIC_MAPTILER_KEY` unset **or rejected** → `loadCampusMapStyle` returns the keyless fallback (OpenFreeMap positron, `FALLBACK_MAP_STYLE_URL`; bare OSM raster if that host is unreachable too). **Not a regression**; prod has the key; local `.env` usually doesn't. The prod key is domain-restricted to `*.bulsu.tools`, so it 403s on localhost and `*.vercel.app` previews and you get the fallback there by design (#863). Verify prod on `room-tba.bulsu.tools` (loads `api.maptiler.com/tiles/v3-openmaptiles`). |
 | Fork PR `verify` fails: `DATABASE_URL is missing`    | Fork PRs **can't read Actions secrets**; the build's prerender has no DB. For trivial fork docs, `gh pr merge --admin` (staging is unprotected). Real fork code needs a maintainer-run build.                                                                             |
 | Dependabot PR CI fails the same way                  | Dependabot uses the **Dependabot** secret store, not Actions; mirror the secret there, or the CI workflow skips secret-dependent jobs for `github.actor == 'dependabot[bot]'`.                                                                                            |
 

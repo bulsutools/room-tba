@@ -23,18 +23,18 @@ describe("transitRouteKind", () => {
     expect(
       transitRouteKind({ id: "new-route", name: "X → Y (Commuter Bus)" }),
     ).toBe("bus");
-    expect(transitRouteNoun({ id: "uplb-to-upd", name: "UPLB → UPD" })).toBe(
+    expect(transitRouteNoun({ id: "uplb-to-upd", name: "BulSU → UPD" })).toBe(
       "bus route",
     );
-    expect(transitStopNoun({ id: "uplb-to-upd", name: "UPLB → UPD" })).toBe(
+    expect(transitStopNoun({ id: "uplb-to-upd", name: "BulSU → UPD" })).toBe(
       "Bus stop",
     );
   });
 
-  test("the bundled UPLB <-> Buendia DLTB buses are buses with no quoted fare", () => {
+  test("the bundled BulSU <-> Buendia DLTB buses are buses with no quoted fare", () => {
     const route = {
       id: "buendia-to-uplb",
-      name: "LRT Buendia → UPLB (DLTB bus)",
+      name: "LRT Buendia → BulSU (DLTB bus)",
     };
     expect(transitRouteKind(route)).toBe("bus");
     expect(routeFareInfo(route).kind).toBe("unverified");
@@ -118,7 +118,7 @@ describe("routeFareInfo", () => {
   });
 
   test("the SNODLOB e-jeep id gets only the town-jeep minimum", () => {
-    const route = { id: "snodlob", name: "UPLB Loop (SNODLOB e-jeep)" };
+    const route = { id: "snodlob", name: "BulSU Loop (SNODLOB e-jeep)" };
     expect(routeFareInfo(route).kind).toBe("distance");
     expect(perBoardingFare(route)).toBeNull();
   });
@@ -136,7 +136,7 @@ describe("routeFareInfo", () => {
 
   test("DLTB links to tickets; unverified buses quote nothing", () => {
     expect(
-      routeFareInfo({ id: "uplb-to-upd", name: "UPLB → UP Diliman" }).kind,
+      routeFareInfo({ id: "uplb-to-upd", name: "BulSU → UP Diliman" }).kind,
     ).toBe("ticketed");
     expect(
       routeFareInfo({ id: "lb-to-buendia", name: "Los Baños → Buendia" }).kind,

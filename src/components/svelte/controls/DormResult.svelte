@@ -930,8 +930,8 @@
             {#if dorm.isUpManaged}
               <EntityExternalLink
                 href="https://uplbosa.org"
-                label="UPLB OSA website"
-                ariaLabel="Open UPLB OSA website (opens in new tab)"
+                label="BulSU OSA website"
+                ariaLabel="Open BulSU OSA website (opens in new tab)"
               />
             {:else if dorm.priceRange}
               <span class="price-disclaimer">

@@ -226,7 +226,7 @@
                 <span class="legend-swatch trail-line" aria-hidden="true"></span>
                 <span class="legend-copy">
                   <span class="legend-label">Makiling trails</span>
-                  <span class="legend-description">UPLB and Sipit hiking trails to Peak 2.</span>
+                  <span class="legend-description">BulSU and Sipit hiking trails to Peak 2.</span>
                 </span>
               </div>
               <div class="legend-item">

@@ -76,7 +76,7 @@ export async function generateRouteDescription(
   if (!apiKey?.trim()) return null;
 
   const prompt = [
-    "You are writing walking directions for a University of the Philippines Los Banos student.",
+    "You are writing walking directions for a Bulacan State University student.",
     "Rewrite the notes below as 2 to 4 short sentences, second person, plain and calm.",
     "",
     "Rules:",

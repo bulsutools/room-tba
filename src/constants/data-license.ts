@@ -23,4 +23,4 @@ export const CONTRIBUTOR_LICENSE_CONSENT =
   "Approved suggestions are licensed CC-BY 4.0.";
 
 export const CONTRIBUTOR_LICENSE_GRANT =
-  "By submitting content that is approved and published, you grant UPLB Tools a perpetual, worldwide, royalty-free license to use, display, and redistribute that campus map data under Creative Commons Attribution 4.0 International (CC-BY 4.0).";
+  "By submitting content that is approved and published, you grant BulSU Tools a perpetual, worldwide, royalty-free license to use, display, and redistribute that campus map data under Creative Commons Attribution 4.0 International (CC-BY 4.0).";

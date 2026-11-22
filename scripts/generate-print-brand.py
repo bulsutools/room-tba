@@ -25,7 +25,7 @@ from fontTools.ttLib import TTFont
 from fontTools.varLib.instancer import instantiateVariableFont
 from PIL import Image
 
-PRINT_URL = "https://room-tba.uplb.tools/?ref=print-map"
+PRINT_URL = "https://room-tba.bulsu.tools/?ref=print-map"
 HEADINGS = ["Room TBA"]
 SIGNBOARD_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789&./-' "
 

@@ -26,7 +26,7 @@ async function main() {
   const tiers = testInventoryDiscordTiers(inv);
   writeFileSync(OUT, markdown);
 
-  const repo = process.env.GITHUB_REPOSITORY ?? "uplbtools/room-tba";
+  const repo = process.env.GITHUB_REPOSITORY ?? "bulsutools/room-tba";
   const branch = process.env.GITHUB_REF_NAME ?? "staging";
   const sha = process.env.GITHUB_SHA ?? "local";
   const commitUrl =

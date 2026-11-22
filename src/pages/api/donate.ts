@@ -70,7 +70,7 @@ export const POST: APIRoute = async ({ request }) => {
               {
                 currency: "PHP",
                 amount: pesoAmount * 100,
-                name: "🗺️ Room TBA / UPLB Tools donation",
+                name: "🗺️ Room TBA / BulSU Tools donation",
                 quantity: 1,
                 description,
               },

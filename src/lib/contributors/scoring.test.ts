@@ -286,7 +286,7 @@ describe("periods", () => {
     );
   });
 
-  test("semesters follow the UPLB calendar cut", () => {
+  test("semesters follow the BulSU calendar cut", () => {
     expect(periodAt("semester", Date.UTC(2026, 9, 8)).label).toBe(
       "First semester 2026-2027",
     );

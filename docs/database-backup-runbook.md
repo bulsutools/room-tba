@@ -1,6 +1,6 @@
 # Production database backup runbook
 
-Parent: [#281](https://github.com/uplbtools/room-tba/issues/281). Staging mirror (not a backup): [#289](https://github.com/uplbtools/room-tba/issues/289).
+Parent: [#281](https://github.com/bulsutools/room-tba/issues/281). Staging mirror (not a backup): [#289](https://github.com/bulsutools/room-tba/issues/289).
 
 Room TBA runtime data lives in **Supabase Postgres** (`DATABASE_URL` on Vercel production). Nightly dumps complement Supabase dashboard backups; they are restorable snapshots of the `public` schema (rooms, buildings, classes, proposals, editor history, sync metadata, and related tables).
 
@@ -66,7 +66,7 @@ pg_restore --verbose --no-owner --no-acl -d "$TARGET_URL" room-tba-YYYYMMDD-HHMM
 
 ### Restore to staging Supabase (maintainers only)
 
-Point `TARGET_URL` at an isolated staging project (see [#289](https://github.com/uplbtools/room-tba/issues/289)). **Never** restore over production unless executing a deliberate disaster recovery with a written rollback plan.
+Point `TARGET_URL` at an isolated staging project (see [#289](https://github.com/bulsutools/room-tba/issues/289)). **Never** restore over production unless executing a deliberate disaster recovery with a written rollback plan.
 
 ## Verify after restore
 
@@ -80,7 +80,7 @@ UNION ALL SELECT 'editor_history', COUNT(*) FROM editor_history;
 
 Compare counts to production (read-only query on prod). Spot-check one building slug and one room code in the restored DB.
 
-Log the verification date on [#281](https://github.com/uplbtools/room-tba/issues/281) when completing the formal restore test.
+Log the verification date on [#281](https://github.com/bulsutools/room-tba/issues/281) when completing the formal restore test.
 
 ## Supabase-native backups vs repo dumps
 

@@ -6,7 +6,7 @@
     queryStore.updateQuery({
       category: "class",
       type: "result",
-      // "cmsc12" lists nothing; the class list matches "CMSC 12".
+      // "cpe101" lists nothing; the class list matches "CPE 101".
       value:
         normalizeCourseQuery(queryStore.inputValue) ?? queryStore.inputValue,
     });

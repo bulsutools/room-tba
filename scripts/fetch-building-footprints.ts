@@ -26,9 +26,9 @@ import {
 } from "../src/lib/overpass";
 
 const OUT_PATH = "src/constants/building-footprints.json";
-const DEFAULT_API = "https://room-tba.uplb.tools";
+const DEFAULT_API = "https://room-tba.bulsu.tools";
 const USER_AGENT =
-  "RoomTBA-building-footprints/1.0 (https://github.com/uplbtools/room-tba)";
+  "RoomTBA-building-footprints/1.0 (https://github.com/bulsutools/room-tba)";
 const DELAY_MS = 1500;
 
 type Building = {

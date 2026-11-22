@@ -10,9 +10,9 @@ Canonical reference: [AGENTS.md § Vercel CLI and environment ops](../../AGENTS.
 ## Project
 
 - Vercel: `stimmie/saan-ang-room` (`.vercel/project.json`)
-- Production: `room-tba.uplb.tools` ← **`main` only**
-- Staging preview: `staging.room-tba.uplb.tools` ← **`staging` branch**
-- GitHub org: `uplbtools/room-tba`
+- Production: `room-tba.bulsu.tools` ← **`main` only**
+- Staging preview: `staging.room-tba.bulsu.tools` ← **`staging` branch**
+- GitHub org: `bulsutools/room-tba`
 
 Use **`gh`** and **`vercel`** CLI by default; do not send maintainers to dashboards when CLI works.
 
@@ -46,7 +46,7 @@ vercel env add DATABASE_URL preview staging --value "$DATABASE_URL" --yes --forc
 vercel env pull .env.vercel --environment=preview --yes
 vercel ls
 vercel redeploy <latest-production-deployment-url>
-gh pr checks <n> --repo uplbtools/room-tba
+gh pr checks <n> --repo bulsutools/room-tba
 ```
 
 **Never** `vercel deploy --prod` except from `main` matching `origin/main`. Ship prod via **`staging → main`** release PR.

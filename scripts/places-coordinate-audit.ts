@@ -8,7 +8,7 @@
  * the change in editor_history. Nothing here writes anywhere.
  *
  *   bun run audit:places-coordinates
- *   ... --from-api https://www.uplb.tools   read /api/buildings instead of the DB
+ *   ... --from-api https://www.bulsu.tools   read /api/buildings instead of the DB
  *   ... --threshold 50                       flag distance in metres
  *   ... --limit 5                            first N buildings (smoke a paid run cheaply)
  *   ... --json                               machine-readable output

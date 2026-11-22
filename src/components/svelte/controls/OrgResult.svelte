@@ -313,7 +313,7 @@
         {:else if org.description}
           <p class="entity-directions__text">{org.description}</p>
         {/if}
-        {#if org.bio && org.description && org.description !== org.bio && !org.description.startsWith("Recognized UPLB student organization")}
+        {#if org.bio && org.description && org.description !== org.bio && !org.description.startsWith("Recognized BulSU student organization")}
           <p class="entity-directions__text">{org.description}</p>
         {/if}
 

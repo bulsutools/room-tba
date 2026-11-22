@@ -54,12 +54,12 @@ import { loadEnv } from "./load-env";
 loadEnv();
 
 const OUT_PATH = "src/constants/landmark-images.json";
-// www.uplb.tools is the org landing site; the app (and its API) lives here.
-const DEFAULT_API = "https://room-tba.uplb.tools";
+// www.bulsu.tools is the org landing site; the app (and its API) lives here.
+const DEFAULT_API = "https://room-tba.bulsu.tools";
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
 /** Wikimedia asks API clients to identify themselves. */
 const USER_AGENT =
-  "RoomTBA-landmark-images/1.0 (https://github.com/uplbtools/room-tba)";
+  "RoomTBA-landmark-images/1.0 (https://github.com/bulsutools/room-tba)";
 
 /**
  * Search radii, metres. Buildings sit back from the road, so 100m finds their

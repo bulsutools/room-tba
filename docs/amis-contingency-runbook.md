@@ -1,6 +1,6 @@
 # AMIS access contingency runbook
 
-Parent: [#318](https://github.com/uplbtools/room-tba/issues/318). COM refresh happy path: [amis-com-refresh-runbook.md](./amis-com-refresh-runbook.md).
+Parent: [#318](https://github.com/bulsutools/room-tba/issues/318). COM refresh happy path: [amis-com-refresh-runbook.md](./amis-com-refresh-runbook.md).
 
 Runtime app reads **Supabase `classes` + PGlite cache**, not live AMIS. Live AMIS is an **update channel** for maintainers only.
 
@@ -42,7 +42,7 @@ When AMIS UI allows export (or a maintainer saved JSON):
 2. Place at `data/amis-classes-{termId}.json` or pass `--from-json /path/to/file.json`.
 3. Run import (with `--dry-run` first if unsure).
 
-See [#286](https://github.com/uplbtools/room-tba/issues/286) / [#287](https://github.com/uplbtools/room-tba/issues/287).
+See [#286](https://github.com/bulsutools/room-tba/issues/286) / [#287](https://github.com/bulsutools/room-tba/issues/287).
 
 ## Durable last-known-good (ops)
 
@@ -55,7 +55,7 @@ See [#286](https://github.com/uplbtools/room-tba/issues/286) / [#287](https://gi
 - Browse/search/class panels **do not call AMIS**.
 - Failed maintainer fetch does not blank schedules.
 - Stale imports show a notice in the term picker / class list (see `classesScheduleFreshnessMessage`).
-- Wrong schedule reports: [#308](https://github.com/uplbtools/room-tba/issues/308).
+- Wrong schedule reports: [#308](https://github.com/bulsutools/room-tba/issues/308).
 
 ## Non-goals (v1)
 

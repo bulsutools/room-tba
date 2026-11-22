@@ -734,7 +734,7 @@
     outline-offset: -2px;
   }
 
-  /* A phone column is ~60px: wrap "CMSC 12" onto two lines at the space
+  /* A phone column is ~60px: wrap "CPE 101" onto two lines at the space
      instead of clipping it to "CMS…" (Jakob audit, micro 14). */
   .planner-block__course {
     display: block;

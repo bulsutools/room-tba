@@ -77,7 +77,7 @@ function isFacebook(url: string) {
 }
 
 /**
- * Converts the public campus websites directory to map-searchable UPLB units.
+ * Converts the public campus websites directory to map-searchable BulSU units.
  * Colleges and broad portals remain in their existing dedicated app surfaces.
  */
 export function campusOfficeDirectoryEntries(

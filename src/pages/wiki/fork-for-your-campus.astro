@@ -58,13 +58,13 @@ const description =
           <tbody>
             <tr><td><code>src/lib/site.ts</code></td><td>Site name, URL, title, and description are UPLB.</td></tr>
             <tr><td><code>src/campus.config.ts</code></td><td>Map bounds, default camera, the Mt. Makiling terrain block, the jeepney transit flag and label, and E2E fixture coordinates. <code>bun run fork:init</code> rewrites it for you.</td></tr>
-            <tr><td><code>src/constants/community-links.ts</code></td><td>UPLB Tools, Discord, and Messenger links.</td></tr>
+            <tr><td><code>src/constants/community-links.ts</code></td><td>bulsutools, Discord, and Messenger links.</td></tr>
             <tr><td><code>public/room_info.json</code></td><td>UPLB buildings, aliases, and walking directions. Seed file for aliases.</td></tr>
             <tr><td><code>src/constants/jeepney-routes.ts</code> + <code>jeepney-geometries.json</code></td><td>UPLB jeepney routes. Replace with your routes, or set <code>campusTransit.enabled: false</code> if your campus has no equivalent.</td></tr>
             <tr><td><code>scripts/import-amis-classes.ts</code></td><td>AMIS is UPLB's course system. You don’t have AMIS.</td></tr>
             <tr><td><code>scripts/import-final-exams.ts</code></td><td>Reads UPLB OUR finals JSON.</td></tr>
             <tr><td><code>scripts/import-osa-organizations.ts</code> + <code>scripts/import-campus-office-directory.ts</code></td><td>UPLB org and office directories.</td></tr>
-            <tr><td><code>astro.config.mjs</code> <code>site</code></td><td>Hardcoded to <code>room-tba.uplb.tools</code>.</td></tr>
+            <tr><td><code>astro.config.mjs</code> <code>site</code></td><td>Hardcoded to <code>room-tba.bulsu.tools</code>.</td></tr>
             <tr><td>The database contents</td><td>Every row is UPLB. The schema stays and the data goes.</td></tr>
           </tbody>
         </table>
@@ -92,7 +92,7 @@ const description =
       <h2 id="steps">The actual steps</h2>
 
       <h3>1. Fork and clone</h3>
-      <p>Fork <code>uplbtools/room-tba</code> on GitHub, then run these commands.</p>
+      <p>Fork <code>bulsutools/room-tba</code> on GitHub, then run these commands.</p>
       <pre><code>git clone https://github.com/&lt;your-org&gt;/room-tba.git
 cd room-tba
 cp .env.example .env.local</code></pre>
@@ -272,14 +272,14 @@ bunx drizzle-kit push</code></pre>
           href="https://creativecommons.org/licenses/by/4.0/"
           target="_blank"
           rel="noopener noreferrer">CC-BY 4.0</a
-        >. If you reuse those entities, credit Room TBA / UPLB Tools.
+        >. If you reuse those entities, credit Room TBA / bulsutools.
         OpenStreetMap data stays ODbL. AMIS and other university imports aren’t
         open bulk data.
       </p>
       <p>
         Credit is free. The README credits the people who built this. Don’t
         strip those names and pass the work off as yours. If your fork takes
-        off, a line back to <code>uplbtools/room-tba</code> is good manners.
+        off, a line back to <code>bulsutools/room-tba</code> is good manners.
       </p>
     </section>
   </article>

@@ -57,11 +57,11 @@ export const NO_ASSIGNED_ROOM_LABEL = "No assigned room";
 
 /**
  * Disclaimer for course/section data during enrollment. Offerings are not final
- * until the last day of change of matriculation. Kept date-free on purpose so it
+ * until the last day of change of enrollment. Kept date-free on purpose so it
  * stays correct across terms.
  */
 export const COURSE_CHANGE_DISCLAIMER =
-  "Course offerings may still change up to the last day of change of matriculation.";
+  "Course offerings may still change up to the last day of change of enrollment.";
 
 export function isRoomScheduledClassType(type: string | null | undefined) {
   if (!type) return false;

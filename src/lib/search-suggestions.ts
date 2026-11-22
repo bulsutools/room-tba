@@ -122,7 +122,7 @@ export function nameMatchScore(
   if (index > 0) {
     return isWordStart(haystack, index) ? MATCH.wordPrefix : MATCH.midWord;
   }
-  // "cmsc12" against "CMSC 123": same code once spacing is ignored.
+  // "cpe101" against "CPE 1012": same code once spacing is ignored.
   if (compactNeedle !== "" && compactHaystack.startsWith(compactNeedle)) {
     return MATCH.prefix;
   }
@@ -161,7 +161,7 @@ export function matchHighlightRange(
 
 const COURSE_CODE_QUERY = /^([A-Za-z]{2,8})\s*(\d{1,4}[A-Za-z]?)$/;
 
-/** "cmsc12" / "CMSC  12" → "CMSC 12"; null when it isn't shaped like a code. */
+/** "cpe101" / "CPE  101" → "CPE 101"; null when it isn't shaped like a code. */
 export function normalizeCourseQuery(query: string): string | null {
   const match = COURSE_CODE_QUERY.exec(query.trim());
   if (!match) return null;
@@ -328,7 +328,7 @@ export function scoreRooms(
 
 /**
  * Sections of the course the query names. When some sections are exactly the
- * course ("CMSC 12"), longer codes it prefixes ("CMSC 123") are dropped.
+ * course ("CPE 101"), longer codes it prefixes ("CPE 1012") are dropped.
  */
 export function scoreClasses(
   searchString: string,

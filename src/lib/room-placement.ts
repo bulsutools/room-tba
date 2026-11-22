@@ -6,7 +6,7 @@
  * than no pin — students walk to these — so anything without a real signal
  * returns `null` instead of a guess.
  *
- * Floor is the trustworthy part (UPLB codes encode it: `PS B-203` → floor 2).
+ * Floor is the trustworthy part (BulSU codes encode it: `PS B-203` → floor 2).
  * posX/posY are always a corridor heuristic; see `reason` on every result.
  */
 
@@ -163,7 +163,7 @@ export function inferRoomSignal(
   } else if (code) {
     floor = code.floor;
     confidence = "high";
-    reason = `First digit of the room number → floor ${code.floor} (UPLB numbering convention)`;
+    reason = `First digit of the room number → floor ${code.floor} (BulSU numbering convention)`;
   } else if (prose.floor !== null) {
     floor = prose.floor;
     confidence = "medium";
@@ -243,7 +243,7 @@ type SignalledRoom = { code: string; signal: RoomSignal };
 /**
  * Lay out one floor's rooms along the building's long axis (the corridor),
  * split by wing, with odd/even room numbers on opposite sides — the convention
- * UPLB directions describe ("odd- and even-numbered rooms alternate sides").
+ * BulSU directions describe ("odd- and even-numbered rooms alternate sides").
  *
  * ponytail: rectangular corridor model. Good enough for a suggestion an editor
  * confirms by eye; upgrade to real floor plans if we ever get them.

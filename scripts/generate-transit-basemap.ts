@@ -16,7 +16,7 @@ const OUT_FILE = "src/constants/transit-basemap.json";
 const OVERPASS =
   process.env.OVERPASS_URL ?? "https://overpass-api.de/api/interpreter";
 const USER_AGENT =
-  "room-tba-transit-basemap/1.1 (https://github.com/uplbtools/room-tba)";
+  "room-tba-transit-basemap/1.1 (https://github.com/bulsutools/room-tba)";
 /** Campus core plus the places the map can be opened from (IRRI, Jubileeville). */
 const BBOX = "14.148,121.226,14.184,121.262";
 /** 5 dp is about 1 m; building outlines need it, roads get thinned anyway. */

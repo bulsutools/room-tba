@@ -45,7 +45,7 @@ test.describe("community redirects", () => {
   });
 });
 
-const TRANSPARENCY_TARGET = "https://www.uplb.tools/transparency";
+const TRANSPARENCY_TARGET = "https://bulsu.tools/transparency";
 
 /**
  * The money report used to be src/pages/transparency.astro and now lives on the

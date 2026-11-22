@@ -95,12 +95,12 @@ describe("DirectionsPanel", () => {
     await tick();
 
     locationStore.coords = null;
-    locationStore.failure = "You appear to be outside the UPLB campus.";
+    locationStore.failure = "You appear to be outside the BulSU campus.";
     await tick();
 
     expect(directionsStore.origin).toBeNull();
     expect(directionsStore.journeys).toEqual([]);
-    expect(screen.getByText(/outside the UPLB campus/)).toBeInTheDocument();
+    expect(screen.getByText(/outside the BulSU campus/)).toBeInTheDocument();
     locationStore.coords = null;
   });
 

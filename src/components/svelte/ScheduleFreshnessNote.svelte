@@ -7,7 +7,7 @@
 
   type Props = {
     importedAt?: string | null;
-    /** Term whose change of matriculation dates the note names. */
+    /** Term whose change of enrollment dates the note names. */
     termId?: number | null;
   };
 

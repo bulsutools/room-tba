@@ -67,11 +67,11 @@ describe("email verification token", () => {
 
 describe("verification mail copy", () => {
   test("links to the confirm page with the token encoded", () => {
-    expect(verifyEmailUrl("https://room-tba.uplb.tools/", "a.b+c")).toBe(
-      "https://room-tba.uplb.tools/verify-email?token=a.b%2Bc",
+    expect(verifyEmailUrl("https://room-tba.bulsu.tools/", "a.b+c")).toBe(
+      "https://room-tba.bulsu.tools/verify-email?token=a.b%2Bc",
     );
     const mail = buildVerificationEmail({
-      siteUrl: "https://room-tba.uplb.tools",
+      siteUrl: "https://room-tba.bulsu.tools",
       token: "tok",
       username: "ana",
     });
@@ -81,7 +81,7 @@ describe("verification mail copy", () => {
 
   test("the in-use notice carries no account details or link token", () => {
     const notice = buildEmailInUseNotice({
-      siteUrl: "https://room-tba.uplb.tools",
+      siteUrl: "https://room-tba.bulsu.tools",
     });
     expect(notice.text).toContain("/?editor=login");
     expect(notice.text).not.toContain("token=");

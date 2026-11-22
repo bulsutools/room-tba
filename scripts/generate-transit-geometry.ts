@@ -38,7 +38,7 @@ loadEnv();
 const OUT_FILE = "src/constants/jeepney-geometries.json";
 const CACHE_DIR = "data/transit-geometry-cache";
 const USER_AGENT =
-  "room-tba-transit-geometry/1.0 (https://github.com/uplbtools/room-tba)";
+  "room-tba-transit-geometry/1.0 (https://github.com/bulsutools/room-tba)";
 const OVERPASS = "https://overpass-api.de/api/interpreter";
 const OSRM = "https://routing.openstreetmap.de/routed-car/route/v1/driving";
 /** Coordinate precision: 5 dp ≈ 1.1 m, plenty for a route line. */

@@ -382,7 +382,7 @@ export default defineConfig({
         context: "server",
         optional: true,
       }),
-      // From address, e.g. "Room TBA <digest@uplbtools.me>".
+      // From address, e.g. "Room TBA <noreply@room-tba.bulsu.tools>".
       RESEND_FROM_EMAIL: envField.string({
         access: "secret",
         context: "server",

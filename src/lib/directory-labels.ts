@@ -17,7 +17,7 @@ export function splitTrailingAcronym(name: string): {
 
 /**
  * A college's short name: its own "(CPAf)" suffix when it has one, else the
- * subdomain of its website (cas.uplb.edu.ph -> CAS), which is how UPLB
+ * subdomain of its website (cas.bulsu.edu.ph -> CAS), which is how BulSU
  * colleges name themselves.
  */
 export function collegeLabel(
@@ -60,7 +60,7 @@ const MINOR_WORDS = new Set([
   "y",
 ]);
 /** Words that stay capitalized however the name was typed. */
-const KEEP_UPPER = new Set(["UP", "UPLB", "LB", "DOST", "II", "III", "IV"]);
+const KEEP_UPPER = new Set(["UP", "BULSU", "LB", "DOST", "II", "III", "IV"]);
 
 function titleWord(word: string, first: boolean): string {
   if (KEEP_UPPER.has(word.replace(/[^A-Z]/g, ""))) return word;
@@ -80,7 +80,7 @@ function titleWord(word: string, first: boolean): string {
  */
 export function displayOrgName(name: string): string {
   const { name: base, acronym } = splitTrailingAcronym(name);
-  // Only the name decides: acronyms like "(UPLB ActSS)" carry lowercase.
+  // Only the name decides: acronyms like "(BulSU ActSS)" carry lowercase.
   if (/\p{Ll}/u.test(base)) return name;
   const cased = base
     .split(/\s+/)

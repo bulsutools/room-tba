@@ -17,7 +17,7 @@
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "uplb-emergency-hotlines.vcf";
+    link.download = "bulsu-emergency-hotlines.vcf";
     // Safari needs the link in the document, and iOS/Android browsers can
     // cancel the download if the URL is revoked right after the click.
     document.body.append(link);

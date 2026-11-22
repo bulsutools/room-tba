@@ -58,7 +58,7 @@ const snodlob: JeepneyRoute = {
   stops: [
     SNODLOB_TERMINAL,
     mkStop("College Junction", 14.19, 121.26),
-    mkStop("UPLB Main Library", 14.2, 121.3),
+    mkStop("BulSU Main Library", 14.2, 121.3),
     SNODLOB_TERMINAL,
   ],
 };

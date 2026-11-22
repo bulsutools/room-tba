@@ -82,7 +82,7 @@ describe("AcademicCalendarScreen", () => {
     }
     expect(
       screen
-        .getByText("May differ from the official UPLB academic calendar")
+        .getByText("May differ from the official BulSU academic calendar")
         .closest("details"),
     ).not.toHaveAttribute("open");
   });
@@ -108,7 +108,7 @@ describe("AcademicCalendarScreen", () => {
   test("shows the community-data disclaimer", () => {
     render(AcademicCalendarScreen);
     expect(
-      screen.getByText("May differ from the official UPLB academic calendar"),
+      screen.getByText("May differ from the official BulSU academic calendar"),
     ).toBeTruthy();
     expect(screen.getByRole("note").textContent).toContain("Registrar");
   });

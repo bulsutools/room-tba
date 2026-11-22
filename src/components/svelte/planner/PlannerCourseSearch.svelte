@@ -233,7 +233,7 @@
     <input
       id="planner-course-search"
       type="search"
-      placeholder="Search courses (e.g. CMSC 12)"
+      placeholder="Search courses (e.g. CPE101)"
       bind:value={query}
     />
   </label>
@@ -241,8 +241,8 @@
   {#if !query.trim() && !browsing}
     <div class="course-search__empty">
       <p class="course-search__hint">
-        Type a course code to see its sections, e.g. <strong>CMSC 12</strong>
-        or <strong>MATH 27</strong>.
+        Type a course code to see its sections, e.g. <strong>CPE101</strong>
+        or <strong>MMW101</strong>.
       </p>
       {#if planCourses.length > 0}
         <div class="course-search__chips" aria-label="Courses in this plan">

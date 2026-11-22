@@ -46,7 +46,7 @@ export const TERM_CALENDAR_WINDOWS: Record<
 };
 
 /**
- * Last day of change of matriculation per term (Asia/Manila, date-only). Until
+ * Last day of change of enrollment per term (Asia/Manila, date-only). Until
  * this date, course offerings can still change — surfaced in the planner note.
  */
 export const CHANGE_OF_MATRICULATION_ENDS: Record<number, string> = {};
@@ -69,7 +69,7 @@ for (const calendar of [academicCalendar2024, academicCalendar2026]) {
 }
 
 /** Human date ("August 7, 2026") for a term's last day of change of
- *  matriculation, or null when unknown. */
+ *  enrollment, or null when unknown. */
 export function changeOfMatriculationLabel(
   termId: number | null | undefined,
 ): string | null {
@@ -84,12 +84,12 @@ export function changeOfMatriculationLabel(
   });
 }
 
-/** A term's change of matriculation (COM) window, date-only (Asia/Manila). */
+/** A term's change of enrollment (CE) window, date-only (Asia/Manila). */
 export type ChangeOfMatriculationPeriod = { startsOn: string; endsOn: string };
 
 /**
- * The registrar's "Change of Matriculation Period" for a term, from the
- * calendar milestones. Falls back to term start through the last COM day when
+ * The registrar's "Change of Enrollment Period" for a term, from the
+ * calendar milestones. Falls back to term start through the last CE day when
  * only the end is known. Null when neither is on file (AY 2025-2026).
  */
 export function changeOfMatriculationPeriod(
@@ -107,7 +107,7 @@ export function changeOfMatriculationPeriod(
     ).find(
       (m) =>
         m.termId === termId &&
-        /change of matriculation/i.test(m.label) &&
+        /change of (?:matriculation|enrollment)/i.test(m.label) &&
         m.startsOn &&
         m.endsOn,
     );

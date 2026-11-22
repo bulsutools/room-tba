@@ -134,7 +134,7 @@ export const GET: APIRoute = async ({ url }) => {
     return new Response(Buffer.from(bytes), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="uplb-transit-map${slug}.pdf"`,
+        "Content-Disposition": `inline; filename="bulsu-transit-map${slug}.pdf"`,
         "Cache-Control": "no-store",
       },
     });

@@ -175,7 +175,7 @@ export const STRUCTURAL_TOKENS = new Set([
   "campus",
   "office",
   "university",
-  "uplb",
+  "bulsu",
   "up",
 ]);
 

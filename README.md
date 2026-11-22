@@ -13,7 +13,7 @@
 
 _Buildings, colleges, and "where is Federizo?" on the BulSU Malolos Campus 1 + Campus 2 map._
 
-[Open the map](https://room-tba.bulsu.tools) · [Report wrong data](https://github.com/bulsutools/room-tba/issues/new/choose) · [Upstream Room TBA](https://github.com/uplbtools/room-tba)
+[Open the map](https://room-tba.bulsu.tools) · [Report wrong data](https://github.com/bulsutools/room-tba/issues/new/choose) · [Upstream Room TBA](https://github.com/bulsutools/room-tba)
 
 </div>
 
@@ -21,11 +21,11 @@ _Buildings, colleges, and "where is Federizo?" on the BulSU Malolos Campus 1 + C
 
 ## What this is
 
-**Room TBA** for [Bulacan State University](https://www.bulsu.edu.ph/) (Malolos **Campus 1** Guinhawa + **Campus 2** annex). Fork of [uplbtools/room-tba](https://github.com/uplbtools/room-tba). Search a building or college; the map flies to an approximate pin you can correct in the editor.
+**Room TBA** for [Bulacan State University](https://www.bulsu.edu.ph/) (Malolos **Campus 1** Guinhawa + **Campus 2** annex). Fork of [bulsutools/room-tba](https://github.com/bulsutools/room-tba). Search a building or college; the map flies to an approximate pin you can correct in the editor.
 
 No account needed to browse. Editors fix pins in the same app (`/?editor=login`).
 
-> **Data note:** Seed file keeps **colleges only**. Building/place pins start empty — add them in the map editor. Room schedules need a registrar importer later (AMIS/UPLB scripts do not apply). Wrong data? [Open an issue](https://github.com/bulsutools/room-tba/issues/new/choose).
+> **Data note:** Seed file keeps **colleges only**. Building/place pins start empty — add them in the map editor. Room schedules need a registrar importer later (the upstream UPLB AMIS scripts do not apply). Wrong data? [Open an issue](https://github.com/bulsutools/room-tba/issues/new/choose).
 
 ---
 
@@ -144,7 +144,7 @@ Multi-campus / multi-tenant exploration (deferred): [docs/multi-campus-handoff.m
 
 ## Credits
 
-Fork of [uplbtools/room-tba](https://github.com/uplbtools/room-tba) by [Simonee Ezekiel Mariquit](https://stimmie.dev) and contributors.
+Fork of [bulsutools/room-tba](https://github.com/bulsutools/room-tba) by [Simonee Ezekiel Mariquit](https://stimmie.dev) and contributors.
 
 This fork: [bulsutools](https://github.com/bulsutools) — campus tool, not an official BulSU product.
 

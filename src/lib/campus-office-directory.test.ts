@@ -18,7 +18,7 @@ describe("campusOfficeDirectoryEntries", () => {
       },
       {
         name: "AMIS",
-        url: "https://amis.uplb.edu.ph",
+        url: "https://amis.bulsu.edu.ph",
         description: "Academic Management Information System",
         category: "Main Portals",
       },

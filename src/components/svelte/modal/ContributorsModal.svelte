@@ -166,7 +166,7 @@
             href={UPLB_TOOLS_URL}
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-link">UPLB Tools</a
+            class="inline-link">bulsutools</a
           >
         </li>
         <li>

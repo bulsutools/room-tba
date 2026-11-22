@@ -37,7 +37,7 @@ export type CampusGateRowValidation = {
   errors: string[];
 };
 
-/** Rough UPLB campus bounds for volunteer coordinate sanity checks. */
+/** Rough BulSU campus bounds for volunteer coordinate sanity checks. */
 export const UPLB_CAMPUS_LAT_RANGE = { min: 14.15, max: 14.19 } as const;
 export const UPLB_CAMPUS_LON_RANGE = { min: 121.23, max: 121.26 } as const;
 
@@ -184,7 +184,7 @@ export function validateCampusGateRow(
   if (lat !== null) {
     if (lat < UPLB_CAMPUS_LAT_RANGE.min || lat > UPLB_CAMPUS_LAT_RANGE.max) {
       errors.push(
-        `lat ${lat} is outside UPLB campus range (${UPLB_CAMPUS_LAT_RANGE.min}–${UPLB_CAMPUS_LAT_RANGE.max})`,
+        `lat ${lat} is outside BulSU campus range (${UPLB_CAMPUS_LAT_RANGE.min}–${UPLB_CAMPUS_LAT_RANGE.max})`,
       );
     }
   }
@@ -192,7 +192,7 @@ export function validateCampusGateRow(
   if (lon !== null) {
     if (lon < UPLB_CAMPUS_LON_RANGE.min || lon > UPLB_CAMPUS_LON_RANGE.max) {
       errors.push(
-        `lon ${lon} is outside UPLB campus range (${UPLB_CAMPUS_LON_RANGE.min}–${UPLB_CAMPUS_LON_RANGE.max})`,
+        `lon ${lon} is outside BulSU campus range (${UPLB_CAMPUS_LON_RANGE.min}–${UPLB_CAMPUS_LON_RANGE.max})`,
       );
     }
   }

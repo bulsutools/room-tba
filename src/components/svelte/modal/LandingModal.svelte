@@ -205,7 +205,7 @@
 
   <div class="landing__scroll map-chrome-scroll">
     <p class="landing__intro">
-      Find rooms, routes, classes, and events at UPLB. You don't need an account.
+      Find rooms, routes, classes, and events at BulSU. You don't need an account.
     </p>
 
     <SettingsSection variant="list" title="What you can do">

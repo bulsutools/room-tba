@@ -28,7 +28,7 @@
   <div class="orgs-modal__scroll map-chrome-scroll">
   <header class="orgs-modal__header">
     <p class="orgs-modal__lead">
-      Room TBA lists UPLB student organizations and maps their tambayans when
+      Room TBA lists BulSU student organizations and maps their tambayans when
       a location is known. Every OSA-imported listing links back to its
       official profile.
     </p>

@@ -348,7 +348,7 @@ export type Period = {
 };
 
 /**
- * Calendar cut of the UPLB year: first semester August to December, second
+ * Calendar cut of the BulSU year: first semester August to December, second
  * semester January to May, midyear June and July.
  */
 export function periodAt(

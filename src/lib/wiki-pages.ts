@@ -78,7 +78,7 @@ export const WIKI_PAGES: readonly WikiPage[] = [
     title: "Fork this for your campus",
     kicker: "For other campuses",
     blurb:
-      "Room TBA is built for UPLB. This is what you replace to run it for a different campus, from the UPLB data and glue to rip out and the config to repoint to the parts you write yourself (class import).",
+      "Room TBA is built for BulSU. This is what you replace to run it for a different campus, from the BulSU data and glue to rip out and the config to repoint to the parts you write yourself (class import).",
     sourcePath: "src/pages/wiki/fork-for-your-campus.astro",
   },
 ] as const;
@@ -98,7 +98,7 @@ export const WIKI_REPO_URL = GITHUB_ROOM_TBA_URL;
 export function wikiCorrectionUrl(pageTitle: string, path: string): string {
   const params = new URLSearchParams({
     title: `Wiki correction: ${pageTitle}`,
-    body: `Page: https://room-tba.uplb.tools${path}\n\nWhat is wrong:\n\nWhat it should say (with a source if you have one):\n`,
+    body: `Page: https://room-tba.bulsu.tools${path}\n\nWhat is wrong:\n\nWhat it should say (with a source if you have one):\n`,
   });
   return `${WIKI_REPO_URL}/issues/new?${params.toString()}`;
 }

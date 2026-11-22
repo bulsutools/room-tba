@@ -84,6 +84,6 @@ export function buildReviewEmail(input: ReviewEmailInput): {
     : "";
   return {
     subject: `${copy.subject}: ${label}`,
-    text: `Hi ${who},\n\n${copy.lead}\n\nEdit: ${label}\nReviewed by: ${input.reviewedBy}${noteBlock}\n\nSuggest more edits any time at https://room-tba.uplb.tools\n`,
+    text: `Hi ${who},\n\n${copy.lead}\n\nEdit: ${label}\nReviewed by: ${input.reviewedBy}${noteBlock}\n\nSuggest more edits any time at https://room-tba.bulsu.tools\n`,
   };
 }

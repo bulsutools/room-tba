@@ -143,7 +143,7 @@ export function buildAgenda(
         timeZone: "UTC",
       }),
       isToday,
-      // Saturday still carries classes at UPLB (midyear TTHS blocks); it is
+      // Saturday still carries classes at BulSU (midyear TTHS blocks); it is
       // styled as a weekend but only Sunday gets the "never any classes" copy.
       isWeekend: weekday === 0 || weekday === 6,
       emptyLabel:

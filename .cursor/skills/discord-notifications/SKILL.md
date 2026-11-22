@@ -92,7 +92,7 @@ Expect `{"ok":true}` and embed in `#contributors`.
 
 ## Paired issues
 
-- room-tba [#222](https://github.com/uplbtools/room-tba/issues/222) — proposal reviewed
+- room-tba [#222](https://github.com/bulsutools/room-tba/issues/222) — proposal reviewed
 - discord-bot [#4](https://github.com/uplbtools/discord-bot/issues/4) — bot embed handler
 
 Comment on both issues when shipping cross-repo work.

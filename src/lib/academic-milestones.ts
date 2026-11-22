@@ -38,7 +38,10 @@ const SURFACED: { pattern: RegExp; display: string }[] = [
     display: "Waiver of prerequisite deadline",
   },
   { pattern: /^start of classes/i, display: "Start of classes" },
-  { pattern: /^change of matriculation/i, display: "Change of matriculation" },
+  {
+    pattern: /change of (?:matriculation|enrollment)/i,
+    display: "Change of enrollment",
+  },
   {
     pattern: /withdrawal of enlistment/i,
     display: "Withdrawal of enlistment deadline",
@@ -57,9 +60,15 @@ const SURFACED: { pattern: RegExp; display: string }[] = [
   { pattern: /^final examinations/i, display: "Final examinations" },
   { pattern: /grade submission/i, display: "Grade submission deadline" },
   { pattern: /^christmas vacation/i, display: "Christmas vacation" },
-  { pattern: /^uplb commencement/i, display: "UPLB commencement" },
+  {
+    pattern: /^(?:uplb|bulsu) commencement/i,
+    display: "BulSU commencement",
+  },
   { pattern: /hooding ceremony/i, display: "Graduate hooding ceremony" },
-  { pattern: /^uplb foundation day/i, display: "UPLB Foundation Day" },
+  {
+    pattern: /^(?:uplb|bulsu) foundation day/i,
+    display: "BulSU Foundation Day",
+  },
   { pattern: /^loyalty day/i, display: "Loyalty Day" },
 ];
 

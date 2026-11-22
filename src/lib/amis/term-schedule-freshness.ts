@@ -36,7 +36,7 @@ export function isClassesScheduleStale(
 
 /**
  * Freshness line for class schedules. Given the term's change of
- * matriculation (COM) period, it names COM in full and says when it is:
+ * enrollment (CE) period, it names CE in full and says when it is:
  * ahead or under way (classes and rooms can still change), or already over
  * with the last import from before it ended (some may have changed since).
  */
@@ -54,14 +54,14 @@ export function classesScheduleFreshnessMessage(
   if (com && today <= com.endsOn) {
     const comNote =
       today >= com.startsOn
-        ? `Change of matriculation (COM) is under way this semester (${range}), so classes and rooms can still change.`
-        : `Classes and rooms can still change during this semester's change of matriculation (COM), ${range}.`;
+        ? `Change of enrollment (CE) is under way this semester (${range}), so classes and rooms can still change.`
+        : `Classes and rooms can still change during this semester's change of enrollment (CE), ${range}.`;
     return label
       ? `${isClassesScheduleStale(importedAt, now) ? "Schedules last imported" : "Schedules updated"} ${label}. ${comNote}`
       : `Class schedule import date is unknown. ${comNote}`;
   }
   if (com && importedOn && importedOn <= com.endsOn) {
-    return `Schedules last imported ${label}, before this semester's change of matriculation (COM, ${range}) ended, so some classes or rooms may have changed.`;
+    return `Schedules last imported ${label}, before this semester's change of enrollment (CE, ${range}) ended, so some classes or rooms may have changed.`;
   }
   if (!label) {
     return "Class schedule import date is unknown. Data may be outdated.";

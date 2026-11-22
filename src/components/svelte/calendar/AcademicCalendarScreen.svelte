@@ -187,7 +187,7 @@
   <!-- The caveat's headline stays visible (#408); the detail is one tap
        away instead of a quarter of the screen. -->
   <details class="acal-about">
-    <summary>May differ from the official UPLB academic calendar</summary>
+    <summary>May differ from the official BulSU academic calendar</summary>
     <p class="acal-note" role="note">
       Term windows are community-maintained per CRS term. The dated rows below
       are read from the Office of the University Registrar's published

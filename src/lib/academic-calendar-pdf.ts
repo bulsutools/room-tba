@@ -382,10 +382,10 @@ export function parseAcademicCalendar(text: string): AcademicCalendar {
 
   const startOfClasses = findRow(rows, /^START OF CLASSES/i);
   const finals = findRow(rows, /^FINAL EXAMINATIONS/i);
-  const changeOfMatric = findRow(rows, /^Change of Matriculation/i);
+  const changeOfMatric = findRow(rows, /^Change of (?:Matriculation|Enrollment)/i);
   if (!startOfClasses || !finals || !changeOfMatric) {
     throw new Error(
-      "Missing a required row (START OF CLASSES / FINAL EXAMINATIONS / Change of Matriculation)",
+      "Missing a required row (START OF CLASSES / FINAL EXAMINATIONS / Change of Matriculation or Enrollment)",
     );
   }
 

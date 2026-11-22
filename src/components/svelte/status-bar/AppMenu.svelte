@@ -531,7 +531,7 @@
             />
             <SettingsRow
               icon={Globe}
-              label="UPLB Tools"
+              label="BulSU Tools"
               href={UPLB_TOOLS_URL}
               external
             />

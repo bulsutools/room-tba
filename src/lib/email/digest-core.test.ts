@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { buildProposalDigest } from "./digest-core";
 
-const SITE = "https://room-tba.uplb.tools";
+const SITE = "https://room-tba.bulsu.tools";
 
 describe("buildProposalDigest", () => {
   test("returns null with no pending proposals", () => {

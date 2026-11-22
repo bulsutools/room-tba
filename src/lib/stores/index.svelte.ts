@@ -281,11 +281,11 @@ class LocationStore {
 
         if (!this.isWithinBounds(longitude, latitude)) {
           toastStore.show(
-            "You appear to be outside the UPLB Campus. Location features are limited to the campus area.",
+            "You appear to be outside the BulSU Campus. Location features are limited to the campus area.",
             "error",
           );
           this.stopTracking();
-          this.failure = "You appear to be outside the UPLB campus.";
+          this.failure = "You appear to be outside the BulSU campus.";
           return;
         }
 

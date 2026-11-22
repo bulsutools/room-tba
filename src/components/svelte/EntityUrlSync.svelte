@@ -163,12 +163,12 @@
       setDocumentTitle(
         stop
           ? `${stop.name} | ${route.name} | Room TBA`
-          : `${route.name} ${transitRouteNoun(route)} | UPLB Transit | Room TBA`,
+          : `${route.name} ${transitRouteNoun(route)} | BulSU Transit | Room TBA`,
       );
       return;
     }
     if (queryStore.category === "browse" && queryStore.queryValue === "jeepney") {
-      setDocumentTitle("Jeepney and bus routes | UPLB Transit | Room TBA");
+      setDocumentTitle("Jeepney and bus routes | BulSU Transit | Room TBA");
       return;
     }
 

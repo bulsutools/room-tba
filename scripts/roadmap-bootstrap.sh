@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-REPO="uplbtools/room-tba"
+REPO="bulsutools/room-tba"
 PROJECT_ID="PVT_kwDOEXQKEs4Bafkj"
 FIELD_STATUS="PVTSSF_lADOEXQKEs4BafkjzhVW0RE"
 FIELD_PRIORITY="PVTSSF_lADOEXQKEs4BafkjzhVW0R0"

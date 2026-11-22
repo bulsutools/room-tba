@@ -35,28 +35,28 @@ describe("term-schedule-freshness", () => {
     );
   });
 
-  describe("change of matriculation", () => {
+  describe("change of enrollment", () => {
     const com = { startsOn: "2026-08-03", endsOn: "2026-08-07" };
     const at = (iso: string) => new Date(`${iso}T04:00:00Z`).getTime();
     const recent = "2026-07-31T00:00:00Z";
 
-    it("spells out COM and gives this semester's dates before it starts", () => {
+    it("spells out CE and gives this semester's dates before it starts", () => {
       expect(
         classesScheduleFreshnessMessage(recent, at("2026-08-01"), com),
       ).toBe(
-        "Schedules updated Jul 31, 2026. Classes and rooms can still change during this semester's change of matriculation (COM), Aug 3\u20137, 2026.",
+        "Schedules updated Jul 31, 2026. Classes and rooms can still change during this semester's change of enrollment (CE), Aug 3\u20137, 2026.",
       );
     });
 
-    it("says COM is under way during the period", () => {
+    it("says CE is under way during the period", () => {
       expect(
         classesScheduleFreshnessMessage(recent, at("2026-08-05"), com),
       ).toContain(
-        "Change of matriculation (COM) is under way this semester (Aug 3\u20137, 2026)",
+        "Change of enrollment (CE) is under way this semester (Aug 3\u20137, 2026)",
       );
     });
 
-    it("says an import from before COM ended may be out of date", () => {
+    it("says an import from before CE ended may be out of date", () => {
       expect(
         classesScheduleFreshnessMessage(
           "2026-08-03T00:00:00Z",
@@ -64,11 +64,11 @@ describe("term-schedule-freshness", () => {
           com,
         ),
       ).toBe(
-        "Schedules last imported Aug 3, 2026, before this semester's change of matriculation (COM, Aug 3\u20137, 2026) ended, so some classes or rooms may have changed.",
+        "Schedules last imported Aug 3, 2026, before this semester's change of enrollment (CE, Aug 3\u20137, 2026) ended, so some classes or rooms may have changed.",
       );
     });
 
-    it("drops the COM note for an import made after COM", () => {
+    it("drops the CE note for an import made after CE", () => {
       expect(
         classesScheduleFreshnessMessage(
           "2026-08-20T00:00:00Z",

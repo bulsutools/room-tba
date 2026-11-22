@@ -13,7 +13,7 @@ Thanks for helping BulSU students find rooms. You do **not** need to clone this 
 | [Good first issues](https://github.com/bulsutools/room-tba/issues?q=is%3Aopen+label%3A%22good+first+issue%22) | New devs | Smaller coding tasks | Yes |
 | [Maintainers / AI agents](#maintainers-and-agents) | Core team, Cursor | See [AGENTS.md](AGENTS.md) | Yes |
 
-**Community:** [GitHub issues](https://github.com/bulsutools/room-tba/issues) · [Upstream Room TBA](https://github.com/uplbtools/room-tba)
+**Community:** [GitHub issues](https://github.com/bulsutools/room-tba/issues) · [Upstream Room TBA](https://github.com/bulsutools/room-tba)
 
 ---
 

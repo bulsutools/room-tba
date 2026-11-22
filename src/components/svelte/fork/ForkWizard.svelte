@@ -455,7 +455,7 @@
       <ol class="fw__next">
         <li>
           <a
-            href="https://github.com/uplbtools/room-tba/fork"
+            href="https://github.com/bulsutools/room-tba/fork"
             target="_blank"
             rel="noopener noreferrer">Fork the repo on GitHub</a
           >.
@@ -476,7 +476,7 @@
         <li>
           Read the
           <a
-            href="https://github.com/uplbtools/room-tba#fork-this-for-your-campus"
+            href="https://github.com/bulsutools/room-tba#fork-this-for-your-campus"
             target="_blank"
             rel="noopener noreferrer">README fork section</a
           >

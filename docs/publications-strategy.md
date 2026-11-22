@@ -2,14 +2,14 @@
 
 ## Goal
 
-Increase product awareness among UPLB students, faculty, and campus organizations.
+Increase product awareness among BulSU students, faculty, and campus organizations.
 
 ## Channels
 
 ### 1. Social media
 
-- **Facebook:** UPLB student groups, college pages, dorm communities
-- **Twitter/X:** UPLB-related hashtags (#UPLB, #LosBanos, #IskoLife)
+- **Facebook:** BulSU student groups, college pages, dorm communities
+- **Twitter/X:** BulSU-related hashtags (#BulSU, #Malolos, #IskoLife)
 - **Instagram:** Campus photography + map features, Stories with QR code
 
 ### 2. Campus outreach
@@ -21,11 +21,11 @@ Increase product awareness among UPLB students, faculty, and campus organization
 ### 3. Academic integration
 
 - Present to CS/IT classes as a capstone/community project example
-- Collaborate with the UPLB Web Team or UPLB CRS for official integration
+- Collaborate with the BulSU Web Team or BulSU CRS for official integration
 
 ### 4. Content
 
-- Blog posts: "How we mapped every UPLB classroom"
+- Blog posts: "How we mapped every BulSU classroom"
 - User guides: "Finding your classroom in 30 seconds"
 - Behind-the-scenes: data collection process, contributor stories
 

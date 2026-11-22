@@ -16,13 +16,13 @@ describe("OG meta helpers", () => {
     const path = ogCardPath({
       title: "Physical Sciences Building",
       subtitle: "34 rooms, 120 classes",
-      kicker: "Building at UPLB",
+      kicker: "Building at BulSU",
     });
     const params = new URL(path, "https://example.test").searchParams;
     expect(path.startsWith("/og.png?")).toBe(true);
     expect(params.get("t")).toBe("Physical Sciences Building");
     expect(params.get("s")).toBe("34 rooms, 120 classes");
-    expect(params.get("k")).toBe("Building at UPLB");
+    expect(params.get("k")).toBe("Building at BulSU");
   });
 
   it("ogCardPath omits empty subtitle and kicker", () => {

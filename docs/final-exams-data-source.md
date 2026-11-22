@@ -18,7 +18,7 @@ File: `data/final-exams-{termId}.json` (gitignored). Committed fixture: `data/fi
   "source": "our-2025-2nd-sem",
   "exams": [
     {
-      "course_code": "CMSC 130",
+      "course_code": "CPE 101",
       "section": "A-1L",
       "course_title": "Introduction to Computing",
       "room_code": "ICS L105",

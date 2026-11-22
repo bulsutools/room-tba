@@ -28,13 +28,13 @@ const scheduleText = schedule
     ? `${schedule.hours}. ${schedule.frequency}.${schedule.note ? ` ${schedule.note}` : ""}`
     : `${schedule.hours}.`
   : "";
-const routeName = route?.name ?? "UPLB transit route";
+const routeName = route?.name ?? "BulSU transit route";
 const routeNoun = route ? transitRouteNoun(route) : "transit route";
 const canonicalPath = `/transit/${encodeURIComponent(routeId ?? "")}/`;
-const title = `${routeName} | UPLB Transit | Room TBA`;
+const title = `${routeName} | BulSU Transit | Room TBA`;
 const description =
   route?.description ??
-  `View this UPLB ${routeNoun}, its stops, and map context in Room TBA.`;
+  `View this BulSU ${routeNoun}, its stops, and map context in Room TBA.`;
 const structuredData = jsonLd(
   webpageSchema({ title, description, path: canonicalPath }),
   breadcrumbSchema([
@@ -56,8 +56,8 @@ const structuredData = jsonLd(
       ? fare?.kind === "fixed" || fare?.kind === "end-to-end"
         ? `${route.stops.length} stops, PHP ${fare.fare.regular} regular, PHP ${fare.fare.discounted} discounted`
         : `${route.stops.length} stops`
-      : "Transit at UPLB",
-    kicker: "Transit at UPLB",
+      : "Transit at BulSU",
+    kicker: "Transit at BulSU",
   })}
   {structuredData}
 >

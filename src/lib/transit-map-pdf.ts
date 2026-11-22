@@ -1341,10 +1341,10 @@ export async function renderTransitMapPdf(input: {
   const palette = TRANSIT_MAP_PALETTES[input.palette ?? "paper"];
 
   const pdf = await PDFDocument.create();
-  pdf.setTitle("UPLB Jeeps & Buses");
+  pdf.setTitle("BulSU Jeeps & Buses");
   pdf.setAuthor("Room TBA");
-  pdf.setSubject("Printable map of UPLB jeep and bus routes and stops");
-  pdf.setCreator("Room TBA (room-tba.uplb.tools)");
+  pdf.setSubject("Printable map of BulSU jeep and bus routes and stops");
+  pdf.setCreator("Room TBA (room-tba.bulsu.tools)");
   pdf.setLanguage("en-PH");
   pdf.setCreationDate(generatedAt);
 
@@ -1421,7 +1421,7 @@ export async function renderTransitMapPdf(input: {
   const titleW = drawSignboard(
     page,
     pageH,
-    ["UPLB", "JEEPS & BUSES"],
+    ["BULSU", "JEEPS & BUSES"],
     MARGIN,
     pageH - SAFE - 14,
     26,
@@ -1485,8 +1485,8 @@ export async function renderTransitMapPdf(input: {
     height: 22,
   });
   const brandLines: [string, PDFFont, number, RGB][] = [
-    ["by UPLB Tools", font, 10, WHITE],
-    ["room-tba.uplb.tools", bold, 10, WHITE],
+    ["by bulsutools", font, 10, WHITE],
+    ["room-tba.bulsu.tools", bold, 10, WHITE],
   ];
   brandLines.forEach(([text, fnt, size, color], i) => {
     page.drawText(text, {
@@ -2981,7 +2981,7 @@ export async function renderTransitMapPdf(input: {
     const boardW = drawSignboard(
       guide,
       pageH,
-      ["UPLB", "JEEPNEY STOPS"],
+      ["BULSU", "JEEPNEY STOPS"],
       MARGIN,
       pageH - SAFE,
       24,
