@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike, like, or, sql } from "drizzle-orm";
+import { and, asc, eq, ilike, like, or, type SQL, sql } from "drizzle-orm";
 import {
   aliasesTable,
   buildingsTable,
@@ -146,9 +146,19 @@ export async function getAllRooms(): Promise<RoomData[]> {
   }
 }
 
-export async function getRoomByCode(code: string) {
+export function getRoomByCode(code: string) {
+  return getRoomWhere(
+    sql`upper(${roomsTable.roomCode}) = ${code.toUpperCase()}`,
+  );
+}
+
+/** Room deep links (`/room/<code>-<id>/`) resolve by id. */
+export function getRoomById(id: number) {
+  return getRoomWhere(eq(roomsTable.id, id));
+}
+
+async function getRoomWhere(condition: SQL) {
   try {
-    const normalizedCode = code.toUpperCase();
     const data = await db
       .select({
         id: roomsTable.id,
@@ -175,7 +185,7 @@ export async function getRoomByCode(code: string) {
       .leftJoin(buildingsTable, eq(buildingsTable.id, roomsTable.buildingId))
       .leftJoin(collegesTable, eq(collegesTable.id, roomsTable.collegeId))
       .leftJoin(divisionsTable, eq(divisionsTable.id, roomsTable.divisionId))
-      .where(sql`upper(${roomsTable.roomCode}) = ${normalizedCode}`);
+      .where(condition);
     if (data.length === 0 || typeof data[0] === "undefined") return null;
     return data[0];
   } catch (e) {
@@ -186,21 +196,31 @@ export async function getRoomByCode(code: string) {
 
 export async function searchRooms(searchString: string) {
   try {
-    const escaped = escapeLikePattern(searchString);
+    const escaped = escapeLikePattern(searchString).toUpperCase();
+    // "PS105" should still find "PS 105": compare codes without spaces too.
+    const compactCode = escaped.replace(/\s+/g, "");
+    const exactCode = searchString.toUpperCase().replace(/\s+/g, "");
+    const codeNoSpaces = sql`replace(upper(${roomsTable.roomCode}), ' ', '')`;
     const data = await db
       .select({
         value: roomsTable.roomCode,
         fullName: roomsTable.fullName,
       })
       .from(roomsTable)
-      .leftJoin(buildingsTable, eq(buildingsTable.id, roomsTable.buildingId))
-      .leftJoin(collegesTable, eq(collegesTable.id, roomsTable.collegeId))
-      .leftJoin(divisionsTable, eq(divisionsTable.id, roomsTable.divisionId))
       // Callers upper-case the query, so match both columns case-insensitively:
       // full names are mixed case ("DSDS Main Lecture Hall") (#875).
       .where(
-        sql`upper(${roomsTable.roomCode}) LIKE ${`%${escaped.toUpperCase()}%`}
-          OR upper(${roomsTable.fullName}) LIKE ${`%${escaped.toUpperCase()}%`}`,
+        sql`upper(${roomsTable.roomCode}) LIKE ${`%${escaped}%`}
+          OR ${codeNoSpaces} LIKE ${`%${compactCode}%`}
+          OR upper(${roomsTable.fullName}) LIKE ${`%${escaped}%`}`,
+      )
+      // Exact code first, then codes that start with the query, so a room
+      // code search returns that room instead of six arbitrary substrings.
+      .orderBy(
+        sql`CASE WHEN ${codeNoSpaces} = ${exactCode} THEN 0
+          WHEN ${codeNoSpaces} LIKE ${`${compactCode}%`} THEN 1 ELSE 2 END`,
+        sql`length(${roomsTable.roomCode})`,
+        asc(roomsTable.roomCode),
       )
       .limit(6);
     if (data.length === 0) return null;
@@ -505,6 +525,31 @@ export async function getRoomClassCounts(
   }
 }
 
+/** Schedule strings of every class held in a building, for "classes now" on
+ * its sheet. Rooms with nothing scheduled contribute nothing; TBA rows come
+ * through as-is and are skipped by the reader. */
+export async function getBuildingClassSchedules(
+  buildingId: number,
+  termId?: number,
+): Promise<(string[] | null)[]> {
+  try {
+    const data = await db
+      .select({ schedule: classesTable.schedule })
+      .from(classesTable)
+      .innerJoin(roomsTable, eq(roomsTable.id, classesTable.roomId))
+      .where(
+        and(
+          eq(roomsTable.buildingId, buildingId),
+          termId != null ? eq(classesTable.termId, termId) : undefined,
+        ),
+      );
+    return data.map((row) => row.schedule);
+  } catch (e) {
+    console.error("Error: ", e);
+    throw new Error("Failed to fetch building class schedules", { cause: e });
+  }
+}
+
 export type AliasMatch = {
   alias: string;
   targetType: string;
@@ -517,7 +562,7 @@ export type AliasCacheRow = AliasMatch & {
   normalizedAlias: string;
 };
 
-/** All alias rows with resolved building names for PGlite cache refresh (#155). */
+/** All alias rows with resolved building and place names for PGlite cache refresh (#155). */
 export async function listAliasesForCache(): Promise<AliasCacheRow[]> {
   try {
     const rows = await db
@@ -528,6 +573,7 @@ export async function listAliasesForCache(): Promise<AliasCacheRow[]> {
         targetType: aliasesTable.targetType,
         targetId: aliasesTable.targetId,
         buildingName: buildingsTable.buildingName,
+        placeName: placesTable.name,
       })
       .from(aliasesTable)
       .leftJoin(
@@ -535,6 +581,13 @@ export async function listAliasesForCache(): Promise<AliasCacheRow[]> {
         and(
           eq(aliasesTable.targetType, "building"),
           eq(buildingsTable.id, aliasesTable.targetId),
+        ),
+      )
+      .leftJoin(
+        placesTable,
+        and(
+          eq(aliasesTable.targetType, "place"),
+          eq(placesTable.id, aliasesTable.targetId),
         ),
       );
 
@@ -544,7 +597,7 @@ export async function listAliasesForCache(): Promise<AliasCacheRow[]> {
       normalizedAlias: row.normalizedAlias,
       targetType: row.targetType,
       targetId: row.targetId,
-      value: row.buildingName,
+      value: row.buildingName ?? row.placeName,
     }));
   } catch (e) {
     console.error("Error: ", e);
@@ -553,7 +606,7 @@ export async function listAliasesForCache(): Promise<AliasCacheRow[]> {
 }
 
 /** Resolve a search term against the alias/synonym map (#155). Matches exact
- * and prefix normalized aliases, returning the (deduped) building targets. */
+ * and prefix normalized aliases, returning the (deduped) building and place targets. */
 export async function searchAliases(
   searchString: string,
 ): Promise<AliasMatch[]> {
@@ -567,6 +620,7 @@ export async function searchAliases(
         targetType: aliasesTable.targetType,
         targetId: aliasesTable.targetId,
         buildingName: buildingsTable.buildingName,
+        placeName: placesTable.name,
       })
       .from(aliasesTable)
       .leftJoin(
@@ -574,6 +628,13 @@ export async function searchAliases(
         and(
           eq(aliasesTable.targetType, "building"),
           eq(buildingsTable.id, aliasesTable.targetId),
+        ),
+      )
+      .leftJoin(
+        placesTable,
+        and(
+          eq(aliasesTable.targetType, "place"),
+          eq(placesTable.id, aliasesTable.targetId),
         ),
       )
       .where(
@@ -600,7 +661,7 @@ export async function searchAliases(
         alias: row.alias,
         targetType: row.targetType,
         targetId: row.targetId,
-        value: row.buildingName,
+        value: row.buildingName ?? row.placeName,
       });
     }
     return matches;

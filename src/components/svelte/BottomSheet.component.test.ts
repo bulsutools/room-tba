@@ -80,3 +80,273 @@ describe("bottom sheet does not capture the map", () => {
     expect(onDismiss).toHaveBeenCalled();
   });
 });
+
+describe("bottom sheet peek fits its content", () => {
+  const rect = (top: number, height: number) =>
+    ({
+      top,
+      bottom: top + height,
+      height,
+      left: 0,
+      right: 390,
+      width: 390,
+      x: 0,
+      y: top,
+      toJSON: () => ({}),
+    }) as DOMRect;
+
+  function stubLayout(container: HTMLElement, actionsBottom: number) {
+    const root = container.querySelector(".bottom-sheet-root") as HTMLElement;
+    const sheet = container.querySelector(".bottom-sheet") as HTMLElement;
+    const actions = container.querySelector(".entity-actions") as HTMLElement;
+    root.getBoundingClientRect = () => rect(0, 800);
+    sheet.getBoundingClientRect = () => rect(0, 800);
+    actions.getBoundingClientRect = () => rect(actionsBottom - 40, 40);
+    window.dispatchEvent(new Event("resize"));
+  }
+
+  const translateOf = (container: HTMLElement) =>
+    Number(
+      /translate3d\(0, ([\d.]+)px/.exec(
+        (container.querySelector(".bottom-sheet") as HTMLElement).style
+          .transform,
+      )?.[1],
+    );
+
+  test("ends just below the fitted element instead of at the ratio", async () => {
+    const { container } = render(BottomSheetHost, {
+      open: true,
+      peekFitTo: ".entity-actions",
+    });
+    stubLayout(container, 200);
+    // Mutation triggers a re-fit on the next frame.
+    container.querySelector("p")?.append(" ");
+    await vi.waitFor(() =>
+      // 800 tall, actions end at 200 + 12px gap: 212 visible.
+      expect(translateOf(container)).toBe(800 - 212),
+    );
+  });
+
+  test("never shrinks below a quarter of the screen", async () => {
+    const { container } = render(BottomSheetHost, {
+      open: true,
+      peekFitTo: ".entity-actions",
+    });
+    stubLayout(container, 60);
+    container.querySelector("p")?.append(" ");
+    await vi.waitFor(() => expect(translateOf(container)).toBe(800 - 200));
+  });
+
+  test("keeps the ratio without a fit target", async () => {
+    const { container } = render(BottomSheetHost, { open: true });
+    stubLayout(container, 200);
+    await vi.waitFor(() =>
+      expect(translateOf(container)).toBe(800 - Math.round(800 * 0.48)),
+    );
+  });
+});
+
+describe("bottom sheet handle", () => {
+  const rect = (height: number) =>
+    ({
+      top: 0,
+      bottom: height,
+      height,
+      left: 0,
+      right: 390,
+      width: 390,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    }) as DOMRect;
+
+  const translateOf = (container: HTMLElement) =>
+    Number(
+      /translate3d\(0, ([\d.]+)px/.exec(
+        (container.querySelector(".bottom-sheet") as HTMLElement).style
+          .transform,
+      )?.[1],
+    );
+
+  test("a tap expands the sheet and the next one returns it to peek", async () => {
+    const { container } = render(BottomSheetHost, { open: true });
+    const root = container.querySelector(".bottom-sheet-root") as HTMLElement;
+    root.getBoundingClientRect = () => rect(800);
+    window.dispatchEvent(new Event("resize"));
+    await vi.waitFor(() => expect(translateOf(container)).toBe(800 - 384));
+
+    const handle = container.querySelector(
+      ".bottom-sheet__handle",
+    ) as HTMLElement;
+    handle.click();
+    await vi.waitFor(() =>
+      expect(translateOf(container)).toBe(800 - Math.round(800 * 0.92)),
+    );
+    expect(handle.getAttribute("aria-label")).toBe("Collapse details");
+
+    handle.click();
+    await vi.waitFor(() => expect(translateOf(container)).toBe(800 - 384));
+    expect(handle.getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+/** Jakob audit macro 14: phone landscape turns the sheet into a side panel. */
+describe("bottom sheet in phone landscape", () => {
+  function landscape(matches: boolean) {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      ...original(query),
+      matches: query.includes("orientation: landscape") ? matches : false,
+    })) as typeof window.matchMedia;
+    return () => {
+      window.matchMedia = original;
+    };
+  }
+
+  test("renders as a full-height side panel with no drag handle", () => {
+    const restore = landscape(true);
+    try {
+      const { container } = render(BottomSheetHost, { open: true });
+      const root = container.querySelector(".bottom-sheet-root");
+      const sheet = container.querySelector<HTMLElement>(".bottom-sheet");
+      expect(root?.classList.contains("bottom-sheet-root--side")).toBe(true);
+      expect(sheet?.style.transform).toBe("");
+      expect(
+        screen.queryByRole("button", {
+          name: /Expand details|Collapse details/,
+        }),
+      ).toBeNull();
+    } finally {
+      restore();
+    }
+  });
+
+  test("portrait keeps the snapping bottom sheet", () => {
+    const restore = landscape(false);
+    try {
+      const { container } = render(BottomSheetHost, { open: true });
+      expect(
+        container
+          .querySelector(".bottom-sheet-root")
+          ?.classList.contains("bottom-sheet-root--side"),
+      ).toBe(false);
+      expect(
+        screen.getByRole("button", { name: /Expand details|Collapse details/ }),
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("bottom sheet that opens full screen", () => {
+  const rect = (height: number) =>
+    ({
+      top: 0,
+      bottom: height,
+      height,
+      left: 0,
+      right: 390,
+      width: 390,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    }) as DOMRect;
+
+  const translateOf = (container: HTMLElement) =>
+    Number(
+      /translate3d\(0, ([\d.]+)px/.exec(
+        (container.querySelector(".bottom-sheet") as HTMLElement).style
+          .transform,
+      )?.[1],
+    );
+
+  function mount() {
+    const view = render(BottomSheetHost, { open: true, fullScreen: true });
+    const root = view.container.querySelector(
+      ".bottom-sheet-root",
+    ) as HTMLElement;
+    root.getBoundingClientRect = () => rect(800);
+    window.dispatchEvent(new Event("resize"));
+    return view;
+  }
+
+  const press = (el: Element, type: string, clientY: number) =>
+    el.dispatchEvent(
+      new PointerEvent(type, { clientY, bubbles: true, pointerId: 1 }),
+    );
+
+  test("a tap on the peek opens the whole screen with a back bar", async () => {
+    const { container } = mount();
+    await vi.waitFor(() => expect(translateOf(container)).toBe(800 - 384));
+    const root = container.querySelector(".bottom-sheet-root");
+    expect(root).toHaveClass("bottom-sheet-root--preview");
+
+    const body = container.querySelector("p") as HTMLElement;
+    press(body, "pointerdown", 500);
+    press(body, "pointerup", 500);
+
+    await vi.waitFor(() => expect(translateOf(container)).toBe(0));
+    expect(root).not.toHaveClass("bottom-sheet-root--preview");
+    expect(screen.getByRole("button", { name: "Back to map" })).toBeVisible();
+    expect(container.querySelector(".bottom-sheet__handle")).toBeNull();
+  });
+
+  test("nothing drags the full-screen view, and Back returns to the peek", async () => {
+    const onDismiss = vi.fn();
+    const { container, rerender } = mount();
+    await rerender({ open: true, fullScreen: true, onDismiss });
+    (container.querySelector(".bottom-sheet__handle") as HTMLElement).click();
+    await vi.waitFor(() => expect(translateOf(container)).toBe(0));
+
+    const sheet = container.querySelector(".bottom-sheet") as HTMLElement;
+    const body = container.querySelector("p") as HTMLElement;
+    press(body, "pointerdown", 100);
+    press(sheet, "pointermove", 600);
+    press(sheet, "pointerup", 600);
+    expect(translateOf(container)).toBe(0);
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    screen.getByRole("button", { name: "Back to map" }).click();
+    await vi.waitFor(() => expect(translateOf(container)).toBe(800 - 384));
+    expect(container.querySelector(".bottom-sheet__handle")).not.toBeNull();
+  });
+
+  test("full screen is a modal dialog that Escape closes back to the peek", async () => {
+    const onWindowKey = vi.fn();
+    window.addEventListener("keydown", onWindowKey);
+    const { container } = mount();
+    (container.querySelector(".bottom-sheet__handle") as HTMLElement).click();
+
+    const dialog = await screen.findByRole("dialog", { name: "Place details" });
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Back to map" }),
+      ),
+    );
+
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    await vi.waitFor(() => expect(translateOf(container)).toBe(800 - 384));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(onWindowKey).not.toHaveBeenCalled();
+    window.removeEventListener("keydown", onWindowKey);
+  });
+
+  test("Escape leaves an open dialog inside the sheet to close first", async () => {
+    const { container } = mount();
+    (container.querySelector(".bottom-sheet__handle") as HTMLElement).click();
+    await screen.findByRole("dialog", { name: "Place details" });
+
+    const viewer = document.createElement("dialog");
+    viewer.setAttribute("open", "");
+    container.querySelector(".bottom-sheet__body")?.append(viewer);
+    document.body.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(translateOf(container)).toBe(0);
+  });
+});

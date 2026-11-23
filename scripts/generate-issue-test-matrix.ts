@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Generate docs/issue-test-matrix.md from GitHub issues export.
- * Usage: gh issue list --repo uplbtools/room-tba --state all --limit 500 --json number,title,labels,state,body > /tmp/all-issues.json
+ * Usage: gh issue list --repo bulsutools/room-tba --state all --limit 500 --json number,title,labels,state,body > /tmp/all-issues.json
  *        bun run scripts/generate-issue-test-matrix.ts /tmp/all-issues.json
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -103,7 +103,7 @@ function inferTiers(issue: Issue): {
     tiers.add("integration");
     spec =
       spec || "Fixture/import unit test; optional staging data-fidelity smoke";
-    notes = notes || "No live AMIS fetch in CI";
+    notes = notes || "No live registrar fetch in CI";
   }
 
   if (hasLabel(labels, "bug")) {
@@ -129,12 +129,14 @@ function inferTiers(issue: Issue): {
     spec = spec || "integration/services or integration/http";
   }
 
-  if (/amis|import.*class|schedule import|term_id|1252|1253/i.test(text)) {
+  if (/class.?import|schedule import|term_id/i.test(text)) {
     tiers.add("unit");
-    spec = spec || "Fixture JSON unit tests in src/lib/amis or schedule-import";
+    spec =
+      spec ||
+      "Fixture JSON unit tests in src/lib/class-import or schedule-import";
     notes = notes
-      ? `${notes}; AMIS --fetch manual only`
-      : "AMIS --fetch manual only";
+      ? `${notes}; registrar live fetch manual only`
+      : "registrar live fetch manual only";
   }
 
   if (/a11y|accessibility|axe|contrast|screen reader/i.test(text)) {
@@ -273,7 +275,7 @@ function main() {
     "Regenerate:",
     "",
     "```sh",
-    "gh issue list --repo uplbtools/room-tba --state all --limit 500 \\",
+    "gh issue list --repo bulsutools/room-tba --state all --limit 500 \\",
     "  --json number,title,labels,state,body > /tmp/all-issues.json",
     "bun run scripts/generate-issue-test-matrix.ts /tmp/all-issues.json",
     "```",
@@ -302,7 +304,7 @@ function main() {
     )
     .sort((a, b) => a.number - b.number)) {
     lines.push(
-      `| [#${r.number}](https://github.com/uplbtools/room-tba/issues/${r.number}) | ${r.tiers.join(", ")} | ${r.spec} |`,
+      `| [#${r.number}](https://github.com/bulsutools/room-tba/issues/${r.number}) | ${r.tiers.join(", ")} | ${r.spec} |`,
     );
   }
 
@@ -317,7 +319,7 @@ function main() {
     .filter((r) => r.labels.includes("bug"))
     .sort((a, b) => a.number - b.number)) {
     lines.push(
-      `| [#${r.number}](https://github.com/uplbtools/room-tba/issues/${r.number}) | ${r.tiers.join(", ")} | ${r.spec} |`,
+      `| [#${r.number}](https://github.com/bulsutools/room-tba/issues/${r.number}) | ${r.tiers.join(", ")} | ${r.spec} |`,
     );
   }
 
@@ -337,7 +339,7 @@ function main() {
     );
     for (const r of byTier(tier)) {
       lines.push(
-        `| [#${r.number}](https://github.com/uplbtools/room-tba/issues/${r.number}) ${r.title.slice(0, 60)} | ${r.state} | ${r.tiers.join(", ")} | ${r.spec} | ${r.notes} |`,
+        `| [#${r.number}](https://github.com/bulsutools/room-tba/issues/${r.number}) ${r.title.slice(0, 60)} | ${r.state} | ${r.tiers.join(", ")} | ${r.spec} | ${r.notes} |`,
       );
     }
   }
@@ -352,7 +354,7 @@ function main() {
   for (const r of open.sort((a, b) => a.number - b.number)) {
     const lbl = r.labels.slice(0, 4).join(", ") || "—";
     lines.push(
-      `| [#${r.number}](https://github.com/uplbtools/room-tba/issues/${r.number}) | ${lbl} | ${r.tiers.join(", ")} | ${r.spec} |`,
+      `| [#${r.number}](https://github.com/bulsutools/room-tba/issues/${r.number}) | ${lbl} | ${r.tiers.join(", ")} | ${r.spec} |`,
     );
   }
 
@@ -368,7 +370,7 @@ function main() {
     .sort((a, b) => b.number - a.number)
     .slice(0, 80)) {
     lines.push(
-      `| [#${r.number}](https://github.com/uplbtools/room-tba/issues/${r.number}) | ${r.tiers.join(", ")} | ${r.notes || r.spec} |`,
+      `| [#${r.number}](https://github.com/bulsutools/room-tba/issues/${r.number}) | ${r.tiers.join(", ")} | ${r.notes || r.spec} |`,
     );
   }
   lines.push(

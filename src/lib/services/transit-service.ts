@@ -1,7 +1,13 @@
 import { and, asc, eq, max, sql } from "drizzle-orm";
 import { jeepneyRoutesTable, jeepneyStopsTable } from "@drizzle/schema";
 import { db } from "@lib/db";
-import type { JeepneyRoute, JeepneyStop } from "@constants/jeepney-routes";
+import {
+  BUNDLED_BUS_ROUTES,
+  JEEPNEY_ROUTES,
+  withBundledRoutes,
+  type JeepneyRoute,
+  type JeepneyStop,
+} from "@constants/jeepney-routes";
 import { refreshSyncKey, recordEditorHistory } from "./admin-service";
 import { EditConflictError } from "./edit-conflict-error";
 
@@ -37,7 +43,7 @@ export async function getAllJeepneyRoutes(): Promise<JeepneyRoute[]> {
       ),
   ]);
 
-  return routes.map((route) => ({
+  const fromDb = routes.map((route) => ({
     id: route.id,
     name: route.name,
     description: route.description,
@@ -62,6 +68,7 @@ export async function getAllJeepneyRoutes(): Promise<JeepneyRoute[]> {
         }),
       ),
   }));
+  return withBundledRoutes(fromDb);
 }
 
 export async function getJeepneyStopById(id: number) {
@@ -168,4 +175,26 @@ export async function updateJeepneyStop(
   });
   await refreshSyncKey("jeepney_routes");
   return current;
+}
+
+/**
+ * One route for a server-rendered transit page. Seven of the ten routes live
+ * only in the database, so looking in the bundled campus list alone gave
+ * their deep links a generic title and share card. Falls back to the bundle
+ * when the database is unreachable.
+ */
+export async function getTransitRouteForPage(
+  routeId: string | undefined,
+): Promise<JeepneyRoute | null> {
+  if (!routeId) return null;
+  try {
+    const route = (await getAllJeepneyRoutes()).find((r) => r.id === routeId);
+    if (route) return route;
+  } catch (error) {
+    console.error("Transit page route lookup failed:", error);
+  }
+  return (
+    [...JEEPNEY_ROUTES, ...BUNDLED_BUS_ROUTES].find((r) => r.id === routeId) ??
+    null
+  );
 }

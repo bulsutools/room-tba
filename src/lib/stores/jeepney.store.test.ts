@@ -2,11 +2,29 @@ import { beforeEach, describe, expect, test } from "vitest";
 import {
   buildingTypeFilter,
   jeepneyStore,
+  locationStore,
   mapToolsStore,
   modalStore,
+  scheduleRouteStore,
+  transitStore,
 } from "@lib/store.svelte";
+import type { JeepneyRoute } from "@constants/jeepney-routes";
+import { campusTransit } from "../../campus.config";
 
-describe("JeepneyStore", () => {
+// BulSU ships no bundled transit routes; tests that need one inject a fixture.
+const FIXTURE_ROUTE: JeepneyRoute = {
+  id: "snodlob",
+  name: "Campus Loop (test jeep)",
+  description: "Test fixture.",
+  color: "#000000",
+  fare: { regular: 15, discounted: 12 },
+  stops: [
+    { name: "A", description: "", lat: 14.1, lon: 121.2 },
+    { name: "B", description: "", lat: 14.2, lon: 121.3 },
+  ],
+};
+
+describe.skipIf(!campusTransit.enabled)("JeepneyStore", () => {
   beforeEach(() => {
     jeepneyStore.disableLayer();
     mapToolsStore.close();
@@ -61,5 +79,56 @@ describe("JeepneyStore", () => {
     // Unlike selectRoute, a repeat call keeps the route selected (no toggle).
     jeepneyStore.openRouteOnMap("route-c");
     expect(jeepneyStore.selectedRouteId).toBe("route-c");
+  });
+
+  test("a Map tools pick is pinned; a panel-opened route is not", () => {
+    jeepneyStore.selectRoute("kaliwa-kanan");
+    expect(jeepneyStore.routePinned).toBe(true);
+    jeepneyStore.openRouteOnMap("kaliwa-kanan");
+    expect(jeepneyStore.routePinned).toBe(false);
+    jeepneyStore.selectRoute("snodlob");
+    jeepneyStore.clearRoute();
+    expect(jeepneyStore.routePinned).toBe(false);
+  });
+
+  test("class day-stop pins hide outside their panel or a routed day", () => {
+    expect(scheduleRouteStore.stopsVisible).toBe(false);
+    scheduleRouteStore.panelVisible = true;
+    expect(scheduleRouteStore.stopsVisible).toBe(true);
+    scheduleRouteStore.panelVisible = false;
+
+    scheduleRouteStore.selectedWeekday = "M";
+    scheduleRouteStore.routedWeekday = "M";
+    locationStore.setRouteWaypoints([
+      [121.24, 14.16],
+      [121.25, 14.17],
+    ]);
+    expect(scheduleRouteStore.stopsVisible).toBe(true);
+
+    // Opening a jeepney route clears the routed day, and its pins with it.
+    jeepneyStore.openRouteOnMap("snodlob");
+    expect(scheduleRouteStore.routedWeekday).toBeNull();
+    expect(locationStore.routeWaypoints).toBeNull();
+    expect(scheduleRouteStore.stopsVisible).toBe(false);
+  });
+
+  test("drawnRoute names the drawn route and clearDrawnRoute removes it", () => {
+    const original = transitStore.routes;
+    transitStore.routes = [FIXTURE_ROUTE];
+    try {
+      expect(jeepneyStore.drawnRoute).toBeNull();
+      jeepneyStore.selectRoute("snodlob");
+      expect(jeepneyStore.drawnRoute).toEqual({
+        id: "snodlob",
+        name: "Campus Loop (test jeep)",
+      });
+      jeepneyStore.openStop(1);
+      jeepneyStore.clearDrawnRoute();
+      expect(jeepneyStore.drawnRoute).toBeNull();
+      expect(jeepneyStore.selectedStopIndex).toBeNull();
+      expect(jeepneyStore.routePinned).toBe(false);
+    } finally {
+      transitStore.routes = original;
+    }
   });
 });

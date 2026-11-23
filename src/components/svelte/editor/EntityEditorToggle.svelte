@@ -1,5 +1,7 @@
 <script lang="ts">
+  import Pencil from "@lucide/svelte/icons/pencil";
   import { editorToggleLabel } from "@lib/editor/field-action-label";
+  import { trackOverlay } from "@lib/track-overlay.svelte";
   import "./entity-editor.css";
 
   type Props = {
@@ -22,6 +24,12 @@
     onclick,
   }: Props = $props();
 
+  // The open editor/suggest form is a layer: Back closes it (via the same
+  // toggle) before it leaves the place.
+  trackOverlay("suggest-edit", () => expanded, () => {
+    if (expanded) onclick();
+  });
+
   const label = $derived(
     editorToggleLabel({
       expanded,
@@ -40,5 +48,8 @@
   aria-expanded={expanded}
   {onclick}
 >
+  {#if variant === "toolbar" && !expanded}
+    <Pencil size={14} aria-hidden="true" />
+  {/if}
   {label}
 </button>

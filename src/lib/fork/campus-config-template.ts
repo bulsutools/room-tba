@@ -25,13 +25,13 @@ export function campusSlug(name: string): string {
   return slugifySegment(name);
 }
 
-const UPSTREAM_REPO_URL = "https://github.com/uplbtools/room-tba";
+const UPSTREAM_REPO_URL = "https://github.com/bulsutools/room-tba";
 
 /** Vercel "Deploy" clone URL prefilled with the fork's env prompts. */
 export function vercelDeployUrl(slug: string): string {
   const params = new URLSearchParams({
     "repository-url": UPSTREAM_REPO_URL,
-    env: "DATABASE_URL,ADMIN_PASSWORD,ADMIN_SESSION_SECRET,ISR_BYPASS_TOKEN",
+    env: "DATABASE_URL,ADMIN_SESSION_SECRET,ISR_BYPASS_TOKEN,PUBLIC_TURNSTILE_SITE_KEY,TURNSTILE_SECRET_KEY",
     envDescription: "See .env.example",
     "project-name": `${slug}-room-tba`,
   });

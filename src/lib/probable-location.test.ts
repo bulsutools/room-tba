@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import type { AcadOrgEntry } from "./acad-orgs";
 import {
   findDeptEntity,
   type HistoryRow,
@@ -6,6 +7,27 @@ import {
   rankBuildingsByHistory,
   resolveProbableLocation,
 } from "./probable-location";
+
+/**
+ * Fixture decode table standing in for data/acad-orgs.json, which is empty
+ * on this fork until BulSU department codes are curated.
+ */
+const TEST_ACAD_ORGS: Record<string, AcadOrgEntry> = {
+  LBICS: {
+    name: "Institute of Computer Science",
+    collegeCode: "CAS",
+    entityName: "Institute of Computer Science (ICS)",
+  },
+  LBIC: {
+    name: "Institute of Chemistry",
+    collegeCode: "CAS",
+    entityName: "Institute of Chemistry (IC)",
+  },
+  LBDHUM: { name: "Department of Humanities", collegeCode: "CAS" },
+};
+
+const decodeFixture = (code: string | null | undefined) =>
+  code ? (TEST_ACAD_ORGS[code.toUpperCase()] ?? null) : null;
 
 const icsOrg: OrgEntityRow = {
   name: "Institute of Computer Science (ICS)",
@@ -89,13 +111,16 @@ describe("resolveProbableLocation fallback order (#846)", () => {
   const deptHistory = history([[20, 1252, 9]]);
 
   it("1) department entity with a position wins, ignoring history", () => {
-    const location = resolveProbableLocation({
-      acadOrg: "LBICS",
-      acadGroup: "CAS",
-      orgs: [icsOrg],
-      courseHistory,
-      deptHistory,
-    });
+    const location = resolveProbableLocation(
+      {
+        acadOrg: "LBICS",
+        acadGroup: "CAS",
+        orgs: [icsOrg],
+        courseHistory,
+        deptHistory,
+      },
+      decodeFixture,
+    );
     expect(location).toEqual({
       source: "department",
       deptName: "Institute of Computer Science",
@@ -105,26 +130,32 @@ describe("resolveProbableLocation fallback order (#846)", () => {
   });
 
   it("2) course history when the department entity is missing or unpinned", () => {
-    const location = resolveProbableLocation({
-      acadOrg: "LBIC", // curated, but its entity has no position
-      acadGroup: "CAS",
-      orgs: [unlocatableOrg],
-      courseHistory,
-      deptHistory,
-    });
+    const location = resolveProbableLocation(
+      {
+        acadOrg: "LBIC", // curated, but its entity has no position
+        acadGroup: "CAS",
+        orgs: [unlocatableOrg],
+        courseHistory,
+        deptHistory,
+      },
+      decodeFixture,
+    );
     expect(location?.source).toBe("course-history");
     expect(location?.buildingId).toBe(10);
     expect(location?.deptName).toBe("Institute of Chemistry");
   });
 
   it("3) department history when course history is empty", () => {
-    const location = resolveProbableLocation({
-      acadOrg: "LBNOPE",
-      acadGroup: "CEAT",
-      orgs: [],
-      courseHistory: [],
-      deptHistory,
-    });
+    const location = resolveProbableLocation(
+      {
+        acadOrg: "LBNOPE",
+        acadGroup: "CEAT",
+        orgs: [],
+        courseHistory: [],
+        deptHistory,
+      },
+      decodeFixture,
+    );
     expect(location?.source).toBe("dept-history");
     expect(location?.buildingId).toBe(20);
     // Uncurated org: college code falls back to the row's acad_group.
@@ -133,13 +164,16 @@ describe("resolveProbableLocation fallback order (#846)", () => {
   });
 
   it("4) decoded name alone when there is no pin and no history", () => {
-    const location = resolveProbableLocation({
-      acadOrg: "LBDHUM",
-      acadGroup: "CAS",
-      orgs: [],
-      courseHistory: [],
-      deptHistory: [],
-    });
+    const location = resolveProbableLocation(
+      {
+        acadOrg: "LBDHUM",
+        acadGroup: "CAS",
+        orgs: [],
+        courseHistory: [],
+        deptHistory: [],
+      },
+      decodeFixture,
+    );
     expect(location).toEqual({
       source: "department",
       deptName: "Department of Humanities",
@@ -149,13 +183,16 @@ describe("resolveProbableLocation fallback order (#846)", () => {
 
   it("5) null when nothing is known", () => {
     expect(
-      resolveProbableLocation({
-        acadOrg: null,
-        acadGroup: null,
-        orgs: [icsOrg],
-        courseHistory: [],
-        deptHistory: [],
-      }),
+      resolveProbableLocation(
+        {
+          acadOrg: null,
+          acadGroup: null,
+          orgs: [icsOrg],
+          courseHistory: [],
+          deptHistory: [],
+        },
+        decodeFixture,
+      ),
     ).toBeNull();
   });
 });

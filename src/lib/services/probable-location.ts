@@ -13,7 +13,7 @@ import {
   organizationsTable,
   roomsTable,
 } from "@drizzle/schema";
-import { isRoomScheduledClassType } from "@lib/amis/room-scheduled-types";
+import { isRoomScheduledClassType } from "@lib/class-import/room-scheduled-types";
 import { db } from "@lib/db";
 import {
   type HistoryRow,

@@ -108,6 +108,7 @@ export function nearestNodeIndex(
   lng: number,
   mode: TravelMode = "walk",
 ): number {
+  if (graph.lat.length === 0) return -1;
   let best = 0;
   let bestMeters = Number.POSITIVE_INFINITY;
   for (let i = 0; i < graph.lat.length; i++) {
@@ -154,6 +155,9 @@ export function dijkstra(
   const seconds = new Float64Array(n).fill(Number.POSITIVE_INFINITY);
   const prevEdge = new Int32Array(n).fill(-1);
   const prevNode = new Int32Array(n).fill(-1);
+  if (source < 0 || source >= n) {
+    return { seconds, prevEdge, prevNode };
+  }
   // Parallel-array binary min-heap keyed on time.
   const heapTime: number[] = [];
   const heapNode: number[] = [];
@@ -289,6 +293,14 @@ export function shortestPath(
   to: number,
   mode: TravelMode,
 ): TravelRoute | null {
+  if (
+    from < 0 ||
+    to < 0 ||
+    from >= graph.lat.length ||
+    to >= graph.lat.length
+  ) {
+    return null;
+  }
   if (from === to) {
     return {
       seconds: 0,

@@ -1,4 +1,4 @@
-import { normalizeFacilityKey } from "@lib/amis/normalize-class";
+import { normalizeFacilityKey } from "@lib/class-import/normalize-class";
 
 export type FinalExamImportRow = {
   course_code?: unknown;
@@ -39,7 +39,7 @@ function asString(value: unknown): string | null {
   return null;
 }
 
-/** Parse YYYY-MM-DD or common OUR date strings as a Manila calendar day. */
+/** Parse YYYY-MM-DD or common registrar date strings as a Manila calendar day. */
 export function parseExamDate(value: unknown): string | null {
   const raw = asString(value);
   if (!raw) return null;

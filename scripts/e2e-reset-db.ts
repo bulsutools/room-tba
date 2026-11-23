@@ -6,7 +6,7 @@
  * (#773): create it, replay the whole migration chain into it, seed, and let
  * `--drop` tear it down. Unset keeps the shared-`public` behavior.
  */
-import bcrypt from "bcrypt";
+import { hashPassword } from "../src/lib/auth/password-hash";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type pg from "pg";
@@ -88,6 +88,16 @@ const E2E_MIGRATION_FILES = [
   "0050_dorm_gender_nullable.sql",
   "0051_room_position_source.sql",
   "0052_building_street_view.sql",
+  "0053_contributor_identity.sql",
+  "0054_add_jeep_reports.sql",
+  "0055_auth_account_security.sql",
+  "0056_auth_rate_limits.sql",
+  "0057_proposal_owner_tokens.sql",
+  "0061_notification_outbox.sql",
+  "0062_email_log_and_cron_runs.sql",
+  "0063_admin_audit_log.sql",
+  "0064_staff_security_and_invites.sql",
+  "0065_notification_prefs_and_access_requests.sql",
 ] as const;
 
 /**
@@ -216,7 +226,7 @@ async function main() {
 
   const password =
     process.env.E2E_ADMIN_PASSWORD?.trim() || DEFAULT_E2E_PASSWORD;
-  const passwordHash = await bcrypt.hash(password, 12);
+  const passwordHash = await hashPassword(password);
 
   const client = await connectE2eClient(databaseUrl);
 
@@ -242,7 +252,15 @@ async function main() {
 
     await client.query(`
       TRUNCATE TABLE
+        jeep_reports,
+        notification_outbox,
+        email_log,
+        cron_runs,
+        admin_audit_log,
         feedback,
+        rate_limits,
+        proposal_owner_tokens,
+        admin_user_auth,
         announcements,
         sponsor_impressions,
         planner_plans,
@@ -332,6 +350,31 @@ async function main() {
     );
     const placeId = place.rows[0]?.id;
     if (!placeId) throw new Error("Failed to seed place");
+
+    // Public edit history (e2e/browse/entity-history.spec.ts): an import row,
+    // then an approved suggestion whose approver has an email-shaped login and
+    // whose snapshot carries a private field. Neither may reach the page.
+    await client.query(
+      `INSERT INTO editor_history (entity_type, entity_id, action, before_snapshot, after_snapshot, edited_by, created_at)
+       VALUES
+         ('place', $1, 'create', NULL, $2, 'maintenance-script', now() - interval '2 days'),
+         ('place', $1, 'update', $3, $4, 'e2e-approver@example.com', now() - interval '1 day')`,
+      [
+        placeId,
+        { name: E2E_FIXTURES.placeName, description: "E2E seeded place" },
+        { description: "E2E seeded place", hours: null },
+        {
+          description: "E2E seeded place",
+          hours: "8 AM to 5 PM",
+          contactEmail: "e2e-private@example.com",
+        },
+      ],
+    );
+    await client.query(
+      `INSERT INTO contributions (submitter_name, entity_type, entity_id, entity_label, source, created_at)
+       VALUES ('E2E Contributor', 'place', $1, $2, 'proposal_approved', now() - interval '1 day' + interval '200 milliseconds')`,
+      [placeId, E2E_FIXTURES.placeName],
+    );
 
     await client.query(
       `INSERT INTO events (slug, title, description, category, starts_at, ends_at, timezone, recurrence, is_active, include_in_seo, version)

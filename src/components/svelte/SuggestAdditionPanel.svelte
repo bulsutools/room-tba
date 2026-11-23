@@ -15,6 +15,7 @@
     type ProposalCreateType,
   } from "@lib/proposals/client";
   import {
+    ANONYMOUS_SUBMITTER_NAME,
     MAX_SUBMITTER_NOTE_LENGTH,
     validateSubmitterName,
   } from "@constants/proposals";
@@ -140,12 +141,12 @@
   const roomBuildingNotice = $derived.by(() => {
     if (kind !== "create_room" || isPublish) return null;
     if (pendingBuildingLabel) {
-      return `Your building suggestion "${pendingBuildingLabel}" is still waiting for editor review. You can add rooms in that building after it is approved and appears on the map.`;
+      return `Your building suggestion "${pendingBuildingLabel}" is still waiting for editor review. You can add rooms in that building after it's approved and appears on the map.`;
     }
     if (buildings.length === 0) {
-      return "Rooms must belong to a building that is already on the map. Suggest a building first, then come back to add rooms after editors approve it.";
+      return "Rooms must belong to a building that's already on the map. Suggest a building first, then come back to add rooms after editors approve it.";
     }
-    return "Rooms must belong to a building that is already on the map. Pick one below, or open a building in the side panel and use Suggest an edit on an existing room.";
+    return "Rooms must belong to a building that's already on the map. Pick one below, or open a building in the side panel and use Suggest an edit on an existing room.";
   });
 
   const needsPin = $derived(
@@ -359,7 +360,7 @@
   }
 
   const pickPinBlockedMessage =
-    "You must add all information before picking location on map";
+    "Add a name first, then pick its spot on the map.";
 
   function blockPickOnMap(message = pickPinBlockedMessage) {
     error = message;
@@ -500,15 +501,22 @@
     }
   }
 
-  async function submit() {
-    error = null;
-    if (!isPublish) {
-      const name = resolveSubmitterName({
+  // The contributor name is optional and asked last (Jakob audit, micro 15):
+  // blank submits as Anonymous; a typed name still has to be a usable credit.
+  function contributorName() {
+    return (
+      resolveSubmitterName({
         displayName: adminAuthStore.displayName,
         username: adminAuthStore.username,
         draftName: submitterName,
-      });
-      const validation = validateSubmitterName(name);
+      }) || ANONYMOUS_SUBMITTER_NAME
+    );
+  }
+
+  async function submit() {
+    error = null;
+    if (!isPublish) {
+      const validation = validateSubmitterName(contributorName());
       if (!validation.ok) {
         error = validation.error;
         return;
@@ -571,7 +579,7 @@
       if (isPublish) {
         const result = await publishEntityCreate(kind, patch);
         if (!result.ok) {
-          error = result.error ?? "Could not create entry.";
+          error = result.error ?? "Couldn't create entry.";
           return;
         }
         toastStore.show(
@@ -584,11 +592,7 @@
         return;
       }
 
-      const name = resolveSubmitterName({
-        displayName: adminAuthStore.displayName,
-        username: adminAuthStore.username,
-        draftName: submitterName,
-      })!;
+      const name = contributorName();
       const pendingCreate = getStoredPendingCreateProposal(kind);
       const result = await submitCreateProposal({
         entityType: kind,
@@ -599,7 +603,7 @@
           pendingCreate?.status === "needs_changes" ? pendingCreate.id : null,
       });
       if (!result.ok) {
-        error = result.error ?? "Could not submit proposal.";
+        error = result.error ?? "Couldn't submit proposal.";
         return;
       }
       if (kind === "create_building") {
@@ -607,7 +611,7 @@
         toastStore.show(
           hasBundledRooms
             ? "Thanks. We'll review your building and room suggestions together."
-            : "Thanks. We will review your building suggestion soon. You can add rooms in that building after editors approve it.",
+            : "Thanks. We'll review your building suggestion soon. You can add rooms in that building after editors approve it.",
           "success",
         );
         await refreshPendingCreateProposal();
@@ -623,6 +627,15 @@
     }
   }
 </script>
+
+{#snippet pinRow()}
+  <EntityEditorPinRow
+    label={draftPinRowText}
+    pickLabel={draftPin ? "Move pin" : "Pick on map"}
+    disabled={submitting}
+    onclick={pickOnMap}
+  />
+{/snippet}
 
 <section
   class="entity-editor addition-panel"
@@ -641,10 +654,7 @@
 
   {#if !isPublish}
     {#key pendingListVersion}
-      <ContributorPendingProposals
-        {submitterName}
-        onChanged={bumpPendingList}
-      />
+      <ContributorPendingProposals onChanged={bumpPendingList} />
     {/key}
   {/if}
 
@@ -667,13 +677,6 @@
     {/snippet}
   </EntityEditorFormField>
 
-  {#if !isPublish && !adminAuthStore.isLoggedIn}
-    <SubmitterNameField
-      id="suggest-addition-submitter-name"
-      bind:value={submitterName}
-    />
-  {/if}
-
   <div class="field-group">
     {#if kind === "create_building"}
       <EntityEditorFormField
@@ -690,6 +693,7 @@
           />
         {/snippet}
       </EntityEditorFormField>
+      {@render pinRow()}
       <EntityEditorFormField
         label="How do you find it?"
         inputId="addition-building-directions"
@@ -718,7 +722,7 @@
         <div class="bundled-rooms">
           <p class="bundled-rooms__lead">
             Rooms in this building (optional). Add them here if the building is
-            not on the map yet — they go live when editors approve the building.
+            not on the map yet. They go live when editors approve the building.
           </p>
           {#each bundledRooms as room, index (index)}
             <div class="bundled-rooms__row">
@@ -780,6 +784,7 @@
           />
         {/snippet}
       </EntityEditorFormField>
+      {@render pinRow()}
       <EntityEditorFormField
         label="When does it start?"
         inputId="addition-event-starts"
@@ -841,10 +846,11 @@
           />
         {/snippet}
       </EntityEditorFormField>
+      {@render pinRow()}
       <EntityEditorFormField
         label="Who can live here?"
         inputId="addition-dorm-gender"
-        hint="Coed, women only, men only. Leave blank if you are not sure."
+        hint="Coed, women only, men only. Leave blank if you're not sure."
       >
         {#snippet control()}
           <input
@@ -870,6 +876,7 @@
           />
         {/snippet}
       </EntityEditorFormField>
+      {@render pinRow()}
       <EntityEditorFormField
         label="What kind of place?"
         inputId="addition-place-category"
@@ -878,13 +885,13 @@
           <select id="addition-place-category" bind:value={placeCategory}>
             {#each PLACE_CATEGORIES as category}
               <option value={category}>{category === "food"
-                ? "Service / establishment — food"
+                ? "Service / establishment (food)"
                 : category === "service"
                   ? "Service / establishment"
                   : category === "transport"
-                    ? "Service / establishment — transport"
+                    ? "Service / establishment (transport)"
                     : category === "tourist-spot"
-                      ? "Landmark — tourist spot"
+                      ? "Landmark (tourist spot)"
                       : "Landmark"}</option>
             {/each}
           </select>
@@ -927,6 +934,7 @@
           />
         {/snippet}
       </EntityEditorFormField>
+      {@render pinRow()}
       <EntityEditorFormField label="What kind of entry?" inputId="addition-organization-category">
         {#snippet control()}
           <select
@@ -942,7 +950,7 @@
       <EntityEditorFormField
         label="Host building"
         inputId="addition-organization-building"
-        hint="Optional; choose the building where it is based."
+        hint="Optional. Choose the building where it's based."
       >
         {#snippet control()}
           <select
@@ -1011,7 +1019,7 @@
       <EntityEditorFormField
         label="How do you get there?"
         inputId="addition-room-directions"
-        hint="Optional: stairs, wing, or landmarks."
+        hint="Optional. Add stairs, wing, or landmarks."
       >
         {#snippet control()}
           <textarea
@@ -1069,20 +1077,11 @@
     {/if}
   </div>
 
-  {#if needsPin}
-    <EntityEditorPinRow
-      label={draftPinRowText}
-      pickLabel={draftPin ? "Move pin" : "Pick on map"}
-      disabled={submitting}
-      onclick={pickOnMap}
-    />
-  {/if}
-
   {#if !isPublish}
     <EntityEditorFormField
       label="Note to reviewer (optional)"
       inputId="suggest-addition-note"
-      hint="Goes to the editor who reviews this, and is never shown on the map. Use it for context, sources, or anything that is not part of the entry itself."
+      hint="It goes to the editor who reviews this and is never shown on the map. Use it for context, sources, or anything that isn't part of the entry itself."
     >
       {#snippet control()}
         <textarea
@@ -1094,6 +1093,14 @@
         ></textarea>
       {/snippet}
     </EntityEditorFormField>
+  {/if}
+
+  {#if !isPublish && !adminAuthStore.isLoggedIn}
+    <SubmitterNameField
+      id="suggest-addition-submitter-name"
+      bind:value={submitterName}
+      optional
+    />
   {/if}
 
   {#if error}
@@ -1131,7 +1138,7 @@
     margin: 0;
     font-size: 0.85rem;
     line-height: 1.35;
-    color: var(--text-muted, #64748b);
+    color: var(--text-muted, var(--theme-text-muted, #64748b));
   }
 
   .bundled-rooms__row {
@@ -1139,7 +1146,7 @@
     flex-direction: column;
     gap: 0.35rem;
     padding: 0.5rem;
-    border: 1px dashed var(--border-subtle, #e2e8f0);
+    border: 1px dashed var(--border-subtle, var(--theme-border, #e2e8f0));
     border-radius: 0.5rem;
   }
 
@@ -1149,7 +1156,7 @@
     font-size: 0.85rem;
     padding: 0.25rem 0.5rem;
     border-radius: 0.35rem;
-    border: 1px solid var(--border-subtle, #e2e8f0);
+    border: 1px solid var(--border-subtle, var(--theme-border, #e2e8f0));
     background: transparent;
     cursor: pointer;
   }

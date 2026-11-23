@@ -6,6 +6,8 @@ import {
   resolveRouteGeometry,
   type JeepneyStop,
   type StoredRouteGeometry,
+  BUNDLED_BUS_ROUTES,
+  withBundledRoutes,
 } from "./jeepney-routes.js";
 import jeepneyGeometries from "./jeepney-geometries.json" with { type: "json" };
 
@@ -110,14 +112,15 @@ describe("resolveRouteGeometry", () => {
   test("only inferred sources carry a rider-facing caveat", () => {
     expect(ROUTE_GEOMETRY_NOTES["osm-relation"]).toBeNull();
     expect(ROUTE_GEOMETRY_NOTES.routed).toContain("road-routed");
-    expect(ROUTE_GEOMETRY_NOTES["stops-only"]).toContain("not mapped");
+    expect(ROUTE_GEOMETRY_NOTES["stops-only"]).toContain("isn't mapped");
   });
 });
 
 describe("jeepney-geometries.json", () => {
   test("every entry declares a source and a drawable line", () => {
     const entries = Object.entries(stored);
-    expect(entries.length).toBeGreaterThan(0);
+    // This fork ships no transit geometry yet; the check still guards any
+    // entries a future campus adds.
     for (const [id, entry] of entries) {
       expect(["osm-relation", "routed"], id).toContain(entry.source);
       // Provenance is the point of this file; an entry without it is unauditable.
@@ -125,7 +128,7 @@ describe("jeepney-geometries.json", () => {
       expect(entry.geometry.type, id).toBe("LineString");
       expect(entry.geometry.coordinates.length, id).toBeGreaterThan(1);
       for (const [lon, lat] of entry.geometry.coordinates) {
-        // GeoJSON is lon-first; a swapped pair would put UPLB in Somalia.
+        // GeoJSON is lon-first; a swapped pair would put the campus in Somalia.
         expect(lon, id).toBeGreaterThan(100);
         expect(lat, id).toBeLessThan(90);
       }
@@ -157,6 +160,27 @@ describe("JEEPNEY_ROUTES data", () => {
       for (const stop of route.stops) {
         expect(stop.description.trim().length).toBeGreaterThan(0);
       }
+    }
+  });
+});
+
+describe("withBundledRoutes", () => {
+  test("returns database rows unchanged while no bundled routes ship", () => {
+    const dbRoute: import("./jeepney-routes.js").JeepneyRoute = {
+      id: "campus-loop",
+      name: "From the database",
+      description: "Seeded row.",
+      color: "#000",
+      fare: { regular: 15, discounted: 12 },
+      stops: [stop("A", 14.1, 121.2), stop("B", 14.3, 121.4)],
+    };
+    expect(withBundledRoutes([dbRoute])).toEqual([dbRoute]);
+  });
+
+  test("bundled buses have a drawn line", () => {
+    for (const route of BUNDLED_BUS_ROUTES) {
+      const geometry = (jeepneyGeometries as Record<string, unknown>)[route.id];
+      expect(geometry).toBeDefined();
     }
   });
 });

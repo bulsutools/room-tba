@@ -378,6 +378,28 @@ export async function getLocalRoomByCode(code: string) {
   }
 }
 
+/** [lon, lat] of the room's building, from the local cache or the API. */
+export async function getRoomCoords(
+  roomCode: string,
+): Promise<[number, number] | null> {
+  const code = roomCode.trim().toUpperCase();
+  try {
+    const room =
+      (await getLocalRoomByCode(code)) ??
+      (
+        await getJSONFetch<{
+          data: { building: { lat: number | null; lon: number | null } | null };
+        }>(`/api/rooms?code=${encodeURIComponent(code)}`)
+      ).data;
+    const lat = room?.building?.lat;
+    const lon = room?.building?.lon;
+    return lat != null && lon != null ? [lon, lat] : null;
+  } catch (e) {
+    console.error(`Failed to resolve room ${code}:`, e);
+    return null;
+  }
+}
+
 export async function getLocalRoomById(id: number) {
   try {
     const localDB = await getDB();
@@ -673,6 +695,46 @@ export function getEntityRooms(
   };
 }
 
+/**
+ * Rooms without waiting on a cold local database. On a fresh browser the
+ * PGlite boot alone takes seconds, so the server and the local cache are asked
+ * at once and the first non-empty answer wins. When the server answers, the
+ * local cache is refreshed in the background through `refreshCache`.
+ */
+export async function firstRooms(
+  loadLocal: () => Promise<RoomData[] | undefined>,
+  loadRemote: () => Promise<RoomData[]>,
+  refreshCache: (rooms: RoomData[]) => Promise<void>,
+): Promise<RoomData[]> {
+  const local = loadLocal().then(
+    (rows) => rows ?? [],
+    () => [],
+  );
+  const remote = loadRemote().catch(() => [] as RoomData[]);
+  const nonEmpty = (p: Promise<RoomData[]>) =>
+    p.then((rows) => (rows.length > 0 ? rows : Promise.reject()));
+  void remote
+    .then((rows) => (rows.length > 0 ? refreshCache(rows) : undefined))
+    .catch(() => {});
+  try {
+    return await Promise.any([nonEmpty(local), nonEmpty(remote)]);
+  } catch {
+    return [];
+  }
+}
+
+/** `firstRooms` for one building, refreshing its local cache when it can. */
+export function firstBuildingRooms(
+  id: number,
+  refreshCache: (rooms: RoomData[]) => Promise<void>,
+): Promise<RoomData[]> {
+  return firstRooms(
+    () => getLocalBuildingRooms(id),
+    () => fetchEntityRoomsRemote("building", id),
+    refreshCache,
+  );
+}
+
 const CLASS_ROW_SELECT = `
   c.id,
   c.course_code as "courseCode",
@@ -752,6 +814,69 @@ export async function getLocalRoomClassCounts(
     return new Map(data.rows.map((row) => [row.roomId, row.count]));
   } catch (e) {
     console.error("Error: ", e);
+    return null;
+  }
+}
+
+/**
+ * Schedules of every class held in a building, from PGlite, for the sheet's
+ * "classes now" fact. Null when classes were never synced (#415): the sheet
+ * then falls back to the per-room term counts it already fetched.
+ */
+export async function getLocalBuildingClassSchedules(
+  buildingId: number,
+  termId?: number,
+): Promise<(string[] | null)[] | null> {
+  try {
+    const localDB = await getDB();
+    await localDB.waitReady;
+    const hasAny = (await localDB.query(
+      "SELECT 1 FROM classes LIMIT 1",
+    )) as Results<Record<string, unknown>>;
+    if (hasAny.rows.length === 0) return null;
+
+    const scoped = termId != null;
+    const data = (await localDB.query(
+      `
+      SELECT c.schedule
+      FROM classes AS c
+      JOIN rooms AS r ON r.id = c.room_id
+      WHERE r.building_id = $1
+      ${scoped ? "AND c.term_id = $2" : ""}
+      `,
+      scoped ? [buildingId, termId] : [buildingId],
+    )) as Results<{ schedule: string[] | null }>;
+    return data.rows.map((row) => row.schedule);
+  } catch (e) {
+    console.error("Error: ", e);
+    return null;
+  }
+}
+
+/**
+ * Every class schedule in a building: the local copy when classes were
+ * synced, else one /api/rooms/class-schedules request. Null when neither
+ * answers, so the sheet shows only what it knows.
+ */
+export async function fetchBuildingClassSchedules(
+  buildingId: number,
+  termId?: number,
+): Promise<(string[] | null)[] | null> {
+  const local = await getLocalBuildingClassSchedules(buildingId, termId);
+  if (local !== null) return local;
+
+  const params = new URLSearchParams({ building_id: String(buildingId) });
+  if (termId != null) params.set("term_id", String(termId));
+  try {
+    const response = await fetch(
+      `/api/rooms/class-schedules?${params.toString()}`,
+    );
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      data?: (string[] | null)[];
+    };
+    return Array.isArray(payload?.data) ? payload.data : null;
+  } catch {
     return null;
   }
 }
@@ -852,13 +977,25 @@ export async function searchLocalRooms(
     const escaped = escapeLikePattern(searchString);
     const localDB = await getDB();
     await localDB.waitReady;
+    const compactCode = escaped.toUpperCase().replace(/\s+/g, "");
+    // Same contract as the server: exact code, then code prefix, then rest.
     const data = (await localDB.query(
       `SELECT room_code AS value, full_name AS "fullName" FROM rooms
        WHERE upper(room_code) LIKE upper($1) ESCAPE '\\'
+          OR replace(upper(room_code), ' ', '') LIKE $2 ESCAPE '\\'
           OR upper(full_name) LIKE upper($1) ESCAPE '\\'
-       ORDER BY length(room_code), room_code
+       ORDER BY
+         CASE WHEN replace(upper(room_code), ' ', '') = $3 THEN 0
+              WHEN replace(upper(room_code), ' ', '') LIKE $4 ESCAPE '\\' THEN 1
+              ELSE 2 END,
+         length(room_code), room_code
        LIMIT 6`,
-      [`%${escaped}%`],
+      [
+        `%${escaped}%`,
+        `%${compactCode}%`,
+        searchString.toUpperCase().replace(/\s+/g, ""),
+        `${compactCode}%`,
+      ],
     )) as Results<{ value: string; fullName: string | null }>;
     return data.rows.length ? data.rows : null;
   } catch (e) {
@@ -870,7 +1007,7 @@ export async function searchLocalRooms(
 /** Offline alias lookup against the PGlite cache (#155 follow-up). */
 export async function searchLocalAliases(
   searchString: string,
-): Promise<{ alias: string; value: string }[]> {
+): Promise<{ alias: string; value: string; targetType: string }[]> {
   const normalized = normalizeAlias(searchString);
   if (!normalized) return [];
   try {
@@ -880,18 +1017,26 @@ export async function searchLocalAliases(
       `
       SELECT
         a.alias,
-        COALESCE(b.building_name, a.building_name) AS value,
+        COALESCE(b.building_name, p.name, a.building_name) AS value,
+        a.target_type AS "targetType",
         a.normalized_alias AS "normalizedAlias"
       FROM aliases AS a
       LEFT JOIN buildings AS b
         ON a.target_type = 'building' AND b.id = a.target_id
-      WHERE COALESCE(b.building_name, a.building_name) IS NOT NULL
+      LEFT JOIN places AS p
+        ON a.target_type = 'place' AND p.id = a.target_id
+      WHERE COALESCE(b.building_name, p.name, a.building_name) IS NOT NULL
         AND (a.normalized_alias = $1 OR a.normalized_alias LIKE $2)
       ORDER BY CASE WHEN a.normalized_alias = $1 THEN 0 ELSE 1 END, a.alias
       LIMIT 12
       `,
       [normalized, `${normalized}%`],
-    )) as Results<{ alias: string; value: string; normalizedAlias: string }>;
+    )) as Results<{
+      alias: string;
+      value: string;
+      targetType: string;
+      normalizedAlias: string;
+    }>;
 
     const seen = new Set<string>();
     return data.rows.filter((row) => {

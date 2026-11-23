@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/svelte";
+import { tick } from "svelte";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import SettingsModalHost from "@test/components/SettingsModalHost.svelte";
 import {
@@ -35,19 +36,64 @@ describe("SettingsModal", () => {
     const { container } = render(SettingsModalHost);
 
     expect(screen.getByRole("heading", { name: "Settings" })).toBeVisible();
-    // Transit moved to the sidebar's Jeepney routes browse panel.
-    for (const section of [
-      "View",
-      "Terrain",
-      "Schedule",
-      "Feedback",
-      "Storage",
-    ]) {
+    for (const section of ["Appearance", "Offline maps", "Data & storage"]) {
       expect(
         screen.getByRole("heading", { name: section }),
       ).toBeInTheDocument();
     }
     expectNoHorizontalOverflow(container);
+  });
+
+  test("leaves map layers, schedule help and feedback to where they live", () => {
+    render(SettingsModalHost);
+
+    // Layers owns map style, basemap, terrain, pins, my classes and camera.
+    for (const gone of [
+      "Map style",
+      "Basemap",
+      "Terrain",
+      "Pins",
+      "Highlight my class buildings",
+      "Camera details",
+      "Why a class may be missing",
+    ]) {
+      expect(screen.queryByText(gone)).toBeNull();
+    }
+    expect(screen.queryByRole("switch")).toBeNull();
+    // Send feedback lives in You only.
+    expect(screen.queryByRole("button", { name: "Send feedback" })).toBeNull();
+    // No notification preferences exist, so no invented section.
+    expect(screen.queryByRole("heading", { name: "Notifications" })).toBeNull();
+  });
+
+  test("Appearance switches the theme and remembers the choice", async () => {
+    localStorage.removeItem("room-tba:theme");
+    render(SettingsModalHost);
+
+    expect(screen.getByRole("radiogroup", { name: "Theme" })).toBeVisible();
+    const system = screen.getByRole("radio", { name: "System" });
+    const dark = screen.getByRole("radio", { name: "Dark" });
+    const light = screen.getByRole("radio", { name: "Light" });
+    expect(system).toHaveAttribute("aria-checked", "true");
+
+    dark.click();
+    await tick();
+    expect(document.documentElement.dataset["theme"]).toBe("dark");
+    expect(localStorage.getItem("room-tba:theme")).toBe("dark");
+    expect(dark).toHaveAttribute("aria-checked", "true");
+    expect(system).toHaveAttribute("aria-checked", "false");
+
+    light.click();
+    expect(document.documentElement.dataset["theme"]).toBe("light");
+    expect(localStorage.getItem("room-tba:theme")).toBe("light");
+
+    system.click();
+    expect(localStorage.getItem("room-tba:theme")).toBeNull();
+  });
+
+  test("reset is a red destructive row", () => {
+    render(SettingsModalHost);
+    expect(clearButton()).toHaveClass("settings-row--danger");
   });
 });
 

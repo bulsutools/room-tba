@@ -56,7 +56,7 @@ events get **free** promotion.
 First-party only (`/api/sponsor-event`): impressions are session-deduped via
 `sessionStorage` (no cookies), bot traffic is dropped server-side, and beacons
 fail silently offline. We never share user data with sponsors — see the
-[privacy policy](https://room-tba.uplb.tools/privacy).
+[privacy policy](https://room-tba.bulsu.tools/privacy).
 
 Sponsor config lives in `public/sponsors.json`; sponsor images in
 `public/sponsors/` are cached by the service worker for offline support.

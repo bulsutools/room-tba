@@ -15,7 +15,7 @@
  *   - geomDeltas: interior LINESTRING points (endpoints dropped; they equal the
  *     node coords), delta-encoded ints at 1e-6 deg: [dLng, dLat, ...] relative
  *     to the previous point, starting from round(uNode * 1e6). Empty = straight.
- *   - oneway: 1 only when no reverse twin existed (never for the UPLB export);
+ *   - oneway: 1 only when no reverse twin existed (never for the upstream export);
  *     reverse-duplicate pairs are collapsed to one undirected record.
  */
 

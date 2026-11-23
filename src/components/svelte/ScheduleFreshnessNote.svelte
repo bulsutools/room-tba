@@ -2,15 +2,24 @@
   import {
     classesScheduleFreshnessMessage,
     isClassesScheduleStale,
-  } from "@lib/amis/term-schedule-freshness";
+  } from "@lib/class-import/term-schedule-freshness";
+  import { changeOfMatriculationPeriod } from "@lib/term-calendar";
 
   type Props = {
     importedAt?: string | null;
+    /** Term whose change of enrollment dates the note names. */
+    termId?: number | null;
   };
 
-  const { importedAt = null }: Props = $props();
+  const { importedAt = null, termId = null }: Props = $props();
 
-  const message = $derived(classesScheduleFreshnessMessage(importedAt));
+  const message = $derived(
+    classesScheduleFreshnessMessage(
+      importedAt,
+      Date.now(),
+      changeOfMatriculationPeriod(termId),
+    ),
+  );
   const stale = $derived(isClassesScheduleStale(importedAt));
 </script>
 
@@ -28,11 +37,11 @@
     margin: 0.35rem 0 0;
     font-size: 0.75rem;
     line-height: 1.35;
-    color: hsl(0 0% 45%);
+    color: var(--theme-text-2, hsl(0 0% 45%));
   }
 
   .schedule-freshness--stale {
-    color: hsl(25 70% 32%);
+    color: var(--theme-amber-text, hsl(25 70% 32%));
   }
 
   .schedule-freshness__link {

@@ -8,9 +8,9 @@ body:
     value: |
       **No pull request required.** A developer or maintainer will implement the fix. Thank you for keeping campus data accurate.
 
-      Prefer the [in-app suggest flow](https://room-tba.uplb.tools) if you have contributor access.
+      Prefer the [in-app suggest flow](https://room-tba.bulsu.tools) if you have contributor access.
 
-      Collecting **campus gate coordinates** for a batch? Use the [gate coordinates spreadsheet workflow](https://github.com/uplbtools/room-tba/blob/staging/CONTRIBUTING.md#campus-gate-coordinates) instead.
+      Collecting **campus gate coordinates** for a batch? Use the [gate coordinates spreadsheet workflow](https://github.com/bulsutools/room-tba/blob/staging/CONTRIBUTING.md#campus-gate-coordinates) instead.
   - type: dropdown
     id: entity_type
     attributes:
@@ -29,8 +29,8 @@ body:
     id: entity_name
     attributes:
       label: Room or building name
-      description: e.g. PSLH 1, PhySci, CAS Annex 1
-      placeholder: PSLH 1
+      description: e.g. Main Building 101, SciHall, ICT Building
+      placeholder: Main Building 101
     validations:
       required: true
   - type: input
@@ -55,7 +55,7 @@ body:
     id: verified
     attributes:
       label: How did you verify?
-      description: Walked there, SAIS, org page, photo, etc.
+      description: Walked there, registrar portal, org page, photo, etc.
   - type: textarea
     id: screenshot
     attributes:

@@ -49,21 +49,4 @@
     object-fit: contain;
   }
 
-  .entity-footer__link--kubo {
-    --kubo-primary: oklch(0.35 0.08 55);
-
-    color: var(--kubo-primary);
-    border-color: var(--kubo-primary);
-  }
-
-  .entity-footer__link--kubo:hover,
-  .entity-footer__link--kubo:focus-visible {
-    color: var(--kubo-primary);
-    border-color: var(--kubo-primary);
-    background: oklch(0.96 0.012 55);
-  }
-
-  .entity-footer__link--kubo:focus-visible {
-    outline-color: var(--kubo-primary);
-  }
 </style>
