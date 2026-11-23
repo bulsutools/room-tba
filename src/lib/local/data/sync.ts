@@ -497,14 +497,16 @@ export async function syncJeepneyRoutes(
       await tx.exec("DELETE FROM jeepney_stops; DELETE FROM jeepney_routes;");
       for (const route of routes) {
         await tx.query(
-          `INSERT INTO jeepney_routes (id, name, description, direction_note, color, fare_regular, fare_discounted)
-           VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+          `INSERT INTO jeepney_routes (id, name, route_number, description, direction_note, color, operator, fare_regular, fare_discounted)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`,
           [
             route.id,
             route.name,
+            route.number ?? null,
             route.description,
             route.directionNote ?? null,
             route.color,
+            route.operator ?? "jeepney",
             route.fare.regular,
             route.fare.discounted,
           ],
@@ -512,8 +514,8 @@ export async function syncJeepneyRoutes(
         for (const stop of route.stops) {
           if (stop.id === undefined) continue;
           await tx.query(
-            `INSERT INTO jeepney_stops (id, route_id, name, description, lat, lon, sort_order, version, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`,
+            `INSERT INTO jeepney_stops (id, route_id, name, description, lat, lon, sort_order, segment_fare_regular, segment_fare_discounted, version, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
             [
               stop.id,
               route.id,
@@ -522,6 +524,8 @@ export async function syncJeepneyRoutes(
               stop.lat,
               stop.lon,
               stop.sortOrder ?? 0,
+              stop.fare?.regular ?? null,
+              stop.fare?.discounted ?? null,
               stop.version ?? 1,
               stop.updatedAt ?? new Date().toISOString(),
             ],

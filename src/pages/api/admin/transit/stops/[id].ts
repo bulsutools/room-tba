@@ -66,6 +66,22 @@ export const PATCH: APIRoute = async ({ cookies, params, request }) => {
     }
     updates.isActive = body.isActive;
   }
+  for (const field of [
+    "segmentFareRegular",
+    "segmentFareDiscounted",
+  ] as const) {
+    if (body[field] !== undefined) {
+      if (body[field] === null) {
+        updates[field] = null;
+        continue;
+      }
+      const value = Number(body[field]);
+      if (!Number.isFinite(value) || value < 0) {
+        return json({ error: "Enter a valid segment fare." }, 400);
+      }
+      updates[field] = value;
+    }
+  }
 
   try {
     const stop = await updateJeepneyStop(

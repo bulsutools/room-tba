@@ -451,9 +451,11 @@ export const updateTable = pgTable(
 export const jeepneyRoutesTable = pgTable("jeepney_routes", {
   id: varchar({ length: 64 }).primaryKey(),
   name: varchar({ length: 120 }).notNull(),
+  routeNumber: varchar("route_number", { length: 32 }),
   description: text().notNull(),
   directionNote: text("direction_note"),
   color: varchar({ length: 16 }).notNull(),
+  operator: varchar({ length: 16 }).default("jeepney").notNull(),
   fareRegular: doublePrecision("fare_regular").notNull(),
   fareDiscounted: doublePrecision("fare_discounted").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
@@ -480,6 +482,8 @@ export const jeepneyStopsTable = pgTable(
     lat: doublePrecision().notNull(),
     lon: doublePrecision().notNull(),
     sortOrder: integer("sort_order").default(0).notNull(),
+    segmentFareRegular: doublePrecision("segment_fare_regular"),
+    segmentFareDiscounted: doublePrecision("segment_fare_discounted"),
     isActive: boolean("is_active").default(true).notNull(),
     version: integer().default(1).notNull(),
     updatedAt: timestamp("updated_at", { mode: "string" })
