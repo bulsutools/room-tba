@@ -175,6 +175,35 @@ export default defineConfig({
             },
           },
           {
+            // OpenFreeMap fallback basemap: TileJSON, vector tiles, fonts,
+            // sprites — all on one host.
+            urlPattern: /^https:\/\/tiles\.openfreemap\.org\//i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "map-tiles",
+              expiration: {
+                maxEntries: 4000,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+                purgeOnQuotaError: true,
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // OSM raster last-resort basemap (a./b./c. tile hosts).
+            urlPattern: /^https:\/\/([a-z]\.)?tile\.openstreetmap\.org\//i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "map-tiles",
+              expiration: {
+                maxEntries: 4000,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+                purgeOnQuotaError: true,
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
             // Sprites, glyphs, and shaded-relief rasters used by the map style
             urlPattern:
               /^https:\/\/(maputnik|orangemug|klokantech)\.github\.io\/.*/i,
