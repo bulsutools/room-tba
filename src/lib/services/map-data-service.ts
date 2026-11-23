@@ -486,6 +486,47 @@ export async function getClassesForRoom(
   }
 }
 
+/** Rooms a class-schedule query can scope to (#3 MCP get_schedule). */
+export type ClassScope =
+  | { roomId: number }
+  | { roomCode: string }
+  | { buildingId: number }
+  | { collegeId: number }
+  | { divisionId: number };
+
+function classScopeFilter(scope: ClassScope) {
+  if ("roomId" in scope) return eq(roomsTable.id, scope.roomId);
+  if ("roomCode" in scope) return eq(roomsTable.roomCode, scope.roomCode);
+  if ("buildingId" in scope) return eq(roomsTable.buildingId, scope.buildingId);
+  if ("collegeId" in scope) return eq(roomsTable.collegeId, scope.collegeId);
+  return eq(roomsTable.divisionId, scope.divisionId);
+}
+
+/** One grouped query for every class meeting a room/building/college/division
+ * scope — the MCP schedule tool can't afford one query per room. */
+export async function getClassesForScope(
+  scope: ClassScope,
+  termId?: number,
+  limit?: number,
+): Promise<ClassMapValue[]> {
+  try {
+    const query = db
+      .select(classListSelect)
+      .from(classesTable)
+      .leftJoin(roomsTable, eq(roomsTable.id, classesTable.roomId))
+      .where(
+        and(
+          classScopeFilter(scope),
+          termId != null ? eq(classesTable.termId, termId) : undefined,
+        ),
+      );
+    return limit != null ? await query.limit(limit) : await query;
+  } catch (e) {
+    console.error("Error: ", e);
+    throw new Error("Failed to fetch classes for scope", { cause: e });
+  }
+}
+
 /** Per-room class counts for one building/college/division, optionally scoped
  * to a term. Returns a Map of roomId -> count; rooms with no classes for the
  * scope are included with count 0 (LEFT JOIN + GROUP BY). One grouped query
