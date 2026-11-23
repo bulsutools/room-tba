@@ -29,7 +29,7 @@ export function describeRoute(
   route: CampusRoute,
 ): string {
   const lines: string[] = [
-    `Walk from ${from.name} to ${to.name}: ${formatDistance(route.meters)}, about ${formatDuration(route.seconds)} on foot.`,
+    `Walk from ${from.name} to ${to.name} for ${formatDistance(route.meters)}, about ${formatDuration(route.seconds)} on foot.`,
   ];
 
   // Consecutive turns often sit near the same building, and "by CEM Building"
@@ -76,7 +76,7 @@ export async function generateRouteDescription(
   if (!apiKey?.trim()) return null;
 
   const prompt = [
-    "You are writing walking directions for a University of the Philippines Los Banos student.",
+    "You are writing walking directions for a Bulacan State University student.",
     "Rewrite the notes below as 2 to 4 short sentences, second person, plain and calm.",
     "",
     "Rules:",

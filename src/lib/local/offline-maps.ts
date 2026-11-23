@@ -3,7 +3,14 @@
 // service worker's `map-tiles` runtime cache stores them (see astro.config.mjs).
 
 import { CAMPUS_BOUNDS } from "@constants/map-terrain";
-import { CAMPUS_MAP_STYLE_URL, injectMaptilerKey } from "@lib/maptiler-key";
+import { getBasemapProvider } from "@lib/basemap-provider";
+import {
+  CAMPUS_MAP_STYLE_URL,
+  FALLBACK_MAP_STYLE_URL,
+  hasConfiguredMaptilerKey,
+  injectMaptilerKey,
+  OFFLINE_FALLBACK_MAP_STYLE,
+} from "@lib/maptiler-key";
 
 // Campus bounds — mirrors `CAMPUS_MAX_BOUNDS` in src/constants/map-terrain.ts.
 const CAMPUS_BOUNDS_LON_LAT = {
@@ -60,38 +67,43 @@ export function getCampusTileCoords(
 
 export type TileSource = { template: string; maxZoom: number };
 
-let cachedSource: TileSource | null = null;
+// Last-resort basemap: bare OSM raster, no style fetch needed.
+const OSM_RASTER_TILE_SOURCE: TileSource = {
+  template: OFFLINE_FALLBACK_MAP_STYLE.sources.osm.tiles[0],
+  maxZoom: MAX_ZOOM,
+};
+
+let cachedSource: { route: string; source: TileSource } | null = null;
 
 /**
- * Resolve the MapTiler vector-tile URL template and the source's maxzoom from
- * the map style, following the tiles.json indirection. Reuses the existing key
- * in the style file. Zoom levels above maxZoom are overzoomed client-side, so
- * they must not be prefetched.
+ * Resolve the vector-tile URL template and the source's maxzoom from a map
+ * style, following the tiles.json indirection. `injectKey` is set for the
+ * campus style, which carries __MAPTILER_KEY__ placeholders.
+ *
+ * The provider must match the basemap the map actually loaded: when MapTiler
+ * is unconfigured or rejects the key, loadCampusMapStyle() serves OpenFreeMap
+ * or OSM raster instead, and prefetching MapTiler tiles would neither match
+ * the display nor resolve at all (#863 follow-up).
  */
-export async function getTileTemplate(): Promise<TileSource | null> {
-  if (cachedSource) return cachedSource;
+async function resolveVectorTileSource(
+  styleUrl: string,
+  injectKey: boolean,
+): Promise<TileSource | null> {
   try {
-    const style = injectMaptilerKey(
-      await (await fetch(CAMPUS_MAP_STYLE_URL)).json(),
-    );
+    const res = await fetch(styleUrl);
+    const style = injectKey
+      ? injectMaptilerKey(await res.json())
+      : await res.json();
     const src = style?.sources?.openmaptiles;
     if (!src) return null;
 
     if (Array.isArray(src.tiles) && src.tiles[0]) {
-      cachedSource = {
-        template: src.tiles[0],
-        maxZoom: clampMaxZoom(src.maxzoom),
-      };
-      return cachedSource;
+      return { template: src.tiles[0], maxZoom: clampMaxZoom(src.maxzoom) };
     }
     if (typeof src.url === "string") {
       const tj = await (await fetch(src.url)).json();
       if (Array.isArray(tj?.tiles) && tj.tiles[0]) {
-        cachedSource = {
-          template: tj.tiles[0],
-          maxZoom: clampMaxZoom(tj.maxzoom),
-        };
-        return cachedSource;
+        return { template: tj.tiles[0], maxZoom: clampMaxZoom(tj.maxzoom) };
       }
     }
     return null;
@@ -99,6 +111,28 @@ export async function getTileTemplate(): Promise<TileSource | null> {
     console.error("Failed to resolve tile template:", e);
     return null;
   }
+}
+
+export async function getTileTemplate(): Promise<TileSource | null> {
+  const provider = getBasemapProvider();
+  // A missing key means the map can only be on a keyless basemap, even if the
+  // provider still reads its "maptiler" default (style not loaded yet).
+  const route =
+    provider === "osm-raster"
+      ? "osm-raster"
+      : provider === "openfreemap" || !hasConfiguredMaptilerKey()
+        ? "openfreemap"
+        : "maptiler";
+  if (cachedSource?.route === route) return cachedSource.source;
+
+  const source =
+    route === "osm-raster"
+      ? OSM_RASTER_TILE_SOURCE
+      : route === "openfreemap"
+        ? await resolveVectorTileSource(FALLBACK_MAP_STYLE_URL, false)
+        : await resolveVectorTileSource(CAMPUS_MAP_STYLE_URL, true);
+  if (source) cachedSource = { route, source };
+  return source;
 }
 
 function clampMaxZoom(sourceMaxZoom: unknown): number {
@@ -111,6 +145,14 @@ export function tileUrl(template: string, { z, x, y }: TileCoord): string {
     .replace("{z}", String(z))
     .replace("{x}", String(x))
     .replace("{y}", String(y));
+}
+
+/** "38.0 MB" / "12 KB"; an em dash when the size is unknown. */
+export function fmtBytes(bytes: number | null): string {
+  if (bytes == null) return "—";
+  const mb = bytes / 1024 / 1024;
+  if (mb >= 1) return `${mb.toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 /** Bytes currently used by the browser for this origin (caches + IndexedDB). */

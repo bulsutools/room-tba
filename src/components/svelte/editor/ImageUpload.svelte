@@ -1,6 +1,7 @@
 <script lang="ts">
   import "./entity-editor.css";
   import { UPLOAD_MAX_BYTES } from "@lib/r2-upload-core";
+  import { getStoredProposalToken } from "@lib/proposals/client";
 
   type Props = {
     value?: string | null;
@@ -8,6 +9,9 @@
     disabled?: boolean;
     inputId?: string;
     label?: string;
+    /** Open proposal this photo belongs to. Without publish rights an upload
+     * needs one (the photo waits in review with it). */
+    proposalId?: number | null;
   };
 
   let {
@@ -16,11 +20,17 @@
     disabled = false,
     inputId = "image-upload-input",
     label = "Event image",
+    proposalId = null,
   }: Props = $props();
 
   let uploading = $state(false);
   let error = $state<string | null>(null);
   let uploadConfigured = $state<boolean | null>(null);
+  let canPublish = $state(false);
+  /** Contributors and visitors upload only for a proposal they already sent. */
+  const needsProposal = $derived(
+    uploadConfigured === true && !canPublish && !proposalId,
+  );
 
   const maxSizeLabel = `${Math.round(UPLOAD_MAX_BYTES / (1024 * 1024))} MB`;
 
@@ -30,14 +40,16 @@
     fetch("/api/admin/upload", { credentials: "same-origin" })
       .then(async (res) => {
         if (cancelled) return;
-        if (res.status === 401 || res.status === 403) {
+        if (!res.ok) {
           uploadConfigured = false;
           return;
         }
         const data = (await res.json().catch(() => ({}))) as {
           configured?: boolean;
+          canPublish?: boolean;
         };
         uploadConfigured = data.configured === true;
+        canPublish = data.canPublish === true;
       })
       .catch(() => {
         if (!cancelled) uploadConfigured = false;
@@ -64,6 +76,11 @@
       const formData = new FormData();
       formData.set("file", file);
       if (prefix) formData.set("prefix", prefix);
+      if (!canPublish && proposalId) {
+        formData.set("proposalId", String(proposalId));
+        const token = getStoredProposalToken(proposalId);
+        if (token) formData.set("proposalToken", token);
+      }
 
       const res = await fetch("/api/admin/upload", {
         method: "POST",
@@ -83,7 +100,7 @@
       if (res.status === 503) {
         uploadConfigured = false;
         throw new Error(
-          data.error ?? "Image uploads are not configured on this server yet.",
+          data.error ?? "Image uploads aren't configured on this server yet.",
         );
       }
       if (!res.ok || !data.url) {
@@ -96,7 +113,7 @@
       error =
         uploadError instanceof Error
           ? uploadError.message
-          : "Failed to upload image";
+          : "Couldn't upload the image.";
     } finally {
       uploading = false;
     }
@@ -108,7 +125,7 @@
   }
 
   const inputDisabled = $derived(
-    disabled || uploading || uploadConfigured === false,
+    disabled || uploading || uploadConfigured === false || needsProposal,
   );
 </script>
 
@@ -152,10 +169,13 @@
   />
   <p class="entity-editor-muted image-upload-hint">
     {#if uploadConfigured === false}
-      Image uploads are not configured on this server. You can still save
+      Image uploads aren't configured on this server. You can still save
       without a photo.
+    {:else if needsProposal}
+      Send your suggestion first. You can add a photo while it waits for
+      review, and reviewers check it before it goes live.
     {:else}
-      JPEG, PNG, or WebP up to {maxSizeLabel}.
+      Use a JPEG, PNG, or WebP up to {maxSizeLabel}.
     {/if}
   </p>
   {#if error}
@@ -175,8 +195,8 @@
     max-height: 10rem;
     object-fit: cover;
     border-radius: 0.5rem;
-    border: 1px solid hsl(5, 53%, 88%);
-    background: white;
+    border: 1px solid var(--theme-accent-border, hsl(5, 53%, 88%));
+    background: var(--theme-surface, white);
   }
 
   .image-upload-actions {
@@ -200,7 +220,7 @@
 
   .image-upload-error {
     margin: 0;
-    color: #9a1b1b;
+    color: var(--theme-accent-text, #9a1b1b);
     font-size: 0.75rem;
   }
 </style>

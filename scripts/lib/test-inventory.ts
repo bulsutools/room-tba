@@ -228,7 +228,7 @@ ${mdList(inv.e2eAdvisory)}
 
 ## E2E staging (Playwright) — ${inv.e2eStaging.length} files
 
-\`bun run e2e:staging\` — read-only against \`staging.room-tba.uplb.tools\`.
+\`bun run e2e:staging\` — read-only against \`staging.room-tba.bulsu.tools\`.
 
 ${mdList(inv.e2eStaging)}
 
@@ -243,6 +243,6 @@ ${mdList(inv.e2eStaging)}
 
 ## Manual only (not in this list)
 
-Subjective UX, AMIS live \`--fetch\`, prod data spot-checks — [testing.md § Manual only](testing.md#manual-only).
+Subjective UX, registrar live fetches, prod data spot-checks — [testing.md § Manual only](testing.md#manual-only).
 `;
 }

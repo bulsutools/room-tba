@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
-import { clickIfAppears, gotoHome, waitForAppBoot } from "../helpers/app";
+import { campusTransit } from "../../src/campus.config";
+import { gotoHome, waitForAppBoot } from "../helpers/app";
 import { openCampusDirectory } from "../helpers/map-tools";
 
 test.describe("campus browsing", () => {
@@ -92,22 +93,33 @@ test.describe("campus browsing", () => {
       timeout: 10_000,
     });
 
-    // The mobile sheet has no close affordance on the list; the next chip
-    // replaces the list either way, so closing is desktop-only.
-    await clickIfAppears(
-      page.getByRole("button", { name: "Close browse list" }),
-      2000,
-    );
+    // The list has no close button or filter box of its own: the search bar
+    // names it and its X is the one way out. The next chip replaces it.
+    await expect(page.getByRole("searchbox")).toHaveValue("Landmarks");
+    await expect(page.locator(".entity-panel-filter")).toHaveCount(0);
     await browse(page, "services");
     await expect(
-      page.getByRole("heading", { name: "Services & Establishments" }),
+      page.getByRole("heading", { name: "Food & stores" }),
     ).toBeVisible({ timeout: 10_000 });
+    await page.getByRole("button", { name: "Close details" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Food & stores" }),
+    ).toBeHidden();
   });
 
-  test("Jeepney routes opens the transit browse panel", async ({ page }) => {
+  test("Jeep & bus routes opens the transit browse panel", async ({ page }) => {
+    test.skip(!campusTransit.enabled, "campus transit is disabled");
+    // The route line, stop circles and direction arrows are drawn in one
+    // pass; a failed draw logs this warning instead of throwing.
+    const drawFailures: string[] = [];
+    page.on("console", (message) => {
+      if (message.text().includes("jeepney route draw failed")) {
+        drawFailures.push(message.text());
+      }
+    });
     await browse(page, "jeepney");
     await expect(
-      page.getByRole("heading", { name: /Jeepney Routes/i }),
+      page.getByRole("heading", { name: /Jeep & Bus Routes/i }),
     ).toBeVisible({ timeout: 10_000 });
     const route = page.locator("button.entity-list-row").first();
     await expect(route).toBeVisible();
@@ -115,11 +127,28 @@ test.describe("campus browsing", () => {
     await expect(
       page.getByRole("button", { name: /copy link to .+ route/i }),
     ).toBeVisible();
+    await expect(page.locator(".jeepney-stop-pin").first()).toBeVisible();
+    // The draw retries on styledata, so give it a moment before judging.
+    await page.waitForTimeout(1_500);
+    expect(
+      drawFailures.filter((m) => !/style is not done loading/i.test(m)),
+    ).toEqual([]);
+
+    // A focused route has a clear way out back to the plain map.
+    await page
+      .getByRole("button", { name: /close route and return to the map/i })
+      .click();
+    await expect(page.locator(".jeepney-stop-pin")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /copy link to .+ route/i }),
+    ).toHaveCount(0);
   });
 
   test("classes panel includes term selector", async ({ page }) => {
     await browse(page, "classes");
-    await expect(page.getByText(/All classes/i).first()).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: "Classes", exact: true }).first(),
+    ).toBeVisible({
       timeout: 10_000,
     });
     await expect(
@@ -127,7 +156,9 @@ test.describe("campus browsing", () => {
     ).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByRole("button", { name: "App menu" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "You", exact: true }),
+    ).toBeVisible();
   });
 
   test("mobile keeps its primary navigation available while a drawer is open", async ({
@@ -143,9 +174,11 @@ test.describe("campus browsing", () => {
     ).toBeVisible();
   });
 
-  test("Classes opens class list from the App Menu", async ({ page }) => {
+  test("Classes opens class list from the More chip menu", async ({ page }) => {
     await browse(page, "classes");
-    await expect(page.getByText(/All classes/i).first()).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: "Classes", exact: true }).first(),
+    ).toBeVisible({
       timeout: 10_000,
     });
   });

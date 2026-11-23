@@ -8,8 +8,20 @@ import {
   sidebarStore,
   termStore,
 } from "@lib/store.svelte";
+import { getRoomCoords } from "@lib/local/data/utils";
 import { mountAtWidth } from "@test/layout-assertions";
 import type { ClassMapValue } from "@lib/types";
+
+vi.mock("@lib/local/data/utils", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@lib/local/data/utils")>()),
+  getRoomCoords: vi.fn(),
+}));
+vi.mock("@lib/travel-graph/load", () => ({
+  loadTravelGraph: async () => ({}),
+}));
+vi.mock("@lib/travel-graph/journey", () => ({
+  planJourneys: () => ({ journeys: [{ seconds: 440 }] }),
+}));
 
 const row = (overrides: Partial<ClassMapValue> = {}): ClassMapValue => ({
   id: 1,
@@ -84,8 +96,27 @@ describe("TodayScreen", () => {
     expect(sidebarStore.panelOpen).toBe("map");
   });
 
-  // #839: the day-route action stays visible when unusable — disabled with a
-  // hint — so users learn it exists.
+  // #839 + Jakob audit micro 14: no faded button without a reason. With no
+  // classes today the button is hidden and the reason takes its place.
+  test("says when to leave for a class in another building", async () => {
+    vi.mocked(getRoomCoords).mockImplementation(async (code) =>
+      code === "MB 101" ? [121.24, 14.16] : [121.25, 14.17],
+    );
+    plannerStore.addOffering([
+      row({
+        courseCode: "MATH 27",
+        roomCode: "MB 101",
+        schedule: ["M 07:00AM-08:00AM"],
+      }),
+    ]);
+    plannerStore.addOffering([row({ id: 2, schedule: ["M 08:10AM-09:00AM"] })]);
+    render(TodayScreen);
+
+    expect(
+      await screen.findByText("Leave by 8:02 AM, 8 min walk from MB 101"),
+    ).toBeVisible();
+  });
+
   test("Route my day is enabled when today has classes", () => {
     plannerStore.addOffering([row({ schedule: ["M 07:00AM-08:00AM"] })]);
     render(TodayScreen);
@@ -93,19 +124,27 @@ describe("TodayScreen", () => {
     expect(screen.getByRole("button", { name: /Route my day/ })).toBeEnabled();
   });
 
-  test("Route my day is disabled with a hint when today has no classes", () => {
+  test("Route my day is hidden with a reason when today has no classes", () => {
     plannerStore.addOffering([row({ schedule: ["T 07:00AM-08:00AM"] })]);
     render(TodayScreen);
 
-    expect(screen.getByRole("button", { name: /Route my day/ })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /Route my day/ })).toBeNull();
     expect(screen.getByText("No classes to route today.")).toBeVisible();
   });
 
-  test("Route my day is disabled with a Planner hint when there is no plan", () => {
+  // With no plan the empty state already points at the Planner; a disabled
+  // route button and a second hint only repeated it.
+  test("Route my day is hidden when there is no plan", () => {
     render(TodayScreen);
 
-    expect(screen.getByRole("button", { name: /Route my day/ })).toBeDisabled();
-    expect(screen.getByText("Add classes in the Planner first.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /Route my day/ })).toBeNull();
+    expect(screen.queryByText("Add classes in the Planner first.")).toBeNull();
+    expect(screen.getAllByText(/Add classes/)).toHaveLength(1);
+  });
+
+  test("the header says which day today is", () => {
+    render(TodayScreen);
+    expect(screen.getByText("Monday, July 27")).toBeVisible();
   });
 
   test("renders an explicit empty state per day and a distinct Sunday", () => {

@@ -9,7 +9,7 @@
  * Usage:
  *   bun run record:bulk-history -- --ops ops.json            # dry run
  *   bun run record:bulk-history -- --ops ops.json --apply    # write
- *   bun run record:bulk-history -- --ops ops.json --actor import-amis
+ *   bun run record:bulk-history -- --ops ops.json --actor import-classes
  *
  * `ops.json` is a JSON array of `BulkOperation` (see bulk-history.ts):
  *   [{ "opKey": "2026-08-04-room-code-fix", "entityType": "room",

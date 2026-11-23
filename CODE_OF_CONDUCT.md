@@ -60,7 +60,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-[Discord](https://discord.gg/SrVDgfcrVt) or by opening a private security
+the [GitHub repository](https://github.com/bulsutools/room-tba) by opening a private security
 contact issue for maintainers.
 
 All complaints will be reviewed and investigated promptly and fairly.

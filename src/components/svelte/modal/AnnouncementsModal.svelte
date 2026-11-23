@@ -1,11 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import Megaphone from "@lucide/svelte/icons/megaphone";
-  import {
-    adminAuthStore,
-    announcementsStore,
-    modalStore,
-  } from "@lib/store.svelte";
+  import MegaphoneOff from "@lucide/svelte/icons/megaphone-off";
+  import { adminAuthStore, announcementsStore } from "@lib/store.svelte";
+  import { FACEBOOK_URL } from "@constants/community-links";
+  import ModalHeader from "./ModalHeader.svelte";
+  import CommunityPlatformLink from "@ui/community/CommunityPlatformLink.svelte";
   import {
     ANNOUNCEMENT_SEVERITIES,
     ANNOUNCEMENT_SEVERITY_LABELS,
@@ -126,7 +125,7 @@
       );
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        editorError = data.error ?? "Could not save the announcement.";
+        editorError = data.error ?? "Couldn't save the announcement.";
         return;
       }
       draft = null;
@@ -151,7 +150,7 @@
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        editorError = data.error ?? "Could not delete the announcement.";
+        editorError = data.error ?? "Couldn't delete the announcement.";
         return;
       }
       await Promise.all([loadEditorRows(), announcementsStore.load()]);
@@ -172,28 +171,24 @@
 </script>
 
 <div class="announcements">
-  <header class="announcements__header">
-    <h2 class="announcements__title">
-      <Megaphone size={18} aria-hidden="true" /> Announcements
-    </h2>
-    <p class="announcements__lead">
-      Campus and app notices from the Room TBA team. Release notes live in
-      <button
-        type="button"
-        class="announcements__inline-link"
-        onclick={() => modalStore.openModal("changelog")}>What's new</button
-      >.
-    </p>
-    {#if canPublish}
-      <button
-        type="button"
-        class="announcements__btn announcements__btn--primary"
-        onclick={newDraft}
-      >
-        New announcement
-      </button>
-    {/if}
-  </header>
+  <ModalHeader
+    id="announcements-modal-title"
+    title="Announcements"
+    description="Campus and app notices from the Room TBA team."
+  >
+    {#snippet trailing()}
+      {#if canPublish}
+        <button
+          type="button"
+          class="announcements__btn announcements__btn--primary"
+          aria-label="New announcement"
+          onclick={newDraft}
+        >
+          New
+        </button>
+      {/if}
+    {/snippet}
+  </ModalHeader>
 
   {#if editorError}
     <p class="announcements__error" role="alert">{editorError}</p>
@@ -256,9 +251,16 @@
 
   <div class="announcements__list">
     {#if rows.length === 0}
-      <p class="announcements__empty">
-        No announcements right now. Check back when something is up.
-      </p>
+      <div class="announcements__empty">
+        <MegaphoneOff size={28} aria-hidden="true" />
+        <p>There are no announcements right now.</p>
+        <p>Campus updates also go out on Facebook.</p>
+        <CommunityPlatformLink
+          brand="facebook"
+          href={FACEBOOK_URL}
+          label="Follow on Facebook"
+        />
+      </div>
     {/if}
     {#each rows as row (row.id)}
       <article class="announcements__item" data-severity={row.severity}>
@@ -283,9 +285,9 @@
           <time datetime={row.startsOn} title={formatCampusDateTime(row.startsOn)}>
             {relativeDateLabel(row.startsOn)}
           </time>
-          {#if row.author}<span>· {row.author}</span>{/if}
+          {#if row.author}<span>by {row.author}</span>{/if}
           {#if canPublish && statusLabel(row)}
-            <span class="announcements__status">· {statusLabel(row)}</span>
+            <span class="announcements__status">({statusLabel(row)})</span>
           {/if}
         </p>
         {#if canPublish}
@@ -313,52 +315,54 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    padding: 0.25rem 0.25rem 0;
     flex: 1 1 auto;
     min-height: 0;
   }
 
-  .announcements__header {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-    padding-right: 2.25rem;
-  }
-
-  .announcements__title {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 1rem;
-    font-weight: 700;
-    color: hsl(0, 0%, 15%);
-  }
-
-  .announcements__lead,
   .announcements__empty,
   .announcements__meta {
     margin: 0;
     font-size: 0.8125rem;
-    color: hsl(0, 0%, 40%);
+    color: var(--theme-text-2, hsl(0, 0%, 40%));
   }
 
-  .announcements__inline-link {
-    all: unset;
-    cursor: pointer;
-    font-weight: 600;
-    text-decoration: underline;
-    color: hsl(5, 53%, 32%);
+  .announcements__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 1.5rem 1rem 0.75rem;
+    text-align: center;
   }
-  .announcements__inline-link:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
-    outline-offset: 2px;
+
+  .announcements__empty p {
+    margin: 0;
+  }
+
+  .announcements__empty p:first-of-type {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--theme-text, hsl(0, 0%, 20%));
+  }
+
+  .announcements__empty :global(.community-platform-link) {
+    min-height: 2.75rem;
+  }
+
+  /* Phones: stay clear of the bottom nav instead of covering its labels. The
+     dialog is centred, so reserve the nav's height at both ends. */
+  @media (max-width: 48rem) {
+    .announcements {
+      max-height: calc(
+        100dvh - 2 * (var(--mobile-bottom-nav-height, 4.5rem) + 1.5rem)
+      );
+    }
   }
 
   .announcements__error {
-    margin: 0;
+    margin: 0 1rem;
     font-size: 0.8125rem;
-    color: hsl(0, 65%, 38%);
+    color: var(--theme-accent-text, hsl(0, 65%, 38%));
   }
 
   .announcements__list {
@@ -366,7 +370,9 @@
     flex-direction: column;
     gap: 0.625rem;
     overflow-y: auto;
+    overscroll-behavior: contain;
     min-height: 0;
+    padding: 0 1rem 0.5rem;
   }
 
   .announcements__item {
@@ -374,15 +380,15 @@
     flex-direction: column;
     gap: 0.375rem;
     padding: 0.625rem;
-    border: 1px solid hsl(0, 0%, 90%);
-    border-left: 4px solid hsl(210, 8%, 70%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 90%));
+    border-left: 4px solid var(--theme-border-strong, hsl(210, 8%, 70%));
     border-radius: 0.5rem;
   }
   .announcements__item[data-severity="warning"] {
-    border-left-color: hsl(32, 78%, 48%);
+    border-left-color: var(--theme-amber-text, hsl(32, 78%, 48%));
   }
   .announcements__item[data-severity="critical"] {
-    border-left-color: hsl(0, 65%, 45%);
+    border-left-color: var(--theme-accent-text, hsl(0, 65%, 45%));
   }
 
   .announcements__item-head {
@@ -396,7 +402,7 @@
     margin: 0;
     font-size: 0.9375rem;
     font-weight: 700;
-    color: hsl(0, 0%, 15%);
+    color: var(--theme-text, hsl(0, 0%, 15%));
   }
 
   .announcements__chip {
@@ -406,23 +412,23 @@
     letter-spacing: 0.03em;
     padding: 0.125rem 0.375rem;
     border-radius: 0.75rem;
-    background: hsl(210, 20%, 94%);
-    color: hsl(210, 20%, 30%);
+    background: var(--theme-blue-soft, hsl(210, 20%, 94%));
+    color: var(--theme-text, hsl(210, 20%, 30%));
   }
   .announcements__chip[data-severity="warning"] {
-    background: hsl(38, 92%, 90%);
-    color: hsl(24, 62%, 26%);
+    background: var(--theme-amber-soft, hsl(38, 92%, 90%));
+    color: var(--theme-amber-text, hsl(24, 62%, 26%));
   }
   .announcements__chip[data-severity="critical"] {
-    background: hsl(0, 70%, 94%);
-    color: hsl(0, 60%, 32%);
+    background: var(--theme-accent-soft, hsl(0, 70%, 94%));
+    color: var(--theme-accent-text, hsl(0, 60%, 32%));
   }
 
   .announcements__body {
     margin: 0;
     font-size: 0.875rem;
     line-height: 1.45;
-    color: hsl(0, 0%, 25%);
+    color: var(--theme-text, hsl(0, 0%, 25%));
     /* Plain text with author line breaks preserved (no markdown renderer). */
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -431,17 +437,18 @@
   .announcements__link {
     font-size: 0.8125rem;
     font-weight: 600;
-    color: hsl(5, 53%, 32%);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
   }
 
   .announcements__form {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    margin: 0 1rem;
     padding: 0.625rem;
-    border: 1px solid hsl(0, 0%, 88%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 88%));
     border-radius: 0.5rem;
-    background: hsl(0, 0%, 98%);
+    background: var(--theme-surface, hsl(0, 0%, 98%));
   }
 
   .announcements__row {
@@ -460,15 +467,15 @@
     gap: 0.25rem;
     font-size: 0.75rem;
     font-weight: 600;
-    color: hsl(0, 0%, 35%);
+    color: var(--theme-text-2, hsl(0, 0%, 35%));
   }
   .announcements__field :is(input, textarea, select) {
     font: inherit;
     font-weight: 400;
     padding: 0.375rem 0.5rem;
-    border: 1px solid hsl(0, 0%, 80%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 80%));
     border-radius: 0.375rem;
-    background: white;
+    background: var(--theme-surface, white);
     min-width: 0;
     max-width: 100%;
     box-sizing: border-box;
@@ -485,19 +492,19 @@
     font-weight: 600;
     padding: 0.375rem 0.75rem;
     border-radius: 0.5rem;
-    border: 1px solid hsl(0, 0%, 80%);
-    background: white;
-    color: hsl(0, 0%, 25%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 80%));
+    background: var(--theme-surface, white);
+    color: var(--theme-text, hsl(0, 0%, 25%));
     cursor: pointer;
   }
   .announcements__btn--primary {
-    background: hsl(5, 53%, 32%);
-    border-color: hsl(5, 53%, 32%);
+    background: var(--theme-accent-fill, hsl(5, 53%, 32%));
+    border-color: var(--theme-accent-text, hsl(5, 53%, 32%));
     color: white;
     align-self: flex-start;
   }
   .announcements__btn--danger {
-    color: hsl(0, 60%, 38%);
+    color: var(--theme-accent-text, hsl(0, 60%, 38%));
   }
   .announcements__btn[disabled] {
     opacity: 0.6;

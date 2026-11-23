@@ -219,7 +219,7 @@
   </div>
 
   <EntityEditorCheckboxField
-    label="UP-managed dorm"
+    label="Campus-managed dorm"
     inputId="dorm-up-managed-editor"
     {canPublish}
     bind:checked={isUpManagedDraft}
@@ -366,6 +366,7 @@
         prefix="dorms"
         bind:value={imageDraft}
         {disabled}
+        proposalId={activeProposalId}
       />
       <button
         type="button"

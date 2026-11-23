@@ -1,0 +1,4 @@
+{
+  "name": "room-tba",
+  "extends": "https://github.com/bulsutools/devcontainer"
+}

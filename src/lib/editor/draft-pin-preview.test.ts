@@ -59,7 +59,7 @@ describe("buildDraftPinPreview", () => {
     expect(
       draftPinMapProps({
         kind: "place",
-        label: "Oblation",
+        label: "Rizal Monument",
         placeCategory: "tourist-spot",
       }).tone,
     ).toBe("landmark");
@@ -105,7 +105,7 @@ describe("draftPinRowLabel", () => {
   test("uses entity name when coords exist", () => {
     expect(
       draftPinRowLabel({ kind: "building", label: "Baker Hall" }, true),
-    ).toBe("Pin set · Baker Hall");
+    ).toBe("Pin set at Baker Hall");
     expect(draftPinRowLabel(null, false)).toBe("Drop a pin on the map");
     expect(draftPinRowLabel(null, true)).toBe("Pin set on map");
   });

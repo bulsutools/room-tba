@@ -174,6 +174,15 @@ describe("parseHolidays", () => {
       false,
     );
   });
+  it("passes holiday labels through unchanged", () => {
+    const text = [
+      "OFFICIAL HOLIDAYS*",
+      "      Saturday          17 September    Local Foundation Day",
+    ].join("\n");
+    expect(parseHolidays(text).map((holiday) => holiday.label)).toEqual([
+      "Local Foundation Day",
+    ]);
+  });
 });
 
 describe("parseAcademicCalendar", () => {

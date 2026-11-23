@@ -41,14 +41,14 @@ Lowest to highest:
 | Bottom chrome             | `--z-status-bar: 5`      | Status bar tray                                |
 | UI shell                  | `10` (`.ui-layer`)       | Search, side panel host                        |
 | Drawer-lift FABs          | `14`                     | Location button when sheet open                |
-| Map tools (mobile)        | `--z-map-tools: 16`      | Map tools flyout stack                         |
+| Map tools (mobile)        | `--z-map-tools: 16`      | Map tools trigger stack (FAB + camera stack)   |
 | Chrome popovers           | `--z-chrome-popover: 17` | Term picker, offline maps (portaled to `body`) |
 | Edit dock / editor screen | `18`                     | Map edit toolbar                               |
 | Browse modals             | `--z-modal: 100`         | Landing, schedule expand                       |
 | Login / editor addition   | `--z-login-modal: 200`   | Admin login (closes browse modals on open)     |
 | Toast                     | `--z-toast: 1000`        | App-layout sibling (above edit dock)           |
 
-Portaled popovers use `use:portal` so they are not trapped in the bottom-chrome stacking context. Editor login closes browse modals before opening.
+Portaled popovers use `use:portal` so they are not trapped in the bottom-chrome stacking context. The Map tools dialog is portaled to `.app-layout` for the same reason: mounted inside the mobile controls stack it sat under the search shell (`--z-search-elevated: 18`). Editor login closes browse modals before opening.
 
 ## Layout zones (Entry.svelte)
 
@@ -87,7 +87,7 @@ Entity detail views (`RoomResult`, `BuildingResult`, `DormResult`, etc.) use sha
 
 | Zone       | Contents                                                                                             |
 | ---------- | ---------------------------------------------------------------------------------------------------- |
-| Header     | Breadcrumb (optional), title + badge, context line, **one** actions row (Copy link, Edit, nav chips) |
+| Header     | Breadcrumb (optional), `PlaceSheetHeader`: title + the one close X, plain-text category, one-line facts, then Directions + one scrolling pill row |
 | Body       | Browse text; editor panel expands inline when Edit is open                                           |
 | Directions | Merged directions text + suggest links + Directions / Google Maps chips                              |
 | Footer     | Secondary links only (e.g. classes schedule, external refs)                                          |
@@ -95,6 +95,8 @@ Entity detail views (`RoomResult`, `BuildingResult`, `DormResult`, etc.) use sha
 Do not add duplicate action rows or colored highlight boxes. See `.cursor/rules/side-panel.mdc`.
 
 On mobile, browse and entity drawers open above the map and do not obscure the bottom navigation. Closing the drawer returns to the map.
+
+Place sheets (building, dorm, place, room) on phones have three stops, like Google Maps: **peek** (header only: name, category, facts, Directions and the action row), **half** (about 62% of the free height) and **full**. The sheet's bottom edge sits above the bottom nav at every stop. The map camera pads by the sheet's resting top edge (`sidePanelStore.mobileSheetTop`) so the selected pin stays in the strip above it, and pin labels under the sheet are hidden by the label declutter. While a place sheet is open the search bar's X and the filter chips step aside: the sheet's own X is the one close control.
 
 ## Verification viewports
 

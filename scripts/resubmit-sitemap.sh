@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Resubmit sitemap to Google Search Console after a release.
-# Requires GSC_SITEMAP_URL env var (e.g. https://room-tba.uplb.tools/sitemap-index.xml).
+# Requires GSC_SITEMAP_URL env var (e.g. https://room-tba.bulsu.tools/sitemap-index.xml).
 set -euo pipefail
 
 if [[ -z "${GSC_SITEMAP_URL:-}" ]]; then

@@ -42,7 +42,7 @@ Env: `E2E_DATABASE_URL`, `E2E_ADMIN_PASSWORD`, `E2E_ADMIN_SESSION_SECRET` in Git
 ```sh
 gh pr ready <number>
 gh pr edit <number> --add-label run/e2e
-gh pr checks <number> --repo uplbtools/room-tba
+gh pr checks <number> --repo bulsutools/room-tba
 ```
 
 Ordinary pushes after ready **do not** re-trigger E2E; add label again.

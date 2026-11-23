@@ -22,7 +22,7 @@ export type AgendaEntry = {
 export type AgendaDay = {
   /** YYYY-MM-DD, Asia/Manila. */
   dateKey: string;
-  /** 0-5 = Mon-Sat (matches parseDays); null on Sunday, which AMIS never schedules. */
+  /** 0-5 = Mon-Sat (matches parseDays); null on Sunday, which imports never schedule. */
   dayIndex: number | null;
   /** "Today" | "Tomorrow" | "Wednesday" */
   title: string;
@@ -68,6 +68,20 @@ function formatClock(minutes: number): string {
 
 export function formatTimeRange(startMin: number, endMin: number): string {
   return `${formatClock(startMin)} – ${formatClock(endMin)}`;
+}
+
+/** When to leave for a class that starts `startMin`, after one ending `prevEndMin`. */
+export function leaveByNote(
+  prevEndMin: number,
+  startMin: number,
+  walkSeconds: number,
+  fromRoom: string,
+): string {
+  const walk = Math.ceil(walkSeconds / 60);
+  const late = prevEndMin + walk - startMin;
+  return late > 0
+    ? `${walk} min walk from ${fromRoom}, so you'll be about ${late} min late`
+    : `Leave by ${formatClock(startMin - walk)}, ${walk} min walk from ${fromRoom}`;
 }
 
 /**
@@ -129,7 +143,7 @@ export function buildAgenda(
         timeZone: "UTC",
       }),
       isToday,
-      // Saturday still carries classes at UPLB (midyear TTHS blocks); it is
+      // Saturday still carries classes at BulSU (midyear TTHS blocks); it is
       // styled as a weekend but only Sunday gets the "never any classes" copy.
       isWeekend: weekday === 0 || weekday === 6,
       emptyLabel:

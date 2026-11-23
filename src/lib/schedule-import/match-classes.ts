@@ -1,7 +1,7 @@
 import {
   isRoomScheduledClassType,
   NON_ROOM_CLASS_TYPES,
-} from "@lib/amis/room-scheduled-types";
+} from "@lib/class-import/room-scheduled-types";
 import type { ClassMapValue } from "@lib/types";
 import type { ImportedScheduleRow, ScheduleMatchResult } from "./types";
 

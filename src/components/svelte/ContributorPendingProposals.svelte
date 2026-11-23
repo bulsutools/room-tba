@@ -11,10 +11,8 @@
   import { onMount } from "svelte";
 
   let {
-    submitterName = "",
     onChanged,
   }: {
-    submitterName?: string;
     onChanged?: () => void;
   } = $props();
 
@@ -31,7 +29,7 @@
         preferServer: adminAuthStore.isLoggedIn,
       });
     } catch {
-      error = "Could not load your pending suggestions.";
+      error = "Couldn't load your pending suggestions.";
       rows = [];
     } finally {
       loading = false;
@@ -46,16 +44,9 @@
     withdrawingId = row.id;
     error = null;
     try {
-      const name =
-        adminAuthStore.displayName ||
-        adminAuthStore.username ||
-        submitterName.trim();
-      const result = await withdrawEntityProposal({
-        proposalId: row.id,
-        submitterName: name || undefined,
-      });
+      const result = await withdrawEntityProposal({ proposalId: row.id });
       if (!result.ok) {
-        error = result.error ?? "Could not withdraw suggestion.";
+        error = result.error ?? "Couldn't withdraw suggestion.";
         return;
       }
       toastStore.show("Suggestion withdrawn.", "success");
@@ -113,7 +104,7 @@
     margin: 0;
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--text-muted, #64748b);
+    color: var(--text-muted, var(--theme-text-muted, #64748b));
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
@@ -133,9 +124,9 @@
     align-items: flex-start;
     justify-content: space-between;
     padding: 0.5rem 0.6rem;
-    border: 1px solid var(--border-subtle, #e2e8f0);
+    border: 1px solid var(--border-subtle, var(--theme-border, #e2e8f0));
     border-radius: 0.5rem;
-    background: color-mix(in srgb, var(--surface-muted, #f8fafc) 80%, transparent);
+    background: color-mix(in srgb, var(--surface-muted, var(--theme-surface, #f8fafc)) 80%, transparent);
   }
 
   .pending-proposals__meta {
@@ -153,7 +144,7 @@
   .pending-proposals__status {
     margin: 0.15rem 0 0;
     font-size: 0.8rem;
-    color: var(--text-muted, #64748b);
+    color: var(--text-muted, var(--theme-text-muted, #64748b));
     text-transform: capitalize;
   }
 

@@ -16,6 +16,8 @@
   import EntityEditorFormField from "@ui/editor/EntityEditorFormField.svelte";
   import EntityReviewActions from "@ui/editor/EntityReviewActions.svelte";
   import Avatar from "@ui/Avatar.svelte";
+  import ReviewQueueFilters from "@ui/editor/ReviewQueueFilters.svelte";
+  import { hasActiveReviewFilters } from "@lib/proposals/review-queue-params";
   import { proposalPinChange } from "@lib/proposals/proposal-pin";
   import {
     getReviewShortcutAction,
@@ -51,7 +53,7 @@
     if (entityType !== "create_building") return null;
     const rooms = parseBundledRooms(patch);
     if (rooms.length === 0) return null;
-    return `Will create building + ${rooms.length} room${rooms.length === 1 ? "" : "s"}: ${rooms.map((r) => r.roomCode).join(", ")}`;
+    return `Will create the building and ${rooms.length} room${rooms.length === 1 ? "" : "s"} (${rooms.map((r) => r.roomCode).join(", ")})`;
   }
 
   function diffsFor(proposal: {
@@ -212,7 +214,7 @@
       const result = await approveOne(held.id);
       if (!result.ok) {
         toastStore.show(
-          result.error ?? `Could not approve proposal #${held.id}.`,
+          result.error ?? `Couldn't approve proposal #${held.id}.`,
           "error",
         );
       } else {
@@ -229,7 +231,7 @@
     clearHoldTimers();
     heldApproval = null;
     undoSecondsLeft = 0;
-    toastStore.show("Approve undone — the suggestion is back in the queue.", "info");
+    toastStore.show("Approve undone. The suggestion is back in the queue.", "info");
   }
 
   /** Hold an approve for the undo window instead of writing immediately. */
@@ -272,7 +274,7 @@
       const result = await reviewOne(id, action, noteById[id] ?? "");
       if (!result.ok) {
         toastStore.show(
-          result.error ?? `Could not ${action} proposal #${id}.`,
+          result.error ?? `Couldn't ${action} proposal #${id}.`,
           "error",
         );
         return;
@@ -419,8 +421,8 @@
           : "Sent back";
     toastStore.show(
       failed === 0
-        ? `${verb} ${done} proposal${done === 1 ? "" : "s"}.`
-        : `${verb} ${done}, ${failed} failed (likely conflicts) — review the rest.`,
+        ? `${done} proposal${done === 1 ? "" : "s"} ${verb.toLowerCase()}.`
+        : `${done} ${verb.toLowerCase()}, ${failed} failed (likely conflicts). Review the rest.`,
       failed === 0 ? "success" : "error",
     );
   }
@@ -456,7 +458,7 @@
     {#if heldApproval}
       <div class="entity-review-undo" role="status">
         <span class="entity-review-undo-text">
-          Approved <strong>{heldApproval.label}</strong> — publishing in {undoSecondsLeft}s
+          Approved <strong>{heldApproval.label}</strong> publishing in {undoSecondsLeft}s
         </span>
         <div class="entity-review-undo-actions">
           <button type="button" onclick={undoHeldApproval}>Undo</button>
@@ -471,12 +473,20 @@
       </div>
     {/if}
 
+    {#if proposalsStore.pendingCount > 0 || hasActiveReviewFilters(proposalsStore.filters)}
+      <ReviewQueueFilters />
+    {/if}
+
     {#if proposalsStore.loading}
       <p class="entity-review-empty">
         <LoadingIndicator label="Loading proposals…" />
       </p>
     {:else if proposalsStore.proposals.length === 0}
-      <p class="entity-review-empty">No pending suggestions.</p>
+      <p class="entity-review-empty">
+        {hasActiveReviewFilters(proposalsStore.filters)
+          ? "No suggestions match these filters."
+          : "There are no pending suggestions."}
+      </p>
     {:else}
       <div class="entity-review-batch">
         <label class="entity-review-select-all">
@@ -607,12 +617,12 @@
                           {proposal.entityLabel}
                         </span>
                         <span class="entity-review-summary-meta">
-                          {proposal.entityType} · {diffs.length} field{diffs.length ===
+                          {proposal.entityType}, {diffs.length} field{diffs.length ===
                           1
                             ? ""
                             : "s"}
                           {#if submittedOn(proposal.createdAt)}
-                            · {submittedOn(proposal.createdAt)}
+                            (submitted {submittedOn(proposal.createdAt)})
                           {/if}
                         </span>
                         {#if proposal.status === "needs_changes"}
@@ -627,7 +637,7 @@
                         {#if stale}
                           <p class="entity-review-stale" role="alert">
                             Published data changed since this was submitted.
-                            Compare carefully — approving may conflict.
+                            Compare carefully, because approving may conflict.
                           </p>
                         {/if}
 
@@ -692,7 +702,7 @@
                                 />
                               {:catch}
                                 <p class="entity-review-preview-loading">
-                                  Map preview could not load.
+                                  Map preview couldn't load.
                                 </p>
                               {/await}
                             {/if}
@@ -781,6 +791,18 @@
           </li>
         {/each}
       </ul>
+      {#if proposalsStore.nextCursor}
+        <button
+          type="button"
+          class="entity-review-load-more"
+          disabled={proposalsStore.loadingMore}
+          onclick={() => void proposalsStore.loadMore()}
+        >
+          {proposalsStore.loadingMore
+            ? "Loading…"
+            : `Show more (${proposalsStore.proposals.length} of ${proposalsStore.matchCount})`}
+        </button>
+      {/if}
     {/if}
   </section>
 {/if}
@@ -795,7 +817,7 @@
     gap: 0.25rem 0.625rem;
     margin: 0 0 0.5rem;
     font-size: 0.75rem;
-    color: hsl(0, 0%, 42%);
+    color: var(--theme-text-2, hsl(0, 0%, 42%));
   }
 
   .entity-review-shortcut {
@@ -807,14 +829,14 @@
 
   .entity-review-shortcuts kbd {
     padding: 0.05rem 0.3rem;
-    border: 1px solid hsl(0, 0%, 80%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 80%));
     border-bottom-width: 2px;
     border-radius: 4px;
-    background: hsl(0, 0%, 98%);
+    background: var(--theme-surface, hsl(0, 0%, 98%));
     font-family: inherit;
     font-size: 0.6875rem;
     font-weight: 700;
-    color: hsl(0, 0%, 28%);
+    color: var(--theme-text, hsl(0, 0%, 28%));
   }
 
   .entity-review-undo {
@@ -825,11 +847,11 @@
     gap: 0.375rem;
     margin-bottom: 0.5rem;
     padding: 0.4rem 0.6rem;
-    border: 1px solid hsl(140, 40%, 70%);
+    border: 1px solid var(--theme-green-border, hsl(140, 40%, 70%));
     border-radius: 8px;
-    background: hsl(140, 50%, 96%);
+    background: var(--theme-green-soft, hsl(140, 50%, 96%));
     font-size: 0.8125rem;
-    color: hsl(140, 60%, 18%);
+    color: var(--theme-green-text, hsl(140, 60%, 18%));
   }
 
   .entity-review-undo-text {
@@ -846,8 +868,8 @@
     padding: 0.25rem 0.65rem;
     border: 1px solid hsl(140, 35%, 55%);
     border-radius: 999px;
-    background: white;
-    color: hsl(140, 60%, 20%);
+    background: var(--theme-surface, white);
+    color: var(--theme-green-text, hsl(140, 60%, 20%));
     font: inherit;
     font-size: 0.75rem;
     font-weight: 700;
@@ -855,17 +877,17 @@
   }
 
   .entity-review-undo-actions button:hover {
-    background: hsl(140, 45%, 94%);
+    background: var(--theme-green-soft, hsl(140, 45%, 94%));
   }
 
   .entity-review-undo-actions .entity-review-undo-now {
-    border-color: hsl(0, 0%, 80%);
-    color: hsl(0, 0%, 35%);
+    border-color: var(--theme-border, hsl(0, 0%, 80%));
+    color: var(--theme-text-2, hsl(0, 0%, 35%));
   }
 
   .entity-review-item--focused {
     border-radius: 6px;
-    outline: 2px solid hsl(5, 53%, 40%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 40%));
     outline-offset: 1px;
   }
 
@@ -875,10 +897,10 @@
 
   .entity-review-preview-toggle {
     padding: 0.2rem 0.55rem;
-    border: 1px solid hsl(0, 0%, 78%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 78%));
     border-radius: 999px;
-    background: white;
-    color: hsl(0, 0%, 22%);
+    background: var(--theme-surface, white);
+    color: var(--theme-text, hsl(0, 0%, 22%));
     font: inherit;
     font-size: 0.75rem;
     font-weight: 700;
@@ -886,13 +908,13 @@
   }
 
   .entity-review-preview-toggle:hover {
-    background: hsl(0, 0%, 96%);
+    background: var(--theme-surface-2, hsl(0, 0%, 96%));
   }
 
   .entity-review-preview-loading {
     margin: 0.375rem 0 0;
     font-size: 0.8rem;
-    color: hsl(0, 0%, 40%);
+    color: var(--theme-text-2, hsl(0, 0%, 40%));
   }
 
   .entity-review-batch {
@@ -903,9 +925,9 @@
     gap: 0.375rem;
     margin-bottom: 0.5rem;
     padding: 0.375rem 0.5rem;
-    border: 1px solid hsl(0, 0%, 88%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 88%));
     border-radius: 8px;
-    background: hsl(0, 0%, 98%);
+    background: var(--theme-surface, hsl(0, 0%, 98%));
   }
 
   .entity-review-batch-actions {
@@ -916,10 +938,10 @@
 
   .entity-review-batch-actions button {
     padding: 0.3rem 0.6rem;
-    border: 1px solid hsl(0, 0%, 78%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 78%));
     border-radius: 999px;
-    background: white;
-    color: hsl(0, 0%, 16%);
+    background: var(--theme-surface, white);
+    color: var(--theme-text, hsl(0, 0%, 16%));
     font: inherit;
     font-size: 0.8rem;
     font-weight: 700;
@@ -932,7 +954,7 @@
   }
 
   .entity-review-batch-actions .entity-review-batch-approve {
-    border-color: hsl(140, 45%, 38%);
+    border-color: var(--theme-green-text, hsl(140, 45%, 38%));
     background: hsl(140, 45%, 38%);
     color: white;
   }
@@ -942,8 +964,8 @@
   }
 
   .entity-review-batch-actions .entity-review-batch-reject {
-    border-color: hsl(0, 70%, 78%);
-    color: hsl(0, 70%, 32%);
+    border-color: var(--theme-accent-border, hsl(0, 70%, 78%));
+    color: var(--theme-accent-text, hsl(0, 70%, 32%));
   }
 
   .entity-review-select-all {
@@ -952,23 +974,34 @@
     gap: 0.375rem;
     font-size: 0.8rem;
     font-weight: 600;
-    color: hsl(0, 0%, 30%);
+    color: var(--theme-text, hsl(0, 0%, 30%));
     cursor: pointer;
     min-width: 0;
   }
 
   .entity-review-selected-count {
     font-weight: 500;
-    color: hsl(0, 0%, 42%);
+    color: var(--theme-text-2, hsl(0, 0%, 42%));
   }
 
   .entity-review-bulk-note {
     margin-bottom: 0.5rem;
     padding: 0.5rem;
-    border: 1px solid hsl(0, 0%, 88%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 88%));
     border-radius: 8px;
   }
 
+  .entity-review-load-more {
+    align-self: center;
+    min-height: 2.5rem;
+    padding: 0 1rem;
+    border: 1px solid var(--theme-border-strong, hsl(0, 0%, 75%));
+    border-radius: 999px;
+    background: none;
+    color: var(--theme-text, hsl(0, 0%, 15%));
+    font-weight: 600;
+    cursor: pointer;
+  }
   .entity-review-group {
     display: flex;
     flex-direction: column;
@@ -1021,27 +1054,27 @@
   }
 
   .entity-review-row summary:focus-visible {
-    outline: 2px solid hsl(5, 53%, 40%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 40%));
     outline-offset: 2px;
   }
 
   .entity-review-summary-meta {
     font-size: 0.75rem;
-    color: hsl(0, 0%, 40%);
+    color: var(--theme-text-2, hsl(0, 0%, 40%));
   }
 
   .entity-review-badge {
     padding: 0 0.3125rem;
     border-radius: 999px;
-    background: hsl(0, 0%, 92%);
-    color: hsl(0, 0%, 25%);
+    background: var(--theme-surface-2, hsl(0, 0%, 92%));
+    color: var(--theme-text, hsl(0, 0%, 25%));
     font-size: 0.6875rem;
     font-weight: 700;
   }
 
   .entity-review-badge.stale {
-    background: hsl(40, 90%, 88%);
-    color: hsl(30, 60%, 25%);
+    background: var(--theme-amber-soft, hsl(40, 90%, 88%));
+    color: var(--theme-amber-text, hsl(30, 60%, 25%));
   }
 
   /* Matches .entity-review-stale's shape so the two reviewer callouts read as
@@ -1049,12 +1082,12 @@
   .entity-review-submitter-note {
     margin: 0.375rem 0 0;
     padding: 0.35rem 0.5rem;
-    border: 1px solid hsl(210, 45%, 82%);
+    border: 1px solid var(--theme-blue-border, hsl(210, 45%, 82%));
     border-radius: 6px;
-    background: hsl(210, 60%, 97%);
+    background: var(--theme-blue-soft, hsl(210, 60%, 97%));
     font-size: 0.8125rem;
     line-height: 1.4;
-    color: hsl(210, 40%, 22%);
+    color: var(--theme-text, hsl(210, 40%, 22%));
   }
 
   .entity-review-bundled {
@@ -1068,9 +1101,9 @@
     margin: 0.35rem 0;
     padding: 0.35rem 0.5rem;
     border-radius: 6px;
-    background: hsl(40 90% 92%);
-    border: 1px solid hsl(40 70% 70%);
-    color: hsl(30 60% 25%);
+    background: var(--theme-amber-soft, hsl(40 90% 92%));
+    border: 1px solid var(--theme-amber-border, hsl(40 70% 70%));
+    color: var(--theme-amber-text, hsl(30 60% 25%));
     font-size: 0.8rem;
     line-height: 1.35;
   }
@@ -1095,7 +1128,7 @@
   }
 
   .entity-review-diff-old {
-    color: hsl(0 0% 45%);
+    color: var(--theme-text-2, hsl(0 0% 45%));
     overflow-wrap: anywhere;
   }
 
@@ -1112,6 +1145,6 @@
     margin-left: 0.25rem;
     font-weight: 400;
     font-size: 0.6875rem;
-    color: hsl(0, 0%, 50%);
+    color: var(--theme-text-muted, hsl(0, 0%, 50%));
   }
 </style>

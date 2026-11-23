@@ -2,9 +2,11 @@ import type { Component } from "svelte";
 import type { DialogSize } from "@ui/modal/Dialog.svelte";
 import AnnouncementsModal from "@ui/modal/AnnouncementsModal.svelte";
 import ChangelogModal from "@ui/modal/ChangelogModal.svelte";
+import ContributorsModal from "@ui/modal/ContributorsModal.svelte";
 import CoverageModal from "@ui/modal/CoverageModal.svelte";
 import EditorToolsModal from "@ui/modal/EditorToolsModal.svelte";
-import HotlinesModal from "@ui/modal/HotlinesModal.svelte";
+import EntityHistoryModal from "@ui/modal/EntityHistoryModal.svelte";
+import FeedbackPanel from "@ui/modal/FeedbackPanel.svelte";
 import JeepneyRouteModal from "@ui/modal/JeepneyRouteModal.svelte";
 import LandingModal from "@ui/modal/LandingModal.svelte";
 import LeaderboardModal from "@ui/modal/LeaderboardModal.svelte";
@@ -12,6 +14,7 @@ import OfflineMapsModal from "@ui/modal/OfflineMapsModal.svelte";
 import PrivacyModal from "@ui/modal/PrivacyModal.svelte";
 import ProposalReviewPanel from "@ui/ProposalReviewPanel.svelte";
 import ScheduleModal from "@ui/modal/ScheduleModal.svelte";
+import SavedPlacesModal from "@ui/modal/SavedPlacesModal.svelte";
 import SettingsModal from "@ui/modal/SettingsModal.svelte";
 import StudentOrgsModal from "@ui/modal/StudentOrgsModal.svelte";
 import type { modalOptions } from "@constants/modal-states";
@@ -31,6 +34,12 @@ export type ModalEntry = {
   showClose?: boolean;
   /** Wrap children in a scroll region (long task surfaces). */
   scroll?: boolean;
+  /**
+   * Focus the dialog itself on open instead of its first control. For modals
+   * that open on their own at page load: with no click yet, browsers draw a
+   * keyboard focus ring on the first control (the landing tab outline).
+   */
+  focusDialog?: boolean;
 };
 
 /**
@@ -41,9 +50,10 @@ export type ModalEntry = {
 export const MODAL_REGISTRY: Record<ModalType, ModalEntry> = {
   landing: {
     component: LandingModal,
-    size: "showcase",
+    size: "default",
     labelledBy: "landing-modal-title",
-    showClose: false,
+    closeLabel: "Close about Room TBA",
+    focusDialog: true,
   },
   "schedule-expand": {
     component: ScheduleModal,
@@ -65,16 +75,21 @@ export const MODAL_REGISTRY: Record<ModalType, ModalEntry> = {
     labelledBy: "coverage-modal-title",
     closeLabel: "Close data coverage",
   },
+  // Long text: a slightly wider measure, still capped near 680px.
   changelog: {
     component: ChangelogModal,
-    size: "large",
+    size: "wide",
     label: "What's new",
+    labelledBy: "changelog-modal-title",
     closeLabel: "Close changelog",
   },
+  // Sized to its content: an empty or short list must not open a full-height
+  // sheet over the bottom nav.
   announcements: {
     component: AnnouncementsModal,
-    size: "large",
+    size: "reading",
     label: "Announcements",
+    labelledBy: "announcements-modal-title",
     closeLabel: "Close announcements",
   },
   review: {
@@ -94,6 +109,7 @@ export const MODAL_REGISTRY: Record<ModalType, ModalEntry> = {
     component: SettingsModal,
     size: "reading",
     label: "Settings",
+    labelledBy: "settings-modal-title",
     closeLabel: "Close settings",
   },
   "jeepney-route": {
@@ -117,13 +133,37 @@ export const MODAL_REGISTRY: Record<ModalType, ModalEntry> = {
   "offline-maps": {
     component: OfflineMapsModal,
     size: "reading",
-    label: "Offline maps",
+    label: "Offline maps & storage",
+    labelledBy: "offline-maps-modal-title",
     closeLabel: "Close offline maps",
   },
-  hotlines: {
-    component: HotlinesModal,
+  "entity-history": {
+    component: EntityHistoryModal,
     size: "reading",
-    label: "Emergency hotlines",
-    closeLabel: "Close emergency hotlines",
+    label: "Edit history",
+    labelledBy: "entity-history-title",
+    closeLabel: "Close edit history",
+  },
+  // Settings links here rather than embedding a second copy of the form.
+  feedback: {
+    component: FeedbackPanel,
+    size: "compact",
+    label: "Send feedback",
+    labelledBy: "feedback-modal-title",
+    closeLabel: "Close feedback",
+  },
+  "saved-places": {
+    component: SavedPlacesModal,
+    size: "reading",
+    label: "Saved",
+    labelledBy: "saved-places-modal-title",
+    closeLabel: "Close saved places",
+  },
+  contributors: {
+    component: ContributorsModal,
+    size: "reading",
+    label: "Contributors",
+    labelledBy: "contributors-modal-title",
+    closeLabel: "Close contributors",
   },
 };

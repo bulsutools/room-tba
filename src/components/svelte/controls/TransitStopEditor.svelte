@@ -27,14 +27,32 @@
     routeName: string;
     stop?: JeepneyStop;
     onRemoved?: () => void;
+    /** Bindable so a host can put the toggle in its own footer row. */
+    expanded?: boolean;
+    /** False when the host renders the toggle itself (route panel footer). */
+    showToggle?: boolean;
   };
 
-  let { routeId, routeName, stop, onRemoved }: Props = $props();
+  let {
+    routeId,
+    routeName,
+    stop,
+    onRemoved,
+    expanded = $bindable(false),
+    showToggle = true,
+  }: Props = $props();
   const isNew = $derived(stop === undefined);
   const canPublish = $derived(adminAuthStore.canPublish);
   const canEdit = $derived(isNew || (stop?.id !== undefined && stop.version !== undefined));
 
-  let expanded = $state(false);
+  let section = $state<HTMLElement | null>(null);
+
+  // Opened from a footer toggle below the scroller: bring the form into view.
+  $effect(() => {
+    if (expanded && !showToggle) {
+      section?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  });
   let submitting = $state(false);
   let error = $state<string | null>(null);
   let success = $state<string | null>(null);
@@ -90,7 +108,7 @@
     } catch (caught) {
       return caught instanceof ProposalValidationError
         ? caught.message
-        : "Could not submit stop suggestion.";
+        : "Couldn't submit stop suggestion.";
     }
   }
 
@@ -130,7 +148,7 @@
         if (canPublish) {
           const result = await publishEntityCreate("create_jeepney_stop", patch);
           if (!result.ok) {
-            error = result.error ?? "Could not add stop.";
+            error = result.error ?? "Couldn't add stop.";
             return;
           }
           await transitStore.refresh();
@@ -153,7 +171,7 @@
           proposalId: activeProposalId,
         });
         if (!result.ok) {
-          error = result.error ?? "Could not submit stop suggestion.";
+          error = result.error ?? "Couldn't submit stop suggestion.";
           return;
         }
         activeProposalId = result.proposal?.id ?? null;
@@ -178,7 +196,7 @@
         proposalId: activeProposalId,
       });
       if (!result.ok) {
-        error = result.error ?? "Could not save stop.";
+        error = result.error ?? "Couldn't save stop.";
         return;
       }
       if (canPublish) await transitStore.refresh();
@@ -211,7 +229,7 @@
         }),
       });
       if (!result.ok) {
-        error = result.error ?? "Could not remove stop.";
+        error = result.error ?? "Couldn't remove stop.";
         return;
       }
       if (canPublish) {
@@ -226,14 +244,16 @@
 </script>
 
 {#if canEdit}
-  <section class="transit-stop-editor">
-    <EntityEditorToggle
-      expanded={expanded}
-      {canPublish}
-      publishOpenLabel={isNew ? "Add stop" : "Edit stop"}
-      suggestOpenLabel={isNew ? "Suggest a stop" : "Suggest an edit"}
-      onclick={() => (expanded = !expanded)}
-    />
+  <section class="transit-stop-editor" bind:this={section}>
+    {#if showToggle}
+      <EntityEditorToggle
+        expanded={expanded}
+        {canPublish}
+        publishOpenLabel={isNew ? "Add stop" : "Edit stop"}
+        suggestOpenLabel={isNew ? "Suggest a stop" : "Suggest an edit"}
+        onclick={() => (expanded = !expanded)}
+      />
+    {/if}
 
     {#if expanded}
       <EntityEditorPanel
@@ -282,7 +302,7 @@
         {/if}
         <EntityEditorPinRow
           label={pin
-            ? `Pin set · ${pin.lat.toFixed(5)}, ${pin.lon.toFixed(5)}`
+            ? `Pin set: ${pin.lat.toFixed(5)}, ${pin.lon.toFixed(5)}`
             : "Drop a pin on the map"}
           pickLabel={pin ? "Move pin" : "Pick on map"}
           disabled={submitting || picking}

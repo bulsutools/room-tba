@@ -15,10 +15,13 @@
   import { placeCategoryLabel } from "@constants/place-categories";
   import {
     resetDocumentMeta,
+    setDocumentTitle,
     updateTermAwareDocumentMeta,
   } from "@lib/term-document-meta";
-  import { PLACE_LABEL } from "@lib/site";
+  import { DEFAULT_TITLE, PLACE_LABEL } from "@lib/site";
+  import { transitRouteNoun } from "@lib/transit-route-kind";
   import {
+    appBootstrapStore,
     currentRoom,
     jeepneyStore,
     mapEditStore,
@@ -26,6 +29,7 @@
     sidePanelStore,
     sidebarStore,
     termStore,
+    toastStore,
     transitStore,
   } from "@lib/store.svelte";
 
@@ -42,9 +46,20 @@
       getAppData: appData,
       hydrateQuery: (query) => {
         queryStore.hydrateQuery(query);
+        // Back/forward onto a place picked from a list keeps its breadcrumb.
+        if (query.browseOrigin) queryStore.browseOrigin = query.browseOrigin;
       },
       clearQuery: () => {
         queryStore.clearQuery();
+        // Panel metadata (a chip's browse list) outranks the query, so Back
+        // to home left the list painted over the map.
+        sidePanelStore.closePanel();
+      },
+      onNotFound: () => {
+        toastStore.show(
+          "Place not found. The link may be old or mistyped.",
+          "error",
+        );
       },
       getQuerySnapshot: () => ({
         type: queryStore.type,
@@ -58,15 +73,36 @@
       setTransit: async ({ routeId, stopSlug }) => {
         if (!campusTransit.enabled) return;
         openCampusBrowse(queryStore, sidePanelStore, "jeepney");
-        if (!routeId) return;
-        await transitStore.refresh();
-        const route = transitStore.getRoute(routeId);
-        if (!route) return;
-        jeepneyStore.openRouteOnMap(route.id);
-        const stopIndex = stopSlug ? getTransitStopIndex(route, stopSlug) : -1;
-        if (stopIndex >= 0) {
-          requestAnimationFrame(() => jeepneyStore.openStop(stopIndex));
+        // Back to /transit/ (or to a route from one of its stops) must close
+        // what the URL no longer names; returning early left the old route
+        // and its pins on screen with the list never coming back.
+        if (!routeId) {
+          jeepneyStore.clearRoute();
+          return;
         }
+        const open = () => {
+          const route = transitStore.displayRoute(routeId);
+          if (!route) return false;
+          jeepneyStore.openRouteOnMap(route.id);
+          const stopIndex = stopSlug
+            ? getTransitStopIndex(route, stopSlug)
+            : -1;
+          if (stopIndex >= 0) {
+            requestAnimationFrame(() => jeepneyStore.openStop(stopIndex));
+          } else {
+            jeepneyStore.closeStop();
+          }
+          return true;
+        };
+        // A bundled route opens at once. Waiting on refresh first left
+        // /transit/forestry on the bare route list offline, where the sync
+        // probe retries for a minute before giving up.
+        if (open()) {
+          void transitStore.refresh();
+          return;
+        }
+        await transitStore.refresh();
+        open();
       },
     });
 
@@ -87,6 +123,7 @@
       category: queryStore.category,
       value: queryStore.queryValue,
       eventSlug: queryStore.selectedEventSlug ?? undefined,
+      browseOrigin: queryStore.browseOrigin,
       room: currentRoom.value,
       editMode: mapEditStore.enabled,
       termId: termStore.activeTermId,
@@ -94,13 +131,50 @@
       screen: isScreenId(sidebarStore.panelOpen) ? sidebarStore.panelOpen : null,
       transitRouteId: jeepneyStore.selectedRouteId,
       transitStopIndex: jeepneyStore.selectedStopIndex,
-      transitRoute: transitStore.getRoute(jeepneyStore.selectedRouteId),
+      transitRoute: transitStore.displayRoute(jeepneyStore.selectedRouteId),
     });
   });
 
+  // A deep link served by the offline app shell resolves once campus data
+  // (buildings, orgs…) arrives; retry on each data change until it does.
   $effect(() => {
+    void appData().buildings;
+    const dataReady =
+      appBootstrapStore.hasCachedData ||
+      appBootstrapStore.phase === "ready" ||
+      appBootstrapStore.phase === "error";
+    void sync?.resolvePendingPath(dataReady);
+  });
+
+  // A transit page (/transit/, /transit/forestry/…) loads with its own title;
+  // once the rider leaves transit it must not linger as the page title.
+  const landedOnTransit =
+    typeof location !== "undefined" && /^\/transit(\/|$)/.test(location.pathname);
+
+  $effect(() => {
+    // Transit is not a search result, so the title used to stay whatever the
+    // page loaded with while routes and stops changed underneath it.
+    const route = transitStore.getRoute(jeepneyStore.selectedRouteId);
+    if (route) {
+      const stop =
+        jeepneyStore.selectedStopIndex !== null
+          ? route.stops[jeepneyStore.selectedStopIndex]
+          : null;
+      setDocumentTitle(
+        stop
+          ? `${stop.name} | ${route.name} | Room TBA`
+          : `${route.name} ${transitRouteNoun(route)} | BulSU Transit | Room TBA`,
+      );
+      return;
+    }
+    if (queryStore.category === "browse" && queryStore.queryValue === "jeepney") {
+      setDocumentTitle("Jeepney and bus routes | BulSU Transit | Room TBA");
+      return;
+    }
+
     if (queryStore.type !== "result" || queryStore.category === null) {
-      resetDocumentMeta();
+      if (landedOnTransit) setDocumentTitle(DEFAULT_TITLE);
+      else resetDocumentMeta();
       return;
     }
 

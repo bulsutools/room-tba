@@ -2,7 +2,7 @@
 
 Issues are living specs. **Not every issue needs file paths**: match the track to the audience.
 
-Use `gh issue view <n>, repo uplbtools/room-tba` before and after issue-scoped work.
+Use `gh issue view <n>, repo bulsutools/room-tba` before and after issue-scoped work.
 
 ## Three tracks
 

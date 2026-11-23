@@ -26,7 +26,7 @@ function floorOf(code: string, directions?: string) {
   return inferRoomSignal({ roomCode: code, directions })?.floor ?? null;
 }
 
-describe("floor inference from real UPLB room codes", () => {
+describe("floor inference from real campus room codes", () => {
   it.each([
     ["PS B-203", 2],
     ["CEM 116", 1],
@@ -98,7 +98,7 @@ describe("directions text", () => {
 
   it("understands worded floors and wings", () => {
     const signal = inferRoomSignal({
-      roomCode: "PSLH A",
+      roomCode: "LH A",
       directions:
         "In the Physical Sciences Building. Ground floor, easy to spot.",
     });
@@ -130,7 +130,7 @@ describe("confidence degrades honestly", () => {
     });
     expect(signal?.floor).toBe(2);
     expect(signal?.confidence).toBe("low");
-    expect(signal?.reason).toContain("Used the room number");
+    expect(signal?.reason).toContain("we used the room number");
   });
 
   it.each([

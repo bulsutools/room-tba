@@ -2,7 +2,7 @@
 
 This is the data half of forking Room TBA for another campus. The code half
 (branding, map config, what to delete) lives in the
-[fork wiki page](https://room-tba.uplb.tools/wiki/fork-for-your-campus). You
+[fork wiki page](https://room-tba.bulsu.tools/wiki/fork-for-your-campus). You
 do not need to write an importer or recreate a campus dataset before seeing
 the app work — seed the sample campus first, then replace it with real data.
 
@@ -62,7 +62,7 @@ to your own file, replace its entries, and adapt `scripts/seed-sample-campus.ts`
 (or just edit the sample JSON in your fork — it is your campus now).
 
 **Terms:** rows in the `terms` table. `id` is any positive integer scheme you
-like (UPLB mirrors its registrar's ids; the sample uses 101/102) — pick one
+like (BulSU mirrors its registrar's ids; the sample uses 101/102) — pick one
 and keep it stable, because every class row carries a `term_id`.
 
 **Classes** come in each term via the generic importer.
@@ -97,8 +97,7 @@ JSON is the same shape: an array of flat objects with those keys.
 Worked example (the same 15 sections the seed loads):
 [`data/sample-campus/classes.csv`](../data/sample-campus/classes.csv).
 
-Behavior, same as the UPLB AMIS importer (`scripts/import-amis-classes.ts`,
-which stays as the UPLB-specific adapter):
+Behavior:
 
 - **Upsert by natural key** (term + course + section + type): rerunning the
   same file changes nothing; `--replace-term` also deletes DB rows the file no
@@ -119,5 +118,5 @@ which stays as the UPLB-specific adapter):
   production.
 - After any Drizzle schema change, `bun run generate:pglite-schema` keeps the
   offline cache in sync.
-- Finished replacing UPLB data? `bun run fork:check` scans for leftover UPLB
-  strings.
+- Finished replacing BulSU data? `bun run fork:check` scans for leftover
+  upstream (UPLB) strings.

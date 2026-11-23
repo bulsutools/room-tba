@@ -31,8 +31,7 @@ import {
 } from "./record-bulk-history";
 
 /** Where the maintainer session left its pre-operation dumps. */
-const DEFAULT_SNAPSHOT_ROOT =
-  "/tmp/claude-1000/-home-stimmie-dev-uplbtools-room-tba";
+const DEFAULT_SNAPSHOT_ROOT = "/tmp/room-tba-bulk-history-snapshots";
 
 export const SNAPSHOT_NAMES = [
   "room-merge-snapshot.json",
@@ -176,7 +175,7 @@ export function buildBackfillOperations(
     before: null,
     after: { note: "SDS and therio room aliases inserted" },
     reason:
-      "Inserted the SDS and therio aliases so AMIS facility strings for those rooms match an existing room instead of being skipped.",
+      "Inserted the SDS and therio aliases so registrar facility strings for those rooms match an existing room instead of being skipped.",
   });
 
   operations.push({

@@ -1,6 +1,20 @@
-import { and, desc, eq } from "drizzle-orm";
-import { editorHistoryTable } from "@drizzle/schema";
+import { and, asc, desc, eq, gt, gte, inArray, or } from "drizzle-orm";
+import {
+  adminUsersTable,
+  contributionsTable,
+  editorHistoryTable,
+} from "@drizzle/schema";
 import { db } from "@lib/db";
+import {
+  rowAuthor,
+  scanPublicRows,
+  toIsoTimestamp,
+  toPublicHistoryEntry,
+  type EditorAccount,
+  type EntityAttribution,
+  type ProposalCredit,
+  type PublicHistoryEntry,
+} from "@lib/editor/entity-attribution";
 import {
   updateBuilding,
   updateCollege,
@@ -14,6 +28,10 @@ import {
   type EventWriteInput,
   type RoomUpdateInput,
 } from "./admin-service";
+import {
+  latestContributionId,
+  markContributionsReverted,
+} from "./contribution-service";
 
 export type HistoryEntry = typeof editorHistoryTable.$inferSelect;
 
@@ -43,6 +61,163 @@ export async function getEntityHistory(
     .orderBy(desc(editorHistoryTable.createdAt), desc(editorHistoryTable.id))
     .limit(Math.min(limit, 50))
     .offset(offset);
+}
+
+/** Approved-proposal credits that could belong to these history rows. */
+async function loadProposalCredits(
+  entityType: string,
+  entityId: number,
+  rows: HistoryEntry[],
+): Promise<ProposalCredit[]> {
+  const oldest = rows.reduce(
+    (min, row) => (row.createdAt < min ? row.createdAt : min),
+    rows[0]?.createdAt ?? "",
+  );
+  if (!oldest) return [];
+  return db
+    .select({
+      entityType: contributionsTable.entityType,
+      submitterName: contributionsTable.submitterName,
+      createdAt: contributionsTable.createdAt,
+    })
+    .from(contributionsTable)
+    .where(
+      and(
+        eq(contributionsTable.source, "proposal_approved"),
+        gte(contributionsTable.createdAt, oldest),
+        or(
+          and(
+            eq(contributionsTable.entityType, entityType),
+            eq(contributionsTable.entityId, entityId),
+          ),
+          and(
+            eq(contributionsTable.entityType, `create_${entityType}`),
+            eq(contributionsTable.entityId, 0),
+          ),
+        ),
+      ),
+    );
+}
+
+async function loadEditorAccounts(
+  rows: HistoryEntry[],
+): Promise<EditorAccount[]> {
+  const actors = [...new Set(rows.map((row) => row.editedBy))];
+  if (actors.length === 0) return [];
+  return db
+    .select({
+      username: adminUsersTable.username,
+      displayName: adminUsersTable.displayName,
+      showInCredits: adminUsersTable.showInCredits,
+    })
+    .from(adminUsersTable)
+    .where(
+      or(
+        inArray(adminUsersTable.username, actors),
+        inArray(adminUsersTable.displayName, actors),
+      ),
+    );
+}
+
+export const PUBLIC_HISTORY_PAGE_SIZE = 50;
+
+// Raw rows read per public request at most. Private-only edits (contact
+// details, photos, a room's building link) are filtered out after the read,
+// so a page can need several batches before it has anything to show.
+const PUBLIC_HISTORY_SCAN_LIMIT = 500;
+
+function scanEntityHistory(
+  entityType: string,
+  entityId: number,
+  offset: number,
+  want: number,
+) {
+  return scanPublicRows(
+    (cursor) =>
+      getEntityHistory(entityType, entityId, {
+        limit: PUBLIC_HISTORY_PAGE_SIZE,
+        offset: cursor,
+      }),
+    {
+      offset,
+      want,
+      batchSize: PUBLIC_HISTORY_PAGE_SIZE,
+      scanLimit: PUBLIC_HISTORY_SCAN_LIMIT,
+    },
+  );
+}
+
+/**
+ * Read-only history for visitors. Only whitelisted card fields and public
+ * names leave the server; see toPublicHistoryEntry.
+ */
+export async function getPublicEntityHistory(
+  entityType: string,
+  entityId: number,
+  offset = 0,
+): Promise<{ entries: PublicHistoryEntry[]; nextOffset: number | null }> {
+  const { rows, nextOffset } = await scanEntityHistory(
+    entityType,
+    entityId,
+    offset,
+    PUBLIC_HISTORY_PAGE_SIZE,
+  );
+  const [credits, accounts] = await Promise.all([
+    loadProposalCredits(entityType, entityId, rows),
+    loadEditorAccounts(rows),
+  ]);
+  return {
+    entries: rows
+      .map((row) => toPublicHistoryEntry(row, credits, accounts))
+      .filter((entry): entry is PublicHistoryEntry => entry !== null),
+    nextOffset,
+  };
+}
+
+/**
+ * Who added an entity and who last edited it, as public names. Only edits the
+ * public history shows count, so "last edited by" always names an entry the
+ * visitor can open.
+ */
+export async function getEntityAttribution(
+  entityType: string,
+  entityId: number,
+): Promise<EntityAttribution | null> {
+  const [
+    {
+      rows: [latest],
+    },
+    [created],
+  ] = await Promise.all([
+    scanEntityHistory(entityType, entityId, 0, 1),
+    db
+      .select()
+      .from(editorHistoryTable)
+      .where(
+        and(
+          eq(editorHistoryTable.entityType, entityType),
+          eq(editorHistoryTable.entityId, entityId),
+          eq(editorHistoryTable.action, "create"),
+        ),
+      )
+      .orderBy(asc(editorHistoryTable.createdAt))
+      .limit(1),
+  ]);
+  if (!latest && !created) return null;
+  const rows = [created, latest].filter(
+    (row): row is HistoryEntry => row !== undefined,
+  );
+  const [credits, accounts] = await Promise.all([
+    loadProposalCredits(entityType, entityId, rows),
+    loadEditorAccounts(rows),
+  ]);
+  const edited = !latest || latest.id === created?.id ? null : latest;
+  return {
+    addedBy: created ? rowAuthor(created, credits, accounts) : null,
+    addedAt: created ? toIsoTimestamp(created.createdAt) : null,
+    lastEditedBy: edited ? rowAuthor(edited, credits, accounts) : null,
+    lastEditedAt: edited ? toIsoTimestamp(edited.createdAt) : null,
+  };
 }
 
 // Fields that can be restored from a snapshot. Anything else in the snapshot
@@ -107,7 +282,7 @@ function pickRevertInput(
   const fields = REVERTABLE_FIELDS[entityType];
   if (!fields) {
     throw new HistoryRevertError(
-      `History restore is not supported for ${entityType} entries.`,
+      `History restore isn't supported for ${entityType} entries.`,
     );
   }
   return Object.fromEntries(
@@ -143,7 +318,7 @@ export async function revertToHistoryEntry({
   const snapshot = (entry.after ?? null) as Record<string, unknown> | null;
   if (!snapshot) {
     throw new HistoryRevertError(
-      "This entry has no restorable snapshot (deleted entries cannot be restored yet).",
+      "This entry has no restorable snapshot (deleted entries can't be restored yet).",
     );
   }
 
@@ -162,6 +337,51 @@ export async function revertToHistoryEntry({
     throw new HistoryRevertError("Nothing restorable in this snapshot.");
   }
 
+  // Restoring entry N undoes every edit after it. Those edits stop earning
+  // leaderboard points once the restore lands.
+  const [firstUndone] = await db
+    .select({ createdAt: editorHistoryTable.createdAt })
+    .from(editorHistoryTable)
+    .where(
+      and(
+        eq(editorHistoryTable.entityType, entry.entityType),
+        eq(editorHistoryTable.entityId, entry.entityId),
+        gt(editorHistoryTable.id, entry.id),
+      ),
+    )
+    .orderBy(asc(editorHistoryTable.id))
+    .limit(1);
+  const throughId = firstUndone ? await latestContributionId() : 0;
+
+  const restored = await restoreSnapshot(entry, input, {
+    expectedVersion,
+    editedBy,
+    history,
+  });
+  if (firstUndone) {
+    await markContributionsReverted({
+      entityType: entry.entityType,
+      entityId: entry.entityId,
+      since: firstUndone.createdAt,
+      throughId,
+    });
+  }
+  return restored;
+}
+
+function restoreSnapshot(
+  entry: HistoryEntry,
+  input: Record<string, unknown>,
+  {
+    expectedVersion,
+    editedBy,
+    history,
+  }: {
+    expectedVersion: number;
+    editedBy: string;
+    history: { action: string; summary: string };
+  },
+): Promise<unknown> {
   switch (entry.entityType) {
     case "building":
       return updateBuilding(
@@ -213,7 +433,7 @@ export async function revertToHistoryEntry({
       );
     default:
       throw new HistoryRevertError(
-        `History restore is not supported for ${entry.entityType} entries.`,
+        `History restore isn't supported for ${entry.entityType} entries.`,
       );
   }
 }

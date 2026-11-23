@@ -1,10 +1,13 @@
 <script lang="ts">
+  import EntityActionScroll from "./EntityActionScroll.svelte";
+  import PlaceSheetTabs from "./PlaceSheetTabs.svelte";
   import EntitySkeleton from "@ui/EntitySkeleton.svelte";
   import {
     adminAuthStore,
     mapEditStore,
     mapProposalStore,
     queryStore,
+    sidePanelStore,
     building3DStore,
     toastStore,
     termStore,
@@ -15,10 +18,13 @@
   import type { BuildingData, RoomData } from "@lib/types";
   import ResultDisplay from "./ResultDisplay.svelte";
   import BuildingPhoto from "./BuildingPhoto.svelte";
-  import EntityShareCopyLink from "./EntityShareCopyLink.svelte";
+  import EntityShareButton from "./EntityShareButton.svelte";
+  import EntitySaveButton from "./EntitySaveButton.svelte";
+  import PlaceSheetHeader from "./PlaceSheetHeader.svelte";
   import EntityBackToList from "./EntityBackToList.svelte";
   import EntityGoogleMapsLink from "./EntityGoogleMapsLink.svelte";
   import EntityExternalLink from "./EntityExternalLink.svelte";
+  import EntityPrintableMapLink from "./EntityPrintableMapLink.svelte";
   import EntityStreetAddress from "./EntityStreetAddress.svelte";
   import EntityDirectionsChip from "./EntityDirectionsChip.svelte";
   import EntityLastUpdated from "../EntityLastUpdated.svelte";
@@ -34,7 +40,14 @@
     getBuildingRooms,
     fetchRoomClassCounts,
     fetchEntityRoomsRemote,
+    fetchBuildingClassSchedules,
   } from "@lib/local/data/utils";
+  import { isDateWithinTerm } from "@lib/term-calendar";
+  import {
+    buildingFactsLine,
+    countClassesNow,
+    expandCampusAbbreviations,
+  } from "@lib/place-facts";
   import {
     checkLocalBuildingRoom,
     getLocalBuildingRooms,
@@ -137,6 +150,52 @@
     building ? mapProposalStore.allowsKey(`building:${building.id}`) : false,
   );
 
+  // Overview / Rooms / Photos jump within the one scrolling sheet. Rooms and
+  // Photos live below the fold at peek, so they raise the sheet first.
+  const PLACE_TABS = [
+    { id: "overview", label: "Overview" },
+    { id: "rooms", label: "Rooms" },
+    { id: "photos", label: "Photos" },
+  ];
+  let activeTab = $state("overview");
+  let roomsEl = $state<HTMLElement | null>(null);
+  let photoEl = $state<HTMLElement | null>(null);
+  let tabsEl = $state<HTMLElement | null>(null);
+
+  // The tab strip sticks under the sticky place header so every tab stays
+  // reachable after a jump. Track the header's height (it shrinks once the
+  // sheet scrolls) for the strip's offset and the jump's scroll margin.
+  $effect(() => {
+    const header = tabsEl?.previousElementSibling;
+    const host = tabsEl?.parentElement;
+    if (!header || !host || typeof ResizeObserver === "undefined") return;
+    const sync = () => {
+      const top = header.getBoundingClientRect().height;
+      tabsEl?.style.setProperty("--place-header-h", `${top}px`);
+      host.style.setProperty(
+        "--place-sticky-h",
+        `${top + (tabsEl?.getBoundingClientRect().height ?? 0)}px`,
+      );
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(header);
+    if (tabsEl) ro.observe(tabsEl);
+    return () => ro.disconnect();
+  });
+
+  async function selectTab(id: string) {
+    activeTab = id;
+    if (id !== "overview") sidePanelStore.requestSheetSnap("expanded");
+    await tick();
+    const scroller = tabsEl?.closest<HTMLElement>(
+      ".bottom-sheet__body, .side-panel-details",
+    );
+    const target = id === "rooms" ? roomsEl : id === "photos" ? photoEl : null;
+    if (target) target.scrollIntoView({ block: "start", behavior: "smooth" });
+    else scroller?.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   let buildingRooms = $state<RoomData[] | null>(null);
   let classCounts = $state<Map<number, number> | null>(null);
 
@@ -149,9 +208,51 @@
   });
   const buildingTypeLabel = $derived.by(() => {
     const isAdmin = building?.buildingType === "admin";
-    if (isAdmin && hostsClasses) return "Administrative · Class venue";
+    if (isAdmin && hostsClasses) return "Administrative and class venue";
     return isAdmin ? "Administrative" : "Class building";
   });
+
+  // "42 rooms, 3 classes now": the at-a-glance line under the name. The
+  // schedule comes from the local copy (null until classes were synced), and
+  // the minute tick keeps "now" honest while the sheet stays open.
+  let classSchedules = $state<(string[] | null)[] | null>(null);
+  let nowTick = $state(Date.now());
+  $effect(() => {
+    const timer = setInterval(() => (nowTick = Date.now()), 60_000);
+    return () => clearInterval(timer);
+  });
+  $effect(() => {
+    const id = building?.id;
+    const termId = termStore.activeTermId;
+    classSchedules = null;
+    if (id == null) return;
+    let live = true;
+    void fetchBuildingClassSchedules(id, termId ?? undefined).then(
+      (rows) => {
+        if (live) classSchedules = rows;
+      },
+    );
+    return () => {
+      live = false;
+    };
+  });
+  const termInSession = $derived.by(() => {
+    const term = termStore.activeTerm;
+    return term ? isDateWithinTerm(term, new Date(nowTick)) : false;
+  });
+  const buildingFacts = $derived(
+    buildingFactsLine({
+      roomCount: buildingRooms?.length ?? null,
+      // Only while the term is in session: on a break nothing is "on now".
+      classesNow:
+        classSchedules && classSchedules.length > 0 && termInSession
+          ? countClassesNow(classSchedules, new Date(nowTick))
+          : null,
+      classesThisTerm: classCounts
+        ? [...classCounts.values()].reduce((sum, n) => sum + n, 0)
+        : null,
+    }),
+  );
 
   let editing = $state(false);
   let draftBuildingId = $state<number | null>(null);
@@ -389,7 +490,7 @@
     if (field === "buildingName") {
       const trimmedName = nameDraft.trim();
       if (trimmedName.length === 0) {
-        fieldError = `${current.buildingName} name cannot be empty.`;
+        fieldError = `${current.buildingName} name can't be empty.`;
         return;
       }
       body.buildingName = trimmedName;
@@ -425,7 +526,7 @@
 
       const outcome = handlePersistEntityResult<BuildingData>(result, {
         syncFromServer: syncBuildingFromServer,
-        fallbackError: `${current.buildingName} ${fieldLabel(field)} could not be saved.`,
+        fallbackError: `${current.buildingName} ${fieldLabel(field)} couldn't be saved.`,
       });
 
       if (outcome.error) {
@@ -462,7 +563,7 @@
       }
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Network error";
-      fieldError = `${current.buildingName} ${fieldLabel(field)} failed to save: ${reason}`;
+      fieldError = `${current.buildingName} ${fieldLabel(field)} failed to save (${reason}).`;
     } finally {
       savingField = null;
     }
@@ -495,7 +596,7 @@
           syncBuildingFromServer(result.latest as BuildingData);
         fieldError =
           result.error ??
-          `${current.buildingName} could not be merged into ${mergePrompt.candidate.buildingName}.`;
+          `${current.buildingName} couldn't be merged into ${mergePrompt.candidate.buildingName}.`;
         return;
       }
 
@@ -510,7 +611,7 @@
       editing = false;
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Network error";
-      fieldError = `${current.buildingName} merge failed: ${reason}`;
+      fieldError = `${current.buildingName} merge failed (${reason}).`;
     } finally {
       mergingEntity = false;
     }
@@ -550,7 +651,7 @@
     if (nameDraft.trim() !== current.buildingName) {
       const trimmedName = nameDraft.trim();
       if (trimmedName.length === 0) {
-        fieldError = `${current.buildingName} name cannot be empty.`;
+        fieldError = `${current.buildingName} name can't be empty.`;
         return;
       }
       patch.buildingName = trimmedName;
@@ -586,7 +687,7 @@
 
       const outcome = handlePersistEntityResult<BuildingData>(result, {
         syncFromServer: syncBuildingFromServer,
-        fallbackError: `${current.buildingName} could not be saved.`,
+        fallbackError: `${current.buildingName} couldn't be saved.`,
       });
 
       if (outcome.error) {
@@ -614,7 +715,7 @@
       }
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Network error";
-      fieldError = `${current.buildingName} failed to save: ${reason}`;
+      fieldError = `${current.buildingName} failed to save (${reason}).`;
     } finally {
       savingField = null;
     }
@@ -623,14 +724,36 @@
 
 <div class="entity-detail building-query-wrapper">
   {#if building}
-    <header class="entity-header">
-      <EntityBackToList tab="buildings" label="Back to buildings" />
-      <div class="entity-header__title-row">
-        <h2 class="entity-header__title">{building.buildingName}</h2>
-        <span class="entity-header__badge">{buildingTypeLabel}</span>
-      </div>
-
-      <div class="entity-actions">
+    <EntityBackToList tab="buildings" label="Back to buildings" />
+    <PlaceSheetHeader
+      title={building.buildingName}
+      label={buildingTypeLabel}
+      facts={buildingFacts}
+      closeLabel="Close building details"
+    >
+      {#if hasMapPin}
+        <EntityDirectionsChip
+          primary
+          lat={building.lat ?? 0}
+          lon={building.lon ?? 0}
+          destinationLabel={building.buildingName}
+        />
+      {/if}
+      <EntityActionScroll>
+        <EntitySaveButton
+          place={{
+            category: "building",
+            value: building.buildingName,
+            label: building.buildingName,
+            subtitle: buildingTypeLabel,
+            lat: building.lat,
+            lon: building.lon,
+          }}
+        />
+        <EntityShareButton
+          url={buildingShareUrl}
+          entityLabel={building.buildingName}
+        />
         {#if hasMapPin}
           <MapChromeActionChip
             toolbar
@@ -640,11 +763,6 @@
             <Box size={14} aria-hidden="true" />
             3D view
           </MapChromeActionChip>
-          <EntityDirectionsChip
-            lat={building.lat ?? 0}
-            lon={building.lon ?? 0}
-            destinationLabel={building.buildingName}
-          />
           <EntityGoogleMapsLink
             lat={building.lat ?? 0}
             lon={building.lon ?? 0}
@@ -652,10 +770,6 @@
             ariaLabel={`Open ${building.buildingName} in Google Maps`}
           />
         {/if}
-        <EntityShareCopyLink
-          url={buildingShareUrl}
-          entityLabel={building.buildingName}
-        />
         <EntityEditorToggle
           expanded={editing}
           {canPublish}
@@ -663,8 +777,18 @@
           variant="toolbar"
           onclick={() => (editing = !editing)}
         />
+      </EntityActionScroll>
+    </PlaceSheetHeader>
+
+    {#if !editing}
+      <div class="building-tabs" bind:this={tabsEl}>
+        <PlaceSheetTabs
+          tabs={PLACE_TABS}
+          active={activeTab}
+          onselect={selectTab}
+        />
       </div>
-    </header>
+    {/if}
 
     {#if editing}
       <section
@@ -726,7 +850,7 @@
               entityKind="building"
               sourceLabel={building.buildingName}
               candidateLabel={mergePrompt.candidate.buildingName}
-              detail="Merge rooms and map pins into the kept building;"
+              detail="Rooms and map pins move to the kept building. Merge"
               merging={mergingEntity}
               disabled={savingField !== null}
               onconfirm={confirmBuildingMerge}
@@ -738,7 +862,7 @@
             {#if canPublish}
               <EntityEditorPinRow
                 label={mapEditStore.enabled
-                  ? "Map pin: drag marker on map"
+                  ? "Map pin (drag marker on map)"
                   : "Map pin"}
                 pickLabel={mapEditStore.enabled ? "Active" : "Enable map edit"}
                 disabled={mapEditStore.enabled || savingField !== null}
@@ -747,7 +871,7 @@
             {:else}
               <EntityEditorPinRow
                 label={pinProposalActive
-                  ? "Pin move: drag marker on map"
+                  ? "Pin move (drag marker on map)"
                   : "Map pin"}
                 pickLabel={pinProposalActive ? "Active" : "Suggest move"}
                 disabled={pinProposalActive || savingField !== null}
@@ -841,6 +965,7 @@
                     prefix="buildings"
                     bind:value={imageDraft}
                     disabled={savingField !== null}
+                    proposalId={activeProposalId}
                   />
                   <button
                     type="button"
@@ -861,46 +986,21 @@
         </EntityEditorPanel>
       </section>
     {:else}
-      <BuildingPhoto
-        imageUrl={building.imageUrl}
-        name={building.buildingName}
-        lat={building.lat}
-        lon={building.lon}
-        panoId={building.streetViewPanoId}
-        captured={building.streetViewCaptured}
-      />
-      <section class="entity-directions" aria-label="Directions">
-        <div class="entity-directions__segment">
-          {#if hasMapPin}
-            <EntityStreetAddress
-              lat={building.lat ?? 0}
-              lon={building.lon ?? 0}
-            />
-          {/if}
-          {#if building.directions}
-            <p class="entity-directions__label">Directions</p>
-            <p class="entity-directions__text">{building.directions}</p>
-          {:else}
-            <p class="entity-directions__empty">No directions listed.</p>
-          {/if}
-        </div>
-        <EntityLastUpdated
-          updatedAt={building.updatedAt}
-          entityType="building"
-          entityId={building.id}
+      <div class="building-photo-anchor" bind:this={photoEl}>
+        <BuildingPhoto
+          imageUrl={building.imageUrl}
+          name={building.buildingName}
+          lat={building.lat}
+          lon={building.lon}
+          panoId={building.streetViewPanoId}
+          captured={building.streetViewCaptured}
         />
-      </section>
-      {#if sanitizeCrFacilities(building.crFacilities).length > 0}
-        <section class="building-cr" aria-label="CR facilities">
-          <h3 class="entity-section-heading">CR facilities</h3>
-          <div class="entity-tag-list">
-            {#each sanitizeCrFacilities(building.crFacilities) as slug (slug)}
-              <span class="entity-tag-chip building-cr__chip"
-                >{crFacilityLabel(slug)}</span
-              >
-            {/each}
-          </div>
-        </section>
+      </div>
+      {#if hasMapPin}
+        <EntityStreetAddress
+          lat={building.lat ?? 0}
+          lon={building.lon ?? 0}
+        />
       {/if}
       <details class="entity-details-collapse building-facilities">
         <summary>
@@ -982,6 +1082,53 @@
     <EntitySkeleton variant="detail" label="Loading building…" />
   {/if}
 
+  <!-- A class building is about its rooms and what is on now, so they come
+       before the long prose (GMaps: the sections people came for first). -->
+  <div class="building-rooms-anchor" bind:this={roomsEl}>
+    {#if buildingRooms}
+      <ResultDisplay filteredRooms={buildingRooms} {classCounts} />
+    {:else if building}
+      <EntitySkeleton
+        variant="rooms"
+        heading="Rooms in the building"
+        label="Loading rooms for {building.buildingName}…"
+      />
+    {/if}
+  </div>
+
+  {#if building && !editing}
+    <section class="entity-directions" aria-labelledby="building-how-to-find">
+      <h3 id="building-how-to-find" class="entity-section-heading">
+        How to find it
+      </h3>
+      {#if building.directions}
+        <p class="entity-directions__text">
+          {expandCampusAbbreviations(building.directions)}
+        </p>
+      {:else}
+        <p class="entity-directions__empty">No directions listed.</p>
+      {/if}
+      <EntityLastUpdated
+        updatedAt={building.updatedAt}
+        entityType="building"
+        entityId={building.id}
+        entityName={building.buildingName}
+      />
+    </section>
+    {#if sanitizeCrFacilities(building.crFacilities).length > 0}
+      <section class="building-cr" aria-label="CR facilities">
+        <h3 class="entity-section-heading">CR facilities</h3>
+        <div class="entity-tag-list">
+          {#each sanitizeCrFacilities(building.crFacilities) as slug (slug)}
+            <span class="entity-tag-chip building-cr__chip"
+              >{crFacilityLabel(slug)}</span
+            >
+          {/each}
+        </div>
+      </section>
+    {/if}
+  {/if}
+
   {#if buildingOrgs.length > 0}
     <section class="building-orgs" aria-label="Organizations and offices here">
       <h3 class="entity-section-heading">Orgs &amp; offices here</h3>
@@ -998,14 +1145,16 @@
       </div>
     </section>
   {/if}
-  {#if buildingRooms}
-    <ResultDisplay filteredRooms={buildingRooms} {classCounts} />
-  {:else if building}
-    <EntitySkeleton
-      variant="rooms"
-      heading="Rooms in the building"
-      label="Loading rooms for {building.buildingName}…"
-    />
+
+  {#if building && hasMapPin && !editing}
+    <div class="entity-footer">
+      <EntityPrintableMapLink
+        lat={building.lat ?? 0}
+        lon={building.lon ?? 0}
+        name={building.buildingName}
+        inline
+      />
+    </div>
   {/if}
 </div>
 
@@ -1013,6 +1162,34 @@
   @import "./entity-detail.css";
   @import "../editor/entity-editor.css";
   @import "../map-chrome/map-chrome.css";
+
+  /* Leave room for the sticky header and tab strip when a tab scrolls here. */
+  .building-photo-anchor,
+  .building-rooms-anchor {
+    scroll-margin-top: var(--place-sticky-h, 10.5rem);
+  }
+
+  .building-tabs {
+    position: sticky;
+    top: var(--place-header-h, 6.5rem);
+    z-index: 3;
+    background: var(--entity-sheet-bg, var(--theme-surface, #fff));
+  }
+
+  :global(.bottom-sheet-root--preview) .building-tabs {
+    display: none;
+  }
+
+  /* Landscape phones leave too little height to pin the strip. */
+  @media (max-height: 480px) {
+    .building-tabs {
+      position: static;
+    }
+    .building-photo-anchor,
+    .building-rooms-anchor {
+      scroll-margin-top: 7.5rem;
+    }
+  }
 
   .building-orgs {
     padding: 0.5rem 0.25rem 0;
@@ -1123,8 +1300,8 @@
   .building-orgs__chip {
     border: none;
     cursor: pointer;
-    background-color: hsl(265, 45%, 92%);
-    color: hsl(265, 45%, 34%);
+    background-color: var(--theme-purple-soft, hsl(265, 45%, 92%));
+    color: var(--theme-purple-text, hsl(265, 45%, 34%));
   }
 
   .building-query-wrapper {
@@ -1132,9 +1309,9 @@
   }
 
   .editor-advanced {
-    border: 1px solid hsl(5, 53%, 90%);
+    border: 1px solid var(--theme-accent-border, hsl(5, 53%, 90%));
     border-radius: 0.5rem;
-    background: white;
+    background: var(--theme-surface, white);
   }
 
   .editor-advanced summary {
@@ -1143,7 +1320,7 @@
     font-size: 0.8125rem;
     font-weight: 700;
     line-height: 1.3;
-    color: hsl(5, 53%, 32%);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
     list-style: none;
   }
 
@@ -1154,7 +1331,7 @@
   .editor-advanced summary::after {
     content: "▾";
     float: right;
-    color: hsl(5, 53%, 45%);
+    color: var(--theme-accent-text, hsl(5, 53%, 45%));
     transition: transform 0.15s ease;
   }
 
@@ -1167,7 +1344,7 @@
     flex-direction: column;
     gap: 0.5rem;
     padding: 0 0.55rem 0.55rem;
-    border-top: 1px solid hsl(5, 53%, 92%);
+    border-top: 1px solid var(--theme-accent-border, hsl(5, 53%, 92%));
   }
 
   @media (prefers-reduced-motion: reduce) {

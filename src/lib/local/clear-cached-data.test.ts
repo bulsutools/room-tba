@@ -103,7 +103,7 @@ describe("clearCachedData", () => {
     store.set("sync-key", SYNC_KEYS);
     store.set(PLANNER_LS_KEY, PLANNER_STATE);
     store.set("hideLandingModal", "true");
-    store.set("recent-search", '["PSLH 1"]');
+    store.set("recent-search", '["LH 1"]');
     store.set("sidebar-expanded", "false");
     store.set(FOLLOW_PROMPT_KEY, "dismissed");
   });
@@ -124,7 +124,7 @@ describe("clearCachedData", () => {
   it("keeps the preference keys", async () => {
     await clearCachedData();
     expect(store.get("hideLandingModal")).toBe("true");
-    expect(store.get("recent-search")).toBe('["PSLH 1"]');
+    expect(store.get("recent-search")).toBe('["LH 1"]');
     expect(store.get("sidebar-expanded")).toBe("false");
     // Re-asking someone who already said no is the dark pattern this avoids.
     expect(store.get(FOLLOW_PROMPT_KEY)).toBe("dismissed");

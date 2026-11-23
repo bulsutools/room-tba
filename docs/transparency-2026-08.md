@@ -30,7 +30,7 @@ Policy: donations are anonymous by default; we publish this ledger instead of ra
 
 | Date | Amount | Donor |
 |---------|---------|-------|
-| 2026-08 | ₱500.00 | UPLB Student Help Desk (named with consent) |
+| 2026-08 | ₱500.00 | BulSU Student Help Desk (named with consent) |
 
 **Total received (net of fees): ₱1,790.35**
 
@@ -40,7 +40,7 @@ All paid from a maintainer's personal card, reimbursed retroactively from donati
 
 | Date | Item | Amount |
 |---------------------|-----------------------------------------------------------|--------|
-| 2026-07-13 | uplb.tools domain registration, 1 yr (Porkbun) | $9.78 (≈₱620) |
+| 2026-07-13 | bulsu.tools domain registration, 1 yr (Porkbun) | $9.78 (≈₱620) |
 | 2026-08-01 | Vercel Pro hosting, Jul 21–Aug 20 (monthly, recurring) | $20.00 (≈₱1,265) |
 | 2026-08-03 to 08-17 | Meta Ads (Facebook/Instagram promotion), 5 payments, VAT included | ₱821.06 |
 | 2026-08-10 | OpenCode Go dev tooling, Aug 10–Sep 10 (monthly, recurring; first month 50% off) | $5.00 (₱316.03) |
