@@ -261,7 +261,7 @@
       return filteredDorms.map((row) => ({
         id: row.id,
         label: row.dormName,
-        meta: row.isUpManaged ? "UP-managed dorm" : "Private dorm",
+        meta: row.isUpManaged ? "Campus-managed dorm" : "Private dorm",
         open: () => openDorm(row.dormName),
       }));
     }

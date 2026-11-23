@@ -2,6 +2,7 @@
   import Printer from "@lucide/svelte/icons/printer";
   import MapChromeActionLink from "@ui/map-chrome/MapChromeActionLink.svelte";
   import { getTransitMapPath } from "@lib/route-links";
+  import { campusTransit } from "../../../campus.config";
 
   type Props = {
     lat: number;
@@ -27,16 +28,18 @@
   const href = $derived(getTransitMapPath({ lat, lon, name }));
 </script>
 
-{#if inline}
-  <a class="entity-printable-link" {href} aria-label={ariaLabel}>
-    <Printer size={16} aria-hidden="true" />
-    Print transit map
-  </a>
-{:else}
-  <MapChromeActionLink {href} {ariaLabel} toolbar>
-    <Printer size={14} aria-hidden="true" />
-    Print jeepney map
-  </MapChromeActionLink>
+{#if campusTransit.enabled}
+  {#if inline}
+    <a class="entity-printable-link" {href} aria-label={ariaLabel}>
+      <Printer size={16} aria-hidden="true" />
+      Print transit map
+    </a>
+  {:else}
+    <MapChromeActionLink {href} {ariaLabel} toolbar>
+      <Printer size={14} aria-hidden="true" />
+      Print jeepney map
+    </MapChromeActionLink>
+  {/if}
 {/if}
 
 <style>

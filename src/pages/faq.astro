@@ -5,7 +5,7 @@ import SiteFooter from "../components/SiteFooter.astro";
 import FollowUpdates from "@ui/community/FollowUpdates.svelte";
 import {
   ORG_LABEL,
-  UPLB_TOOLS_URL,
+  ORG_URL,
   GITHUB_ROOM_TBA_URL,
   DISCORD_URL,
 } from "@constants/community-links";
@@ -37,7 +37,7 @@ const reportIssueUrl = `${GITHUB_ROOM_TBA_URL}/issues/new/choose`;
       <h1>Student FAQ</h1>
       <p class="lede">
         Short answers for {PLACE_LABEL}. Room TBA is a
-        <a href={UPLB_TOOLS_URL} target="_blank" rel="noopener noreferrer"
+        <a href={ORG_URL} target="_blank" rel="noopener noreferrer"
           >{ORG_LABEL}</a
         > volunteer project (fork of the upstream Room TBA map app).
       </p>
@@ -107,8 +107,8 @@ const reportIssueUrl = `${GITHUB_ROOM_TBA_URL}/issues/new/choose`;
             This BulSU fork does not import registrar class schedules yet. The
             seed file lists colleges; building and place pins are added in the
             map editor. Class search and room timetables stay empty until a
-            BulSU schedule importer exists. Upstream Room TBA uses UPLB AMIS/CRS;
-            those scripts do not apply here.
+            BulSU schedule importer exists. The upstream project ships its own
+            registrar importers; those do not apply here.
           </p>
         </div>
       </details>
@@ -193,7 +193,7 @@ const reportIssueUrl = `${GITHUB_ROOM_TBA_URL}/issues/new/choose`;
               >; keep OSM attribution.
             </li>
             <li>
-              <strong>AMIS/CRS class schedules</strong> and similar university
+              <strong>Class schedules</strong> and similar university
               imports are not offered for bulk redistribution under an open
               license. Use the app; do not scrape and republish the registrar
               feed.

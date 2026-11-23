@@ -9,6 +9,7 @@ import {
   CROWDING_ESTIMATE_NOTE,
   CROWDING_REPORTS_NOTE,
 } from "@lib/transit-crowding";
+import { campusTransit } from "../../../campus.config";
 import {
   expectNoHorizontalOverflow,
   mountAtWidth,
@@ -75,7 +76,7 @@ afterEach(() => {
   jeepneyStore.clearRoute();
 });
 
-describe("JeepneyStopPanel", () => {
+describe.skipIf(!campusTransit.enabled)("JeepneyStopPanel", () => {
   test("lists every route serving the stop, with its direction", () => {
     jeepneyStore.openRouteOnMap("kaliwa-kanan");
     jeepneyStore.openStop(libraryIndex);
@@ -115,9 +116,9 @@ describe("JeepneyStopPanel", () => {
   });
 });
 
-describe("JeepneyStopPanel jeep reports", () => {
+describe.skipIf(!campusTransit.enabled)("JeepneyStopPanel jeep reports", () => {
   const MIN = 60_000;
-  // Thursday 8 October 2026, 10:03 AM in Los Baños (UTC+8).
+  // Thursday 8 October 2026, 10:03 AM in Malolos (UTC+8).
   const NOW = Date.UTC(2026, 9, 8, 2, 3);
   const library = kaliwaKanan.stops[libraryIndex]!;
   const libraryKey = transitStopKey(library);

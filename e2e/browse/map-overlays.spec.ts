@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { campusTransit } from "../../src/campus.config";
 import { suppressLandingModal, waitForAppBoot } from "../helpers/app";
 
 /**
@@ -10,6 +11,7 @@ test.describe("map overlays", () => {
   test("a jeepney route clears (or offers an X) when another list opens", async ({
     page,
   }) => {
+    test.skip(!campusTransit.enabled, "campus transit is disabled");
     await suppressLandingModal(page);
     await page.goto("/transit/e2e-route");
     await waitForAppBoot(page);

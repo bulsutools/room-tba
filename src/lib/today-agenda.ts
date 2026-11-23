@@ -22,7 +22,7 @@ export type AgendaEntry = {
 export type AgendaDay = {
   /** YYYY-MM-DD, Asia/Manila. */
   dateKey: string;
-  /** 0-5 = Mon-Sat (matches parseDays); null on Sunday, which AMIS never schedules. */
+  /** 0-5 = Mon-Sat (matches parseDays); null on Sunday, which imports never schedule. */
   dayIndex: number | null;
   /** "Today" | "Tomorrow" | "Wednesday" */
   title: string;

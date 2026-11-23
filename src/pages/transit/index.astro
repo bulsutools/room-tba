@@ -3,10 +3,15 @@ import AppRoot from "@ui/AppRoot.svelte";
 import Layout from "@layouts/Layout.astro";
 import { JEEPNEY_ROUTES } from "@constants/jeepney-routes";
 import { breadcrumbSchema, jsonLd, ogCardPath, webpageSchema } from "@lib/site";
+import { campusTransit } from "../../campus.config";
+
+if (!campusTransit.enabled) {
+  return new Response(null, { status: 404 });
+}
 
 const title = "BulSU Jeepney and Bus Routes | Room TBA";
 const description =
-  "Browse BulSU campus jeepneys, town jeepneys to Calamba, Sta. Cruz and San Pablo, and buses to UP Diliman and Buendia, with stops, fares and map paths.";
+  "Browse BulSU-area jeepney and bus routes with stops, fares and map paths.";
 const structuredData = jsonLd(
   webpageSchema({ title, description, path: "/transit/" }),
   breadcrumbSchema([

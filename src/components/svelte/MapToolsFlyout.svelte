@@ -35,14 +35,13 @@
   import MapLegend from "@ui/MapLegend.svelte";
   import TerrainControl from "@ui/TerrainControl.svelte";
   import { TERRAIN_ENABLED } from "@constants/map-terrain";
-  import TrailControl from "@ui/TrailControl.svelte";
   import MapChromeFabTrigger from "@ui/map-chrome/MapChromeFabTrigger.svelte";
   import MapTypePicker from "@ui/map-chrome/MapTypePicker.svelte";
   import Dialog from "@ui/modal/Dialog.svelte";
   import SegmentedControl from "@ui/modal/SegmentedControl.svelte";
   import SettingsRow from "@ui/modal/SettingsRow.svelte";
   import { portal } from "@lib/portal";
-  import { campusFeatures, campusTransit } from "../../campus.config";
+  import { campusTransit } from "../../campus.config";
   import "./map-chrome/map-chrome.css";
 
   let scrolled = $state(false);
@@ -230,9 +229,6 @@
             />
             {#if TERRAIN_ENABLED}
               <TerrainControl variant="row" />
-            {/if}
-            {#if campusFeatures.trail}
-              <TrailControl />
             {/if}
             <SettingsRow
               label="Orgs, units and offices"

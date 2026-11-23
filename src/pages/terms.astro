@@ -4,7 +4,7 @@ import Layout from "@layouts/Layout.astro";
 import "../styles/static-page-dark.css";
 import SiteFooter from "../components/SiteFooter.astro";
 import {
-  UPLB_TOOLS_URL,
+  ORG_URL,
   DISCORD_URL,
   MESSENGER_CONTRIBUTE_TARGET,
 } from "@constants/community-links";
@@ -35,7 +35,7 @@ import {
       <p class="lede">
         This page was last updated on July 28, 2026. By using Room TBA you agree to these terms.
         The service is provided by <a
-          href={UPLB_TOOLS_URL}
+          href={ORG_URL}
           target="_blank"
           rel="noopener noreferrer">BulSU Tools</a
         > volunteers.
@@ -66,7 +66,7 @@ import {
         <h2>Data accuracy</h2>
         <p>
           Schedules and locations are crowd-maintained and imported from sources
-          such as AMIS exports. They can be wrong, stale, or missing, especially
+          such as registrar exports. They can be wrong, stale, or missing, especially
           during change of enrollment. Always verify critical information
           with your instructor, department, or official university channels.
         </p>
@@ -135,8 +135,8 @@ import {
           </li>
           <li>
             <strong>University system imports.</strong> Class schedules and
-            related rows imported from AMIS/CRS, OUR finals, OSA directories, and
-            similar sources are shown as-is for students. They are
+            related rows imported from registrar systems, exam schedules, and
+            student-organization directories are shown as-is for students. They are
             <strong>not</strong> offered under an open bulk-redistribution
             license.
           </li>

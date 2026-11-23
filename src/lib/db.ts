@@ -113,12 +113,14 @@ function withRetry<T>(make: () => PromiseLike<T>): Promise<T> {
 /** Thenable stand-in for a postgres.js Query that retries once on stale sockets. */
 function retryingQuery(makeQuery: () => UnsafeQuery): UnsafeQuery {
   const wrap = <T>(make: () => PromiseLike<T>) => ({
+    // biome-ignore lint/suspicious/noThenProperty: intentional thenable query wrapper
     then: (onFulfilled?: any, onRejected?: any) =>
       withRetry(make).then(onFulfilled, onRejected),
     catch: (onRejected?: any) => withRetry(make).catch(onRejected),
     finally: (onFinally?: any) => withRetry(make).finally(onFinally),
   });
   const query = {
+    // biome-ignore lint/suspicious/noThenProperty: intentional thenable query wrapper
     then: (onFulfilled?: any, onRejected?: any) =>
       wrap(() => makeQuery()).then(onFulfilled, onRejected),
     catch: (onRejected?: any) => wrap(() => makeQuery()).catch(onRejected),

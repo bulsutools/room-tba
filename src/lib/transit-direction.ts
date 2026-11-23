@@ -2,7 +2,7 @@ import type { LineString } from "geojson";
 import {
   type JeepneyRoute,
   type JeepneyStop,
-  ROUTE_DIRECTIONS,
+  routeDirectionEntry,
   type RouteDirection,
 } from "@constants/jeepney-routes";
 import { distanceMeters } from "./campus-route";
@@ -10,7 +10,7 @@ import { isLoopRoute } from "./transit-route-kind";
 
 /** The two ways a route runs, or null for a one-way route. */
 export function routeDirections(routeId: string) {
-  return ROUTE_DIRECTIONS[routeId] ?? null;
+  return routeDirectionEntry(routeId) ?? null;
 }
 
 /** The direction being shown, or null for a one-way route. */
@@ -64,8 +64,8 @@ function directionAt(route: JeepneyRoute, stopIndex: number): string {
 
 /**
  * Every route that stops at (or within a few metres of) `stop`, nearest stop
- * per route. Matching by position, not name: the e-jeep calls the Kaliwa
- * "Main Library" stop "UPLB Main Library".
+ * per route. Matching by position, not name: two routes often spell the
+ * same kerb differently ("Main Library" vs "Library").
  */
 export function routesAtStop(
   routes: JeepneyRoute[],

@@ -19,7 +19,7 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import pg from "pg";
-import { squashFacilityKey } from "../src/lib/amis/import-classes";
+import { squashFacilityKey } from "../src/lib/class-import/import-classes";
 import { recordBulkHistory } from "../src/lib/services/bulk-history";
 
 config({ path: ".env" });

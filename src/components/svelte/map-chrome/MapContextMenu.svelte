@@ -20,6 +20,7 @@
   } from "@lib/store.svelte";
   import { droppedPinStore } from "@lib/dropped-pin.svelte";
   import { getTransitMapPath } from "@lib/route-links";
+  import { campusTransit } from "../../../campus.config";
   import DroppedPinPanel from "@ui/controls/DroppedPinPanel.svelte";
   import "./map-chrome.css";
 
@@ -238,16 +239,18 @@
       <CornerRightUp size={15} aria-hidden="true" />
       Directions to here
     </button>
-    <a
-      class="map-context-menu__item"
-      href={getTransitMapPath({ lat: menu.lat, lon: menu.lng })}
-      target="_blank"
-      rel="noreferrer"
-      onclick={close}
-    >
-      <Printer size={15} aria-hidden="true" />
-      Printable jeep map from here
-    </a>
+    {#if campusTransit.enabled}
+      <a
+        class="map-context-menu__item"
+        href={getTransitMapPath({ lat: menu.lat, lon: menu.lng })}
+        target="_blank"
+        rel="noreferrer"
+        onclick={close}
+      >
+        <Printer size={15} aria-hidden="true" />
+        Printable jeep map from here
+      </a>
+    {/if}
     <label class="map-context-menu__toggle">
       <input
         type="checkbox"

@@ -1,5 +1,5 @@
 /**
- * Parse the OUR "Academic Calendar" PDF (as `pdftotext -layout` text) into the
+ * Parse the registrar "Academic Calendar" PDF (as `pdftotext -layout` text) into the
  * term windows, milestone rows and official holidays that
  * data/academic-calendar-{AY}.json stores.
  *
@@ -291,7 +291,7 @@ function kindOf(label: string, window: { startsOn: string; endsOn: string }) {
     : ("period" as const);
 }
 
-/** CRS ids are 12<AY start year - 2020><1|2|3>; 1261/1262/1263 for 2026-2027. */
+/** Term ids follow the registrar convention; see the importer docs for yours. */
 export function termIdFor(ayStartYear: number, column: number) {
   // ponytail: breaks in 2030, same as the id scheme itself; revisit with the
   // registrar then.
@@ -335,8 +335,7 @@ export function parseHolidays(text: string): Holiday[] {
     )) {
       const day = match[2]?.padStart(2, "0");
       const month = MONTHS[(match[3] ?? "").slice(0, 3).toLowerCase()];
-      // pdftotext drops the tilde ("Los Banos Day"); restore the place name.
-      const label = match[4]?.trim().replace(/\bLos Banos\b/g, "Los Baños");
+      const label = match[4]?.trim();
       if (!day || !month || !label) continue;
       holidays.push({ label, startsOn: `${day}-${month}` });
     }
@@ -382,7 +381,10 @@ export function parseAcademicCalendar(text: string): AcademicCalendar {
 
   const startOfClasses = findRow(rows, /^START OF CLASSES/i);
   const finals = findRow(rows, /^FINAL EXAMINATIONS/i);
-  const changeOfMatric = findRow(rows, /^Change of (?:Matriculation|Enrollment)/i);
+  const changeOfMatric = findRow(
+    rows,
+    /^Change of (?:Matriculation|Enrollment)/i,
+  );
   if (!startOfClasses || !finals || !changeOfMatric) {
     throw new Error(
       "Missing a required row (START OF CLASSES / FINAL EXAMINATIONS / Change of Matriculation or Enrollment)",

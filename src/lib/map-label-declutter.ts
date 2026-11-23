@@ -26,7 +26,7 @@ export type LabelCandidate = {
 
 /**
  * Clearance two labels need between them. Negative: "Institute of Computer
- * Science (ICS)" sat flush on "UPLB Oblation (Oblation Park)" with the old
+ * Science (ICS)" sat flush on "Clock Tower (Clock Tower Park)" with the old
  * 2px of slack, and flush text reads as one overlapping blob.
  */
 const GAP_PX = -3;

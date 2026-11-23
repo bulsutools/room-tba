@@ -42,23 +42,23 @@ describe("SavedPlacesModal", () => {
   test("remove and clear update the lists", async () => {
     savedPlaces.save({
       category: "place",
-      value: "Oblation",
-      label: "Oblation",
+      value: "Rizal Monument",
+      label: "Rizal Monument",
     });
     recentPlaces.record({
       category: "place",
-      value: "Oblation",
-      label: "Oblation",
+      value: "Rizal Monument",
+      label: "Rizal Monument",
     });
     render(SavedPlacesModal);
 
     await fireEvent.click(
-      screen.getByRole("button", { name: "Remove Oblation from Saved" }),
+      screen.getByRole("button", { name: "Remove Rizal Monument from Saved" }),
     );
     expect(savedPlaces.items).toEqual([]);
 
     await fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(recentPlaces.items).toEqual([]);
-    expect(screen.queryByRole("button", { name: /Oblation/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Rizal Monument/ })).toBeNull();
   });
 });

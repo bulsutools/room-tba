@@ -1,6 +1,6 @@
 /** GradeSim's checklist courses per program, keyed by GradeSim's program code. */
 export const PROGRAM_COURSES_URL =
-  "https://gradesim.uplb.tools/program-courses.json";
+  "https://gradesim.bulsu.tools/program-courses.json";
 export const PLANNER_PROGRAM_KEY = "rtba-planner-program";
 
 export type Program = { code: string; name: string; courses: string[] };

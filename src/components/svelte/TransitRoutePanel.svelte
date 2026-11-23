@@ -48,6 +48,11 @@
       </button>
     </div>
   {/each}
+  {#if transitStore.routes.length === 0}
+    <p class="transit-route-panel__empty">
+      No {campusTransit.label.toLowerCase()} published yet.
+    </p>
+  {/if}
   {#if jeepneyStore.selectedRouteId !== null}
     <button
       type="button"
@@ -67,6 +72,13 @@
     min-width: 0;
     width: 100%;
     box-sizing: border-box;
+  }
+
+  .transit-route-panel__empty {
+    margin: 0;
+    padding: 0.5rem 0.25rem;
+    font-size: 0.8125rem;
+    color: hsl(0, 0%, 40%);
   }
 
   .transit-route-panel--compact {

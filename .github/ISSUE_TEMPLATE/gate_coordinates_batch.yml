@@ -24,7 +24,7 @@ body:
       description: List gate names in this batch (one per line)
       placeholder: |
         Raymundo Gate
-        Main Gate (Oblation)
+        Main Gate
     validations:
       required: true
   - type: textarea

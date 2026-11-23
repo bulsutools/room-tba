@@ -2,7 +2,7 @@
   import {
     classTypeDisplayLabel,
     NO_ASSIGNED_ROOM_LABEL,
-  } from "@lib/amis/room-scheduled-types";
+  } from "@lib/class-import/room-scheduled-types";
   import {
     groupClassesByOffering,
     offeringGroupKey,

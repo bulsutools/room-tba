@@ -9,6 +9,7 @@ import {
   transitStore,
 } from "@lib/store.svelte";
 import type { JeepneyRoute } from "@constants/jeepney-routes";
+import { campusTransit } from "../../campus.config";
 
 // BulSU ships no bundled transit routes; tests that need one inject a fixture.
 const FIXTURE_ROUTE: JeepneyRoute = {
@@ -23,7 +24,7 @@ const FIXTURE_ROUTE: JeepneyRoute = {
   ],
 };
 
-describe("JeepneyStore", () => {
+describe.skipIf(!campusTransit.enabled)("JeepneyStore", () => {
   beforeEach(() => {
     jeepneyStore.disableLayer();
     mapToolsStore.close();

@@ -17,22 +17,22 @@ describe("formatNominatimAddress", () => {
     expect(
       formatNominatimAddress({
         display_name:
-          "Carabao Park, Los Baños, Laguna, Calabarzon, 4030, Philippines",
+          "Carabao Park, Malolos, Bulacan, Calabarzon, 3000, Philippines",
         address: {
           road: "D. L. Umali Street",
-          suburb: "UPLB",
-          city: "Los Baños",
-          state: "Laguna",
+          suburb: "BulSU",
+          city: "Malolos",
+          state: "Bulacan",
         },
       }),
-    ).toBe("D. L. Umali Street, UPLB, Los Baños, Laguna");
+    ).toBe("D. L. Umali Street, BulSU, Malolos, Bulacan");
   });
 
   test("falls back to display_name when structured parts are missing", () => {
     expect(
       formatNominatimAddress({
-        display_name: "Raymundo Gate, Los Baños, Laguna, Philippines",
+        display_name: "Main Gate, Malolos, Bulacan, Philippines",
       }),
-    ).toBe("Raymundo Gate, Los Baños, Laguna, Philippines");
+    ).toBe("Main Gate, Malolos, Bulacan, Philippines");
   });
 });

@@ -59,13 +59,14 @@ export const campusTerrain: {
   /** TileJSON for the elevation source; __MAPTILER_KEY__ is replaced with PUBLIC_MAPTILER_KEY at runtime. */
   demTilesUrl:
     "https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=__MAPTILER_KEY__",
-  /** [lng, lat] corners the terrain view may cover (Mount Makiling and surroundings). */
+  /** [lng, lat] corners the terrain view may cover (unused while disabled;
+   *  BulSU Malolos bounds kept here for when terrain is enabled). */
   maxBounds: [
-    [121.168, 14.095],
-    [121.34, 14.22],
+    [120.8, 14.845],
+    [120.832, 14.872],
   ],
   /** Camera the map flies to when terrain mode turns on. */
-  camera: { center: [121.218, 14.142], zoom: 13.25, pitch: 68, bearing: 190 },
+  camera: { center: [120.816, 14.858], zoom: 15.5, pitch: 60, bearing: 0 },
 };
 
 export const campusTransit: {
@@ -74,7 +75,7 @@ export const campusTransit: {
   routeDataModule: string;
 } = {
   /** Campus transit overlay: map layer, sidebar browse tab, /transit/ links, sitemap entries. */
-  enabled: true,
+  enabled: false,
   /** Menu / browse-tab label; title case and singular copy are derived from it. */
   label: "Jeep & bus routes",
   /** Bundled route/stop data a fork replaces (runtime rows come from the transit tables). */
@@ -83,15 +84,15 @@ export const campusTransit: {
 
 /** Reference points inside campus bounds for the E2E suite (seeded by scripts/e2e-reset-db.ts). */
 export const campusTestFixtures = {
-  buildingLat: 14.1655,
-  buildingLon: 121.2412,
-  dormLat: 14.166,
-  dormLon: 121.242,
+  buildingLat: 14.8578,
+  buildingLon: 120.8141,
+  dormLat: 14.8585,
+  dormLon: 120.8152,
 } as const;
 
 export const campusCommunity = {
   orgLabel: "bulsutools",
-  orgUrl: "https://github.com/bulsutools",
+  orgUrl: "https://bulsu.tools",
   /** owner/repo for GitHub API (contributors, stars). */
   githubRepo: "bulsutools/room-tba",
   githubUrl: "https://github.com/bulsutools/room-tba",
@@ -108,11 +109,10 @@ export const campusCommunity = {
   messengerShortMaintainUrl: "",
 } as const;
 
-/** Feature flags for this fork (Makiling terrain/trail off; jeepney UI kept empty). */
+/** Feature flags for this fork (terrain/transit off until BulSU data lands). */
 export const campusFeatures = {
   terrain: false,
-  trail: false,
-  jeepney: true,
+  jeepney: false,
 } as const;
 
 export const campusSplashMessages = [

@@ -106,7 +106,7 @@
 {#if variant === "row"}
   <SettingsRow
     label="Terrain"
-    supporting={statusText || "Mt. Makiling relief from online elevation tiles"}
+    supporting={statusText || "3D relief from online elevation tiles"}
     icon={Mountain}
     checked={terrainStore.enabled}
     onclick={handleToggle}
@@ -127,7 +127,7 @@
       type="button"
       class="map-chrome-action-chip terrain-row__reset"
       onclick={() => terrainStore.requestReset()}
-      title="Point the camera back at Mt. Makiling."
+      title="Point the camera back at the campus overview."
     >
       <RotateCcw size="14" aria-hidden="true" />
       Reset view
@@ -146,7 +146,7 @@
     <div class="terrain-panel" class:embedded>
       {#if !embedded}
         <div class="terrain-panel-header">
-          <span>Makiling Terrain</span>
+          <span>Terrain</span>
           <IconButton
             size="sm"
             shape="rounded"
@@ -160,7 +160,7 @@
 
       <div class="map-chrome-row">
         <span class="map-chrome-row__label" id="terrain-toggle-label">
-          Makiling terrain
+          Terrain
         </span>
         <button
           type="button"
@@ -169,7 +169,7 @@
           aria-checked={terrainStore.enabled}
           aria-labelledby="terrain-toggle-label"
           onclick={handleToggle}
-          title="Shows Mt. Makiling in 3D. It loads elevation tiles over the network."
+          title="Shows the campus in 3D. It loads elevation tiles over the network."
         ></button>
       </div>
 
@@ -208,7 +208,7 @@
             class="map-chrome-action-chip"
             disabled={!terrainStore.enabled}
             onclick={() => terrainStore.requestReset()}
-            title="Point the camera back at Mt. Makiling."
+            title="Point the camera back at the campus overview."
           >
             <RotateCcw size="14" aria-hidden="true" />
             Reset view
@@ -239,8 +239,8 @@
       class="terrain-btn"
       class:active={terrainStore.enabled}
       onclick={() => floatingControlPanelStore.toggle(panelId)}
-      title="Makiling Terrain"
-      aria-label="Makiling Terrain"
+      title="Terrain"
+      aria-label="Terrain"
       aria-expanded={menuOpen}
     >
       <Mountain />

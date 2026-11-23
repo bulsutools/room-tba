@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/svelte";
+import { campusTransit } from "../../../campus.config";
 import { tick } from "svelte";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import AppMenu from "./AppMenu.svelte";
@@ -127,13 +128,13 @@ describe("You help and feedback", () => {
     expect(modalStore.type).toBe("feedback");
   });
 
-  test("opens emergency hotlines", async () => {
+  test("opens announcements", async () => {
     render(AppMenu, { props: { onSignOut: () => {} } });
     await openYou();
     await fireEvent.click(
-      screen.getByRole("button", { name: /emergency hotlines/i }),
+      screen.getByRole("button", { name: /announcements/i }),
     );
-    expect(modalStore.type).toBe("hotlines");
+    expect(modalStore.type).toBe("announcements");
   });
 });
 
@@ -234,12 +235,17 @@ describe("You screens", () => {
     );
   });
 
-  test("links the printable transit map", async () => {
+  test("links the printable transit map only when transit is enabled", async () => {
     render(AppMenu, { props: { onSignOut: () => {} } });
     await openYou();
-    expect(
-      screen.getByRole("link", { name: /printable transit map/i }),
-    ).toHaveAttribute("href", "/api/transit-map");
+    const link = screen.queryByRole("link", {
+      name: /printable transit map/i,
+    });
+    if (campusTransit.enabled) {
+      expect(link).toHaveAttribute("href", "/api/transit-map");
+    } else {
+      expect(link).toBeNull();
+    }
   });
 });
 

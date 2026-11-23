@@ -24,7 +24,7 @@ import type {
   ImportedScheduleRow,
   ScheduleMatchResult,
 } from "../schedule-import/types.js";
-import { ROOM_SCHEDULE_SCOPE_NOTE } from "../amis/room-scheduled-types.js";
+import { ROOM_SCHEDULE_SCOPE_NOTE } from "../class-import/room-scheduled-types.js";
 import { dismissEphemeralOverlays } from "../overlay-stack.js";
 import {
   deactivateMapModesExcept,
@@ -173,7 +173,6 @@ import {
   MapViewStore,
   MapToolsStore,
   TerrainStore,
-  TrailStore,
   TravelTimeStore,
   MeasureRouteStore,
   Building3DStore,
@@ -197,6 +196,7 @@ import {
   PlannerBuildingsStore,
 } from "./data-stores.svelte";
 import { PlannerStore } from "./planner-store.svelte";
+import { RoomFinderStore } from "./room-finder-store.svelte";
 import { TransitStore } from "./transit-store.svelte";
 import { AnnouncementsStore } from "./announcements-store.svelte";
 import {
@@ -1306,6 +1306,7 @@ export const roomClassesStore = new RoomClassesStore();
 export const classVenuesStore = new ClassVenuesStore();
 export const plannerBuildingsStore = new PlannerBuildingsStore();
 export const plannerStore = new PlannerStore(() => termStore.activeTermId);
+export const roomFinderStore = new RoomFinderStore();
 export const scheduleRouteStore = new ScheduleRouteStore();
 export const offlineStore = new OfflineStore();
 export const modalStore = new ModalStore();
@@ -1321,7 +1322,6 @@ export const mapProposalStore = new MapProposalStore();
 export const additionProposalStore = new AdditionProposalStore();
 export const eventPlacementStore = new EventPlacementStore();
 export const terrainStore = new TerrainStore();
-export const trailStore = new TrailStore();
 export const travelTimeStore = new TravelTimeStore();
 export const measureRouteStore = new MeasureRouteStore();
 export const jeepneyStore = new JeepneyStore();
@@ -1341,7 +1341,7 @@ export const proposalsStore = new ProposalsStore();
 export const sidebarStore = new SidebarStore();
 export const sidePanelStore = new SidePanelStore();
 
-// Map modes (edit, jeepney routes, Makiling terrain) are mutually exclusive.
+// Map modes (edit, transit routes, terrain) are mutually exclusive.
 registerMapMode("edit", {
   disable: () => {
     mapEditStore.close();

@@ -451,9 +451,11 @@ ALTER TABLE "event_route_stops" ALTER COLUMN "resolved_label" DROP NOT NULL;
 CREATE TABLE IF NOT EXISTS "jeepney_routes" (
   "id" varchar(64) PRIMARY KEY,
   "name" varchar(120) NOT NULL,
+  "route_number" varchar(32),
   "description" text NOT NULL,
   "direction_note" text,
   "color" varchar(16) NOT NULL,
+  "operator" varchar(16) DEFAULT 'jeepney' NOT NULL,
   "fare_regular" double precision NOT NULL,
   "fare_discounted" double precision NOT NULL,
   "is_active" boolean DEFAULT true NOT NULL,
@@ -461,10 +463,13 @@ CREATE TABLE IF NOT EXISTS "jeepney_routes" (
   "updated_at" text DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 ALTER TABLE "jeepney_routes" ADD COLUMN IF NOT EXISTS "name" varchar(120);
+ALTER TABLE "jeepney_routes" ADD COLUMN IF NOT EXISTS "route_number" varchar(32);
+ALTER TABLE "jeepney_routes" ALTER COLUMN "route_number" DROP NOT NULL;
 ALTER TABLE "jeepney_routes" ADD COLUMN IF NOT EXISTS "description" text;
 ALTER TABLE "jeepney_routes" ADD COLUMN IF NOT EXISTS "direction_note" text;
 ALTER TABLE "jeepney_routes" ALTER COLUMN "direction_note" DROP NOT NULL;
 ALTER TABLE "jeepney_routes" ADD COLUMN IF NOT EXISTS "color" varchar(16);
+ALTER TABLE "jeepney_routes" ADD COLUMN IF NOT EXISTS "operator" varchar(16) DEFAULT 'jeepney' NOT NULL;
 ALTER TABLE "jeepney_routes" ADD COLUMN IF NOT EXISTS "fare_regular" double precision;
 ALTER TABLE "jeepney_routes" ADD COLUMN IF NOT EXISTS "fare_discounted" double precision;
 ALTER TABLE "jeepney_routes" ADD COLUMN IF NOT EXISTS "is_active" boolean DEFAULT true NOT NULL;
@@ -478,6 +483,8 @@ CREATE TABLE IF NOT EXISTS "jeepney_stops" (
   "lat" double precision NOT NULL,
   "lon" double precision NOT NULL,
   "sort_order" integer DEFAULT 0 NOT NULL,
+  "segment_fare_regular" double precision,
+  "segment_fare_discounted" double precision,
   "is_active" boolean DEFAULT true NOT NULL,
   "version" integer DEFAULT 1 NOT NULL,
   "updated_at" text DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -488,6 +495,10 @@ ALTER TABLE "jeepney_stops" ADD COLUMN IF NOT EXISTS "description" text;
 ALTER TABLE "jeepney_stops" ADD COLUMN IF NOT EXISTS "lat" double precision;
 ALTER TABLE "jeepney_stops" ADD COLUMN IF NOT EXISTS "lon" double precision;
 ALTER TABLE "jeepney_stops" ADD COLUMN IF NOT EXISTS "sort_order" integer DEFAULT 0 NOT NULL;
+ALTER TABLE "jeepney_stops" ADD COLUMN IF NOT EXISTS "segment_fare_regular" double precision;
+ALTER TABLE "jeepney_stops" ALTER COLUMN "segment_fare_regular" DROP NOT NULL;
+ALTER TABLE "jeepney_stops" ADD COLUMN IF NOT EXISTS "segment_fare_discounted" double precision;
+ALTER TABLE "jeepney_stops" ALTER COLUMN "segment_fare_discounted" DROP NOT NULL;
 ALTER TABLE "jeepney_stops" ADD COLUMN IF NOT EXISTS "is_active" boolean DEFAULT true NOT NULL;
 ALTER TABLE "jeepney_stops" ADD COLUMN IF NOT EXISTS "version" integer DEFAULT 1 NOT NULL;
 ALTER TABLE "jeepney_stops" ADD COLUMN IF NOT EXISTS "updated_at" text DEFAULT CURRENT_TIMESTAMP NOT NULL;

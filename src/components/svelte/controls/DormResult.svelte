@@ -18,7 +18,6 @@
   import Maximize2 from "@lucide/svelte/icons/maximize-2";
   import X from "@lucide/svelte/icons/x";
   import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
-  import { CAMPUS_CURFEW } from "@constants/campus-curfew";
   import type { DormData } from "@lib/types";
   import {
     getStoredProposalForEntity,
@@ -43,11 +42,6 @@
   import EntityExternalLink from "./EntityExternalLink.svelte";
   import BuildingPhoto from "./BuildingPhoto.svelte";
   import { getDormShareUrl } from "@lib/share-links";
-  import {
-    getKuboDormCta,
-    kuboDormDirectory,
-    loadKuboDormDirectory,
-  } from "@lib/kubo-dorms";
   type DormEditableField =
     | "dormName"
     | "shortName"
@@ -110,36 +104,18 @@
   let mergingEntity = $state(false);
   const canPublish = $derived(adminAuthStore.canPublish);
   const dormShareUrl = $derived(dorm ? getDormShareUrl(dorm) : "");
-  const kuboDormCta = $derived(
-    dorm ? getKuboDormCta($kuboDormDirectory, dorm.id, dorm.dormName) : null,
-  );
   const dormImageUrl = $derived(
-    dorm?.imageUrl ? getDormImageUrl(dorm.imageUrl) : null,
+    dorm?.imageUrl ?? null,
   );
   let imageViewer = $state<HTMLDialogElement>();
 
-  function getDormImageUrl(imageUrl: string) {
-    try {
-      const url = new URL(imageUrl);
-      if (url.hostname === "media.kubo.community") {
-        url.pathname = url.pathname.replace(/\.thumb(?=\.webp$)/i, "");
-      }
-      return url.toString();
-    } catch {
-      return imageUrl;
-    }
-  }
-
-  $effect(() => {
-    if (dorm) void loadKuboDormDirectory();
-  });
 
   const fieldLabels: Record<DormEditableField, string> = {
     dormName: "Dorm name",
     shortName: "Short name",
     description: "Description",
     gender: "Gender policy",
-    isUpManaged: "UP-managed status",
+    isUpManaged: "University-managed status",
     capacity: "Capacity",
     priceRange: "Price range",
     managingOffice: "Managing office",
@@ -162,7 +138,6 @@
         amenities.length > 0 ||
         dorm.isUpManaged ||
         dorm.facebookLink ||
-        kuboDormCta ||
         (!dorm.isUpManaged && dorm.priceRange)),
     ),
   );
@@ -685,7 +660,7 @@
     <EntityBackToList tab="dorms" label="Back to dormitories" />
     <PlaceSheetHeader
       title={dorm.dormName}
-      label={dorm.isUpManaged ? "UP-managed dorm" : "Private dorm"}
+      label={dorm.isUpManaged ? "University-managed dorm" : "Private dorm"}
       facts={dormFacts}
       closeLabel="Close dorm details"
     >
@@ -708,21 +683,12 @@
             category: "dorm",
             value: dorm.dormName,
             label: dorm.dormName,
-            subtitle: dorm.isUpManaged ? "UP-managed dorm" : "Private dorm",
+            subtitle: dorm.isUpManaged ? "University-managed dorm" : "Private dorm",
             lat: dorm.lat,
             lon: dorm.lon,
           }}
         />
         <EntityShareButton url={dormShareUrl} entityLabel={dorm.dormName} />
-        {#if kuboDormCta}
-          <EntityExternalLink
-            href={kuboDormCta.href}
-            label={kuboDormCta.label}
-            ariaLabel={kuboDormCta.ariaLabel}
-            class="entity-footer__link--button entity-footer__link--kubo"
-            iconSrc="/kubo-logo.png"
-          />
-        {/if}
         {#if dorm.lon && dorm.lat}
           <EntityGoogleMapsLink
             lat={dorm.lat}
@@ -913,23 +879,11 @@
           </div>
         {/if}
 
-        {#if dorm.isUpManaged}
-          <section class="entity-curfew" aria-labelledby="dorm-curfew-heading">
-            <h3 id="dorm-curfew-heading" class="entity-section-heading">
-              Curfew &amp; permits
-            </h3>
-            <p>
-              Curfew is {CAMPUS_CURFEW.hours}. {CAMPUS_CURFEW.latePermit}
-              <a href="/wiki/campus-curfew">Read the full policy.</a>
-            </p>
-          </section>
-        {/if}
-
         {#if dorm.isUpManaged || dorm.facebookLink || (!dorm.isUpManaged && dorm.priceRange)}
           <div class="entity-dorm-details__links">
             {#if dorm.isUpManaged}
               <EntityExternalLink
-                href="https://uplbosa.org"
+                href="https://www.bulsu.edu.ph"
                 label="BulSU OSA website"
                 ariaLabel="Open BulSU OSA website (opens in new tab)"
               />
@@ -977,22 +931,6 @@
     font-size: 0.6875rem;
     color: var(--theme-amber-text, hsl(35, 80%, 45%));
     font-weight: 500;
-  }
-
-  .entity-curfew {
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  .entity-curfew p {
-    margin: 0;
-    font-size: 0.8125rem;
-    line-height: 1.45;
-  }
-
-  .entity-curfew a {
-    color: var(--theme-accent-text, hsl(5, 53%, 32%));
-    font-weight: 600;
   }
 
   .no-results {

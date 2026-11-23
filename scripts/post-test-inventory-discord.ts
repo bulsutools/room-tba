@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Regenerate test inventory and POST to uplbtools-discord-bot (#test-suite).
+ * Regenerate test inventory and POST to bulsutools-discord-bot (#test-suite).
  * Usage: GATEWAY_URL=… SECRET=… bun run scripts/post-test-inventory-discord.ts
  */
 import { writeFileSync } from "node:fs";

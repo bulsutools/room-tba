@@ -29,8 +29,8 @@ body:
     id: entity_name
     attributes:
       label: Room or building name
-      description: e.g. PSLH 1, PhySci, CAS Annex 1
-      placeholder: PSLH 1
+      description: e.g. Main Building 101, SciHall, ICT Building
+      placeholder: Main Building 101
     validations:
       required: true
   - type: input
@@ -55,7 +55,7 @@ body:
     id: verified
     attributes:
       label: How did you verify?
-      description: Walked there, SAIS, org page, photo, etc.
+      description: Walked there, registrar portal, org page, photo, etc.
   - type: textarea
     id: screenshot
     attributes:

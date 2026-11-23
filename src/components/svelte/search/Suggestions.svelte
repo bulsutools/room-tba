@@ -10,6 +10,7 @@
   } from "@lib/local/data/utils";
   import { isLocalCacheReady } from "@lib/local/data/pgliteDB";
   import { fetchClassPage } from "@lib/classes-api";
+  import { FACILITY_RECORDS } from "@lib/facility-status";
   import {
     EXPANDED_LIMITS,
     enterAction,
@@ -22,7 +23,6 @@
     scoreRooms,
   } from "@lib/search-suggestions";
   import { openCourseClasses, selectSuggestion } from "@lib/search-select";
-  import { searchTrail } from "@lib/makiling-trail";
   import {
     appBootstrapStore,
     buildingTypeFilter,
@@ -31,6 +31,7 @@
     locationStore,
     mapStore,
     queryStore,
+    roomFinderStore,
     termStore,
   } from "@lib/store.svelte";
   import type { ClassMapValue } from "@lib/types";
@@ -135,6 +136,37 @@
     };
   });
 
+  // Natural-language room finder (#4): "free room near the library at 2pm".
+  // The store gates on the deterministic parser, so plain entity searches
+  // never hit /api/room-finder.
+  $effect(() => {
+    void roomFinderStore.search(queryStore.inputValue);
+  });
+
+  const finderResults = $derived(
+    roomFinderStore.results.filter(
+      (result) =>
+        !roomResults.some(
+          (room) => room.value.toUpperCase() === result.code.toUpperCase(),
+        ),
+    ),
+  );
+
+  const finderHeader = $derived(
+    [roomFinderStore.slotLabel, roomFinderStore.placeLabel]
+      .filter((part): part is string => Boolean(part))
+      .join(" · ") || null,
+  );
+
+  function finderSecondary(result: {
+    availabilityLabel: string;
+    distanceM: number | null;
+  }) {
+    return result.distanceM === null
+      ? result.availabilityLabel
+      : `${result.availabilityLabel} · ${result.distanceM} m`;
+  }
+
   $effect(() => {
     const trimmed = query;
     if (trimmed === "") {
@@ -225,21 +257,13 @@
           events,
           organizations,
           places,
+          facilityRecords: FACILITY_RECORDS,
         }),
         ...(aliasFor === query
           ? scoreAliases(query, aliasResults, filteredBuildings, places)
           : []),
         ...(roomFor === query ? scoreRooms(query, roomResults) : []),
         ...(classFor === query ? scoreClasses(query, classResults) : []),
-        ...searchTrail(query).map((hit) => ({
-          value: hit.label,
-          category: "trail" as const,
-          secondary: hit.secondary,
-          score: hit.score,
-          trailStopId: hit.stopId ?? hit.trailId,
-          lat: hit.lat,
-          lon: hit.lon,
-        })),
       ],
       expanded ? EXPANDED_LIMITS : {},
     );
@@ -411,7 +435,7 @@
       {#if group.label}
         <h2 class="suggestions-header suggestions-group">{group.label}</h2>
       {/if}
-      {#each group.items as suggestion (`${suggestion.category}:${suggestion.eventSlug ?? suggestion.trailStopId ?? suggestion.value}`)}
+      {#each group.items as suggestion (`${suggestion.category}:${suggestion.eventSlug ?? suggestion.value}`)}
         <Suggestion {...suggestion} />
       {/each}
       {#if courseCode && group.items.some((s) => s.category === "class")}
@@ -446,6 +470,32 @@
     </div>
     <FinalExamSuggestion onSelect={() => {}} />
     <SearchQuerySuggestion />
+  {/if}
+
+  {#if roomFinderStore.matched}
+    {#if finderHeader}
+      <h2 class="suggestions-header">Rooms · {finderHeader}</h2>
+    {:else}
+      <h2 class="suggestions-header">Suggested rooms</h2>
+    {/if}
+    {#if roomFinderStore.loading}
+      <p class="suggestions-status">
+        <LoadingIndicator label="Finding rooms…" />
+      </p>
+    {:else}
+      {#each finderResults as result (result.code)}
+        <Suggestion
+          value={result.code}
+          category="room"
+          secondary={finderSecondary(result)}
+          lat={result.lat}
+          lon={result.lon}
+        />
+      {/each}
+      {#if finderResults.length === 0}
+        <p class="suggestions-status">No rooms matched that description.</p>
+      {/if}
+    {/if}
   {/if}
 </div>
 

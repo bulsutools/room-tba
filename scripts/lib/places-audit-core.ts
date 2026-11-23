@@ -22,9 +22,9 @@ export type PlacesHit = {
 
 export type Bucket = "aligned" | "flagged" | "unmatched";
 
-/** Campus suffix pins generic names ("Main Library") to Los Baños results. */
+/** Campus suffix pins generic names ("Main Library") to Malolos results. */
 export function placesQueryText(buildingName: string): string {
-  return `${buildingName}, University of the Philippines Los Baños`;
+  return `${buildingName}, Bulacan State University Malolos`;
 }
 
 /**

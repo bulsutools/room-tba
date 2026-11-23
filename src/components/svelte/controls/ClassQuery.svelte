@@ -5,7 +5,7 @@
   import Classes from "@ui/room/Classes.svelte";
   import FinalExamsList from "@ui/room/FinalExamsList.svelte";
   import { fetchClassPage } from "@lib/classes-api";
-  import { CLASS_BROWSE_SCOPE_NOTE } from "@lib/amis/room-scheduled-types";
+  import { CLASS_BROWSE_SCOPE_NOTE } from "@lib/class-import/room-scheduled-types";
   import {
     fetchFinalExams,
     FINALS_SCOPE_NOTE,

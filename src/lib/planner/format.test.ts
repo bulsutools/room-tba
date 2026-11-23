@@ -26,7 +26,7 @@ describe("formatMinutesRange", () => {
 });
 
 describe("formatSectionType", () => {
-  it("title-cases AMIS component types", () => {
+  it("title-cases component types", () => {
     expect(formatSectionType("LEC")).toBe("Lec");
     expect(formatSectionType("LAB")).toBe("Lab");
     expect(formatSectionType("RCT")).toBe("Recit");

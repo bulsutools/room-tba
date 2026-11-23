@@ -64,7 +64,6 @@ export type MapToolsSection =
   | "view"
   | "legend"
   | "terrain"
-  | "trail"
   | "jeepney"
   | "schedule";
 

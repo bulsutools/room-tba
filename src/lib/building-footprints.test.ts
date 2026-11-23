@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import manifest from "@constants/building-footprints.json";
 import { bundledFootprint } from "./building-footprints";
-import { isFootprint } from "./overpass";
 
 const fp = {
   outline: [
@@ -31,11 +30,9 @@ describe("bundledFootprint", () => {
     expect(bundledFootprint("toString", {})).toBeUndefined();
   });
 
-  test("every committed entry is null or a valid footprint", () => {
-    const entries = Object.entries(manifest as Record<string, unknown>);
-    expect(entries.length).toBeGreaterThan(0);
-    for (const [, entry] of entries) {
-      expect(entry === null || isFootprint(entry)).toBe(true);
-    }
+  test("the committed manifest stays empty until a campus imports footprints", () => {
+    // Upstream footprints were removed with the fork data; a BulSU run of
+    // scripts/fetch-building-footprints.ts repopulates this.
+    expect(Object.keys(manifest as Record<string, unknown>)).toHaveLength(0);
   });
 });

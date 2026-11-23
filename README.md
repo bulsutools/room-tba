@@ -21,11 +21,11 @@ _Buildings, colleges, and "where is Federizo?" on the BulSU Malolos Campus 1 + C
 
 ## What this is
 
-**Room TBA** for [Bulacan State University](https://www.bulsu.edu.ph/) (Malolos **Campus 1** Guinhawa + **Campus 2** annex). Fork of [bulsutools/room-tba](https://github.com/bulsutools/room-tba). Search a building or college; the map flies to an approximate pin you can correct in the editor.
+**Room TBA** for [Bulacan State University](https://www.bulsu.edu.ph/) (Malolos **Campus 1** Guinhawa + **Campus 2** annex). Fork of [uplbtools/room-tba](https://github.com/uplbtools/room-tba). Search a building or college; the map flies to an approximate pin you can correct in the editor.
 
 No account needed to browse. Editors fix pins in the same app (`/?editor=login`).
 
-> **Data note:** Seed file keeps **colleges only**. Building/place pins start empty — add them in the map editor. Room schedules need a registrar importer later (the upstream UPLB AMIS scripts do not apply). Wrong data? [Open an issue](https://github.com/bulsutools/room-tba/issues/new/choose).
+> **Data note:** Seed file keeps **colleges only**. Building/place pins start empty — add them in the map editor. Room schedules need a registrar importer later (the upstream course-system scripts do not apply). Wrong data? [Open an issue](https://github.com/bulsutools/room-tba/issues/new/choose).
 
 ---
 
@@ -48,7 +48,7 @@ No account needed to browse. Editors fix pins in the same app (`/?editor=login`)
 | Move building pins | Map edit mode (pencil) |
 | Add landmarks / services | **Add something to the map** or side-panel editor |
 | Fix building/college copy | Side panel → Edit |
-| Add jeepney routes | `src/constants/jeepney-routes.ts` + DB seed, or editor when wired |
+| Add jeepney routes | `data/transit/routes.json` + `bun run scripts/seed-bulsu-transit.ts` ([#7](https://github.com/bulsutools/room-tba/issues/7) pending) |
 
 Login: **`/?editor=login`**. First login with `ADMIN_PASSWORD` bootstraps user `admin`.
 
@@ -102,10 +102,10 @@ Dry-run: `bun run seed:bulsu -- --dry-run`
 | Surface | Where |
 | --- | --- |
 | Building / place pins | Map editor (seed file leaves these empty on purpose) |
-| Jeepney routes | `src/constants/jeepney-routes.ts` (empty today) |
+| Jeepney routes | `data/transit/routes.json` (empty until #7 field data lands) |
 | College / building copy | Side panel editor |
 | Photos | Event/image upload when R2 is configured |
-| Class schedules | Future registrar importer (not AMIS) |
+| Class schedules | Future registrar importer (not the upstream course system) |
 
 ### Commands worth knowing
 
@@ -144,8 +144,8 @@ Multi-campus / multi-tenant exploration (deferred): [docs/multi-campus-handoff.m
 
 ## Credits
 
-Fork of [bulsutools/room-tba](https://github.com/bulsutools/room-tba) by [Simonee Ezekiel Mariquit](https://stimmie.dev) and contributors.
+Fork of [uplbtools/room-tba](https://github.com/uplbtools/room-tba) by [Simonee Ezekiel Mariquit](https://stimmie.dev) and contributors.
 
-This fork: [bulsutools](https://github.com/bulsutools) — campus tool, not an official BulSU product.
+Maintained by [bulsutools](https://github.com/bulsutools) — campus tool, not an official BulSU product.
 
 Upstream license: [MIT](LICENSE).

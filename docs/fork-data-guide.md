@@ -97,8 +97,7 @@ JSON is the same shape: an array of flat objects with those keys.
 Worked example (the same 15 sections the seed loads):
 [`data/sample-campus/classes.csv`](../data/sample-campus/classes.csv).
 
-Behavior, same as the BulSU AMIS importer (`scripts/import-amis-classes.ts`,
-which stays as the BulSU-specific adapter):
+Behavior:
 
 - **Upsert by natural key** (term + course + section + type): rerunning the
   same file changes nothing; `--replace-term` also deletes DB rows the file no

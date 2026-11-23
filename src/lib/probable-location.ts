@@ -1,7 +1,7 @@
 /**
  * Probable location for Room TBA sections (#846) — pure logic, no DB.
  *
- * Resolution order (see docs/amis-com-refresh-runbook.md § TBA sections):
+ * Resolution order (see the upstream import runbook § TBA sections):
  *   1. Department link: acad_org → data/acad-orgs.json → the department's
  *      organizations-table entity, when that entity has a map position.
  *   2. Course history: modal building among same-course sections that have an
@@ -48,7 +48,7 @@ export type OrgEntityRow = {
 };
 
 /** Match a department name against org entities; "(ACRONYM)" suffixes on the
- * entity name are ignored, mirroring scripts/seed-uplb-directory.ts. */
+ * entity name are ignored, mirroring the campus directory seeder. */
 export function findDeptEntity(
   orgs: OrgEntityRow[],
   wanted: string,
@@ -122,14 +122,19 @@ export function rankBuildingsByHistory(
  * Full fallback order over already-fetched inputs. Callers may pass empty
  * histories when they short-circuited fetching (department pin resolved).
  */
-export function resolveProbableLocation(input: {
-  acadOrg: string | null;
-  acadGroup: string | null;
-  orgs: OrgEntityRow[];
-  courseHistory: HistoryRow[];
-  deptHistory: HistoryRow[];
-}): ProbableLocation | null {
-  const entry = decodeAcadOrg(input.acadOrg);
+export function resolveProbableLocation(
+  input: {
+    acadOrg: string | null;
+    acadGroup: string | null;
+    orgs: OrgEntityRow[];
+    courseHistory: HistoryRow[];
+    deptHistory: HistoryRow[];
+  },
+  // Injectable so tests can exercise the department path while the fork's
+  // acad-orgs.json is still empty.
+  decode: typeof decodeAcadOrg = decodeAcadOrg,
+): ProbableLocation | null {
+  const entry = decode(input.acadOrg);
   const collegeCode = entry?.collegeCode ?? input.acadGroup ?? undefined;
   const deptName = entry?.name;
 

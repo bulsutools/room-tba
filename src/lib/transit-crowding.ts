@@ -53,7 +53,7 @@ export type ClassChangePeak = {
 };
 
 /**
- * Count section ends and starts per weekday and minute from raw AMIS schedule
+ * Count section ends and starts per weekday and minute from raw schedule strings
  * strings ("MWF 10:00 AM-11:00 AM"), keeping the times busy enough to matter.
  * TBA and unparseable strings are skipped, never guessed.
  */

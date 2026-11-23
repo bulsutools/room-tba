@@ -4,6 +4,7 @@ import {
   ROUTE_GEOMETRY_NOTES,
   deriveRouteLineFromStops,
   resolveRouteGeometry,
+  transitOperatorLabel,
   type JeepneyStop,
   type StoredRouteGeometry,
   BUNDLED_BUS_ROUTES,
@@ -119,7 +120,8 @@ describe("resolveRouteGeometry", () => {
 describe("jeepney-geometries.json", () => {
   test("every entry declares a source and a drawable line", () => {
     const entries = Object.entries(stored);
-    expect(entries.length).toBeGreaterThan(0);
+    // This fork ships no transit geometry yet; the check still guards any
+    // entries a future campus adds.
     for (const [id, entry] of entries) {
       expect(["osm-relation", "routed"], id).toContain(entry.source);
       // Provenance is the point of this file; an entry without it is unauditable.
@@ -127,7 +129,7 @@ describe("jeepney-geometries.json", () => {
       expect(entry.geometry.type, id).toBe("LineString");
       expect(entry.geometry.coordinates.length, id).toBeGreaterThan(1);
       for (const [lon, lat] of entry.geometry.coordinates) {
-        // GeoJSON is lon-first; a swapped pair would put UPLB in Somalia.
+        // GeoJSON is lon-first; a swapped pair would put the campus in Somalia.
         expect(lon, id).toBeGreaterThan(100);
         expect(lat, id).toBeLessThan(90);
       }
@@ -140,6 +142,15 @@ describe("jeepney-geometries.json", () => {
         "stops-only",
       );
     }
+  });
+});
+
+describe("transitOperatorLabel", () => {
+  test("labels each operator and defaults legacy rows to jeepney", () => {
+    expect(transitOperatorLabel("jeepney")).toBe("Jeepney");
+    expect(transitOperatorLabel("bus")).toBe("Bus");
+    expect(transitOperatorLabel("tricycle")).toBe("Tricycle");
+    expect(transitOperatorLabel(undefined)).toBe("Jeepney");
   });
 });
 

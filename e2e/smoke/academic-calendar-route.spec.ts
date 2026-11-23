@@ -23,19 +23,19 @@ test.describe("academic calendar route", () => {
     await expect(dialog).toBeVisible();
     // Disclaimer is part of the MVP acceptance criteria (#408).
     await expect(
-      dialog.getByText(/official UPLB academic calendar/),
+      dialog.getByText(/official BulSU academic calendar/),
     ).toBeVisible();
     // The seeded E2E term (1252) must appear as a term card. Cards are
     // native disclosures and only the in-session term starts open, so
-    // expand the seeded term's card before asserting its CRS id.
+    // expand the seeded term's card before asserting its term id.
     const card = dialog.locator("details.acal-card", {
-      hasText: "CRS 1252",
+      hasText: "Term 1252",
     });
     await expect(card).toHaveCount(1);
-    if (!(await card.getByText("CRS 1252").isVisible())) {
+    if (!(await card.getByText("Term 1252").isVisible())) {
       await card.locator("summary").click();
     }
-    await expect(card.getByText("CRS 1252")).toBeVisible();
+    await expect(card.getByText("Term 1252")).toBeVisible();
     await expect(page).toHaveURL(/\/calendar(\/|\?|$)/);
   });
 });

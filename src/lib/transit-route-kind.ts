@@ -18,14 +18,9 @@ import {
 export type TransitRouteKind = "campus" | "town" | "bus";
 
 const CAMPUS_ROUTE_IDS = new Set(JEEPNEY_ROUTES.map((route) => route.id));
-const BUS_ROUTE_IDS = new Set([
-  "uplb-to-upd",
-  "upd-to-uplb",
-  "lb-to-buendia",
-  "buendia-to-lb",
-  "uplb-to-buendia",
-  "buendia-to-uplb",
-]);
+// No bundled routes ship on this fork; intercity buses classify by name
+// ("bus") until BulSU route ids are curated.
+const BUS_ROUTE_IDS = new Set<string>();
 
 export function transitRouteKind(route: {
   id: string;
@@ -97,20 +92,15 @@ export type RouteFareInfo =
   | { kind: "ticketed"; ticketing: RouteTicketing }
   | { kind: "unverified"; note: string };
 
-// BulSU ships no bundled routes yet, so fall back to the campus fare constant
-// the fork used before upstream's fare metadata landed.
+// Campus jeeps take the bundled route's own fare once BulSU routes ship;
+// until then nothing is fare-verified.
 const CAMPUS_FARE: JeepneyFare = JEEPNEY_ROUTES[0]?.fare ?? {
-  regular: 15,
-  discounted: 12,
+  regular: 0,
+  discounted: 0,
 };
 
-/** Campus jeeps whose ₱14 / ₱12 fare was confirmed (FARES_VERIFIED_ON). */
-const VERIFIED_CAMPUS_FARE_IDS = new Set([
-  "kaliwa-kanan",
-  "forestry",
-  "up-rural",
-  "snodlob",
-]);
+/** Campus jeeps with a maintainer-confirmed fare (FARES_VERIFIED_ON). */
+const VERIFIED_CAMPUS_FARE_IDS = new Set<string>();
 
 const minimumText = (fare: JeepneyFare) =>
   `the ₱${fare.regular} minimum (₱${fare.discounted} student, senior or PWD) plus a per-kilometre amount from the LTFRB fare matrix`;
@@ -132,21 +122,28 @@ export function routeFareInfo(route: {
     };
   }
   const endToEnd = VERIFIED_END_TO_END_FARES[route.id];
-  if (endToEnd) {
+  const townMinimum = TOWN_JEEPNEY_MINIMUM_FARE;
+  if (endToEnd && townMinimum) {
     const destination =
       route.name.split(/\s*(?:→|->)\s*/).at(-1) ?? "the end of the line";
     return {
       kind: "end-to-end",
       fare: endToEnd,
-      minimum: TOWN_JEEPNEY_MINIMUM_FARE,
-      note: `₱${endToEnd.regular} is for riding all the way to ${destination}. Shorter rides cost ${minimumText(TOWN_JEEPNEY_MINIMUM_FARE)}. ${FARES_VERIFIED_NOTE}`,
+      minimum: townMinimum,
+      note: `₱${endToEnd.regular} is for riding all the way to ${destination}. Shorter rides cost ${minimumText(townMinimum)}. ${FARES_VERIFIED_NOTE}`,
     };
   }
   if (kind === "town") {
+    if (!townMinimum) {
+      return {
+        kind: "unverified",
+        note: "Fare not verified yet. Ask the driver.",
+      };
+    }
     return {
       kind: "distance",
-      minimum: TOWN_JEEPNEY_MINIMUM_FARE,
-      note: `Fare is ${minimumText(TOWN_JEEPNEY_MINIMUM_FARE)}. The fare to the end of the line isn't verified yet. ${FARES_VERIFIED_NOTE}`,
+      minimum: townMinimum,
+      note: `Fare is ${minimumText(townMinimum)}. The fare to the end of the line isn't verified yet. ${FARES_VERIFIED_NOTE}`,
     };
   }
   return {

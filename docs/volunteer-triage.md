@@ -35,7 +35,7 @@ Every Monday at 09:00 UTC (or async if no one is online).
 
 | Role | Discord | Messenger |
 | --- | --- | --- |
-| Volunteers (data, QA, contribute) | [discord.gg/SrVDgfcrVt](https://discord.gg/SrVDgfcrVt) | [room-tba.bulsu.tools/messenger/contribute](https://room-tba.bulsu.tools/messenger/contribute) |
+| Volunteers (data, QA, contribute) | [GitHub issues](https://github.com/bulsutools/room-tba/issues) | [room-tba.bulsu.tools/messenger/contribute](https://room-tba.bulsu.tools/messenger/contribute) |
 | Maintainers (triage, shipping) | `#development` | [room-tba.bulsu.tools/messenger/maintain](https://room-tba.bulsu.tools/messenger/maintain) |
 
 ## Runbook

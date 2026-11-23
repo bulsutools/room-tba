@@ -4,7 +4,7 @@ test.describe("wiki", () => {
   test("article has a skip link, a generated contents list, and a way back to the map", async ({
     page,
   }) => {
-    await page.goto("/wiki/section-times");
+    await page.goto("/wiki/using-room-tba");
     const skip = page.getByRole("link", { name: "Skip to content" });
     await skip.focus();
     await expect(skip).toBeVisible();
@@ -24,7 +24,7 @@ test.describe("wiki", () => {
   test("index filter narrows the article list", async ({ page }) => {
     await page.goto("/wiki");
     const filter = page.getByLabel("Filter articles");
-    await filter.fill("curfew");
+    await filter.fill("fork");
     await expect(page.locator(".wiki-index__item:not([hidden])")).toHaveCount(
       1,
     );
@@ -36,7 +36,7 @@ test.describe("wiki", () => {
 
   test("follows the dark theme choice", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
-    await page.goto("/wiki/campus-curfew");
+    await page.goto("/wiki/using-room-tba");
     const bg = await page.evaluate(
       () => getComputedStyle(document.body).backgroundColor,
     );
@@ -47,7 +47,7 @@ test.describe("wiki", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 320, height: 640 });
-    await page.goto("/wiki/section-times");
+    await page.goto("/wiki/fork-for-your-campus");
     const regions = page.getByRole("region", { name: /^Table:/ });
     expect(await regions.count()).toBeGreaterThan(0);
     const overflow = await page.evaluate(
@@ -61,11 +61,8 @@ test.describe("wiki", () => {
     const body = await res.text();
     for (const path of [
       "/wiki",
-      "/wiki/emergency-hotlines",
-      "/wiki/campus-curfew",
-      "/wiki/glossary",
-      "/wiki/jeepney-guide",
       "/wiki/using-room-tba",
+      "/wiki/fork-for-your-campus",
     ]) {
       expect(body).toContain(`${path}</loc>`);
     }

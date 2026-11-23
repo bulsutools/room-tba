@@ -1,7 +1,14 @@
 import { expect, test } from "@playwright/test";
+import { campusTransit } from "../../src/campus.config";
 import { suppressLandingModal, waitForAppBoot } from "../helpers/app";
 
-test.describe("transit stop deep link", () => {
+// Campus transit is disabled on this fork; these specs cover the upstream
+// feature and stay for forks that enable campusTransit.
+const describeTransit = campusTransit.enabled
+  ? test.describe
+  : test.describe.skip;
+
+describeTransit("transit stop deep link", () => {
   test("stop panel opens with edit affordance, and browsing away closes it @desktop-only", async ({
     page,
   }) => {

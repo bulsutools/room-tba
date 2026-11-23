@@ -23,37 +23,26 @@ const route = (id: string, stops: JeepneyStop[]): JeepneyRoute => ({
   stops,
 });
 
-// BulSU ships no bundled routes, so these tests use synthetic routes. Real
-// direction labels still come from ROUTE_DIRECTIONS, keyed by upstream route
-// ids ("kaliwa-kanan" is two-way, "forestry" is one-way).
+// BulSU ships no routes and ROUTE_DIRECTIONS is empty, so every route is
+// effectively one-way until a maintainer adds two-way direction metadata.
 describe("orientRoute", () => {
-  test("a two-way route serves its stops in reverse", () => {
+  test("no route reverses while ROUTE_DIRECTIONS is empty", () => {
     const kaliwaKanan = route("kaliwa-kanan", [
       stop("First", 14.1, 121.2),
       stop("Middle", 14.2, 121.3),
       stop("Last", 14.3, 121.4),
     ]);
-    const kaliwa = orientRoute(kaliwaKanan, true);
-    expect(kaliwa.id).toBe("kaliwa-kanan");
-    expect(kaliwa.stops.map((s) => s.name)).toEqual([
-      "Last",
-      "Middle",
+    expect(orientRoute(kaliwaKanan, true)).toBe(kaliwaKanan);
+    expect(kaliwaKanan.stops.map((s) => s.name)).toEqual([
       "First",
+      "Middle",
+      "Last",
     ]);
-    expect(kaliwaKanan.stops[0]!.name).toBe("First");
-  });
-
-  test("one-way routes keep their only real order", () => {
-    const forestry = route("forestry", [
-      stop("A", 14.1, 121.2),
-      stop("B", 14.2, 121.3),
-    ]);
-    expect(orientRoute(forestry, true)).toBe(forestry);
   });
 
   test("labels the shown direction", () => {
-    expect(activeDirection("kaliwa-kanan", false)?.label).toBe("Kanan");
-    expect(activeDirection("kaliwa-kanan", true)?.label).toBe("Kaliwa");
+    expect(activeDirection("kaliwa-kanan", false)).toBeNull();
+    expect(activeDirection("kaliwa-kanan", true)).toBeNull();
     expect(activeDirection("forestry", true)).toBeNull();
   });
 });
@@ -98,7 +87,7 @@ describe("routesAtStop", () => {
     const serving = routesAtStop([kaliwaKanan, loop, outbound], nearShared);
     const ids = serving.map((entry) => entry.route.id);
     expect(ids).toEqual(["kaliwa-kanan"]);
-    expect(serving[0]!.direction).toBe("Kanan / Kaliwa");
+    expect(serving[0]!.direction).toBe("Toward Terminal");
   });
 
   test("a loop terminal resolves to stop 1, not the closing stop", () => {

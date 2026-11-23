@@ -26,7 +26,7 @@ function rowToPlannedSection(row: ClassMapValue): PlannedSection | null {
   };
 }
 
-/** Case and spacing differ across AMIS rows ("TAEKWONDO" vs "Taekwondo"). */
+/** Case and spacing differ across import rows ("TAEKWONDO" vs "Taekwondo"). */
 function normalizeTitle(title: string | null | undefined): string | null {
   const t = title?.trim().replace(/\s+/g, " ").toLowerCase();
   return t ? t : null;

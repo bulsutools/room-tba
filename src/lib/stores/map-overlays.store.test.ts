@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest";
+import { campusTransit } from "../../campus.config";
 import { MapOverlayRegistry, type MapOverlay } from "./map-overlays.svelte";
 import { APP_MAP_OVERLAYS, mapIsBare } from "../map-overlay-sources.svelte";
 import {
@@ -153,21 +154,24 @@ describe("app overlays: clear rules and ownership", () => {
     sidebarStore.changeOpened("map");
   });
 
-  test("a route kept from Layers is stranded once Layers closes; X clears it", () => {
-    const route = transitStore.routes[0];
-    if (!route) throw new Error("no bundled route");
-    // Picked in the Layers route list, which closes Layers.
-    jeepneyStore.selectRoute(route.id);
-    expect(jeepneyStore.routePinned).toBe(true);
-    expect(mapToolsStore.open).toBe(false);
-    const overlay = byId("transit-route");
-    expect(overlay.isActive()).toBe(true);
-    expect(overlay.label()).toBe(route.name);
-    expect(overlay.ownerOpen()).toBe(false);
-    overlay.clear();
-    expect(jeepneyStore.selectedRouteId).toBeNull();
-    expect(overlay.isActive()).toBe(false);
-  });
+  test.skipIf(!campusTransit.enabled)(
+    "a route kept from Layers is stranded once Layers closes; X clears it",
+    () => {
+      const route = transitStore.routes[0];
+      if (!route) throw new Error("no bundled route");
+      // Picked in the Layers route list, which closes Layers.
+      jeepneyStore.selectRoute(route.id);
+      expect(jeepneyStore.routePinned).toBe(true);
+      expect(mapToolsStore.open).toBe(false);
+      const overlay = byId("transit-route");
+      expect(overlay.isActive()).toBe(true);
+      expect(overlay.label()).toBe(route.name);
+      expect(overlay.ownerOpen()).toBe(false);
+      overlay.clear();
+      expect(jeepneyStore.selectedRouteId).toBeNull();
+      expect(overlay.isActive()).toBe(false);
+    },
+  );
 
   test("the route panel owns its route", () => {
     const route = transitStore.routes[0];

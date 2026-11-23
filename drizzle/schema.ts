@@ -51,7 +51,7 @@ export const editProposalStatusEnum = pgEnum("edit_proposal_status", [
   "withdrawn",
 ]);
 
-// Academic terms. `id` mirrors the CRS/SAIS term_id (e.g. 1252) rather than
+// Academic terms. `id` mirrors the registrar term_id (e.g. 1252) rather than
 // being auto-generated, so it matches the `term_id` already stored on classes.
 export const termsTable = pgTable(
   "terms",
@@ -285,7 +285,7 @@ export const classesTable = pgTable(
     roomId: integer("room_id"),
     courseTitle: text("course_title"),
     termId: integer("term_id"),
-    // AMIS college + department codes (#846), e.g. "CAS" / "LBICS". Decode
+    // College + department codes (#846), e.g. "CAS" / "LBICS". Decode
     // table: data/acad-orgs.json.
     acadGroup: varchar("acad_group", { length: 8 }),
     acadOrg: varchar("acad_org", { length: 16 }),
@@ -451,9 +451,11 @@ export const updateTable = pgTable(
 export const jeepneyRoutesTable = pgTable("jeepney_routes", {
   id: varchar({ length: 64 }).primaryKey(),
   name: varchar({ length: 120 }).notNull(),
+  routeNumber: varchar("route_number", { length: 32 }),
   description: text().notNull(),
   directionNote: text("direction_note"),
   color: varchar({ length: 16 }).notNull(),
+  operator: varchar({ length: 16 }).default("jeepney").notNull(),
   fareRegular: doublePrecision("fare_regular").notNull(),
   fareDiscounted: doublePrecision("fare_discounted").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
@@ -480,6 +482,8 @@ export const jeepneyStopsTable = pgTable(
     lat: doublePrecision().notNull(),
     lon: doublePrecision().notNull(),
     sortOrder: integer("sort_order").default(0).notNull(),
+    segmentFareRegular: doublePrecision("segment_fare_regular"),
+    segmentFareDiscounted: doublePrecision("segment_fare_discounted"),
     isActive: boolean("is_active").default(true).notNull(),
     version: integer().default(1).notNull(),
     updatedAt: timestamp("updated_at", { mode: "string" })
@@ -805,7 +809,7 @@ export const eventRouteStopsTable = pgTable(
   ],
 );
 
-// Search aliases / synonyms (e.g. "PhySci" -> Physical Sciences Building),
+// Search aliases / synonyms (e.g. "SciHall" -> Science Hall Building),
 // including retired names. Seeded from public/room_info.json (#155).
 export const aliasesTable = pgTable(
   "aliases",

@@ -28,7 +28,7 @@ export function formatScheduleShort(schedule: string): string {
   return `${days} ${formatMinutesRange(parsed.startMinutes, parsed.endMinutes)}`;
 }
 
-/** "LEC" -> "Lec", "RCT" -> "Recit"; AMIS sends component types in caps. */
+/** "LEC" -> "Lec", "RCT" -> "Recit"; the source sends component types in caps. */
 export function formatSectionType(type: string | null | undefined): string {
   const t = (type ?? "").trim();
   if (!t) return "Class";

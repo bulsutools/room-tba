@@ -229,7 +229,6 @@
       <!-- Opened as a modal: the standard top app bar (X at the top-left). -->
       <ModalHeader title={`${route.name} ${transitRouteNoun(route)}`} />
     {/if}
-
     <div class="jeepney-modal__scroll map-chrome-scroll">
       {#if directions}
         <div class="jeepney-modal__directions">
@@ -343,6 +342,11 @@
                   ? " (back to the start)"
                   : ""}</span
               >
+              {#if stop.fare}
+                <span class="jeepney-modal__stop-fare"
+                  >from prev. ₱{stop.fare.regular}</span
+                >
+              {/if}
             </button>
           </li>
         {/each}
@@ -775,6 +779,14 @@
 
   .jeepney-modal__stop:hover {
     background: color-mix(in srgb, var(--route-color, #7b1113) 10%, white);
+  }
+
+  .jeepney-modal__stop-fare {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: hsl(0, 0%, 40%);
   }
 
   .jeepney-modal__stops li::before {

@@ -7,11 +7,19 @@ import type {
   PlaceData,
 } from "./types";
 import type { QueryStoreState } from "./store.svelte";
+import {
+  compareFacilityRecords,
+  facilityLocationShort,
+  facilityStatLabel,
+  FACILITY_TYPE_LABELS,
+  matchFacilityQuery,
+  type FacilityRecord,
+  type FacilityType,
+  type RestroomAttributes,
+} from "./facility-status";
 
-/** Query categories, plus the Makiling trail and its stops (not entities). */
-export type SuggestionCategory =
-  | Exclude<QueryStoreState["category"], null>
-  | "trail";
+/** Query categories (the searchable entity types). */
+export type SuggestionCategory = Exclude<QueryStoreState["category"], null>;
 
 export type Suggestion = {
   value: string;
@@ -22,15 +30,13 @@ export type Suggestion = {
   /** Map pin for "Add stop" while Get Directions is open. */
   lat?: number | null;
   lon?: number | null;
-  /** Supporting line under the value (room full name, alias, class room). */
+  /** Supporting line under the value, e.g. a facility stat (#11). */
   secondary?: string | null;
   /** Class rows: where selecting it goes (the room, else the course list). */
   courseCode?: string;
   roomCode?: string | null;
   /** Relevance, lower is better (see MATCH). */
   score?: number;
-  /** Trail rows: the stop it opens, or the trail whose overview it opens. */
-  trailStopId?: string | null;
 };
 
 /**
@@ -177,6 +183,8 @@ export type EntitySearchData = {
   events: EventData[];
   organizations: OrgData[];
   places: PlaceData[];
+  /** Facility status records (#9/#14); buildings they point at must exist. */
+  facilityRecords?: FacilityRecord[];
 };
 
 function collect<T>(
@@ -267,6 +275,11 @@ export function scoreEntities(
           descriptionMatchScore(description, needle),
         ),
       (p) => ({ value: p.name, category: "place", lat: p.lat, lon: p.lon }),
+    ),
+    ...takeFacilityMatches(
+      needle,
+      data.facilityRecords ?? [],
+      data.filteredBuildings,
     ),
   ];
 }
@@ -366,7 +379,6 @@ const CATEGORY_ORDER: SuggestionCategory[] = [
   "room",
   "class",
   "dorm",
-  "trail",
   "place",
   "college",
   "division",
@@ -380,7 +392,7 @@ function categoryRank(category: SuggestionCategory): number {
 }
 
 function suggestionKey(s: Suggestion): string {
-  return `${s.category}:${s.eventSlug ?? s.trailStopId ?? s.value}`;
+  return `${s.category}:${s.eventSlug ?? s.value}`;
 }
 
 /** Dedupe (best score wins), sort by relevance, cap per category and overall. */
@@ -431,7 +443,6 @@ const GROUP_LABEL: Partial<Record<SuggestionCategory, string>> = {
   building: "Places",
   dorm: "Places",
   place: "Places",
-  trail: "Places",
   room: "Rooms",
   class: "Classes",
   college: "Offices and orgs",
@@ -506,4 +517,111 @@ export function buildEntitySuggestions(
   data: EntitySearchData,
 ): Suggestion[] {
   return rankSuggestions(scoreEntities(searchString, data), { limit: 8 });
+}
+
+/**
+ * Facility status hits (#11): "CR", "restroom", "computer lab", "clinic",
+ * "canteen" queries — plus direct room-label hits like "IC LAB" — surface the
+ * buildings that have reports, ranked by the index (freshness first, then
+ * attribute quality). One suggestion per building; the side panel carries
+ * the per-floor detail.
+ */
+function recordMatchesFacilityQuery(
+  record: FacilityRecord,
+  needle: string,
+  query: ReturnType<typeof matchFacilityQuery>,
+): boolean {
+  // Direct label hit: the record's room code/name matches the query itself.
+  if (record.room && nameMatchScore(record.room, needle) !== null) {
+    return true;
+  }
+  if (!query.types.has(record.type)) return false;
+  // Attribute keywords ("bidet", "pwd") narrow restroom matches to records
+  // that actually report the attribute — unknown is not a match.
+  if (
+    record.type === "restroom" &&
+    query.restroomAttributes.length > 0 &&
+    !query.restroomAttributes.every((predicate) =>
+      predicate(record.attributes as RestroomAttributes),
+    )
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function facilitySecondary(records: FacilityRecord[]): string {
+  const parts = records.slice(0, 2).map((record) => {
+    const stat = facilityStatLabel(record);
+    return stat
+      ? `${facilityLocationShort(record)} ${stat}`
+      : `${FACILITY_TYPE_LABELS[record.type]} · ${facilityLocationShort(record)}`;
+  });
+  if (records.length > 2) parts.push(`+${records.length - 2} more`);
+  return parts.join(" · ");
+}
+
+function takeFacilityMatches(
+  needle: string,
+  records: FacilityRecord[],
+  buildings: BuildingData[],
+): Suggestion[] {
+  if (records.length === 0) return [];
+  const matched = matchFacilityQuery(needle);
+  // Attribute-only queries ("pwd", "bidet") imply restroom intent.
+  const query =
+    matched.types.size === 0 && matched.restroomAttributes.length > 0
+      ? { ...matched, types: new Set<FacilityType>(["restroom"]) }
+      : matched;
+  const roomOnlyQuery = query.types.size === 0;
+
+  const buildingByKey = new Map(
+    buildings.map((b) => [b.buildingName.trim().toLowerCase(), b]),
+  );
+  const groups = new Map<
+    string,
+    { building: BuildingData; records: FacilityRecord[] }
+  >();
+  for (const record of records) {
+    // Without a type keyword, only explicit room-label hits count — an
+    // arbitrary query must not dump every facility onto the map.
+    if (roomOnlyQuery) {
+      if (!record.room || nameMatchScore(record.room, needle) === null) {
+        continue;
+      }
+    } else if (!recordMatchesFacilityQuery(record, needle, query)) {
+      continue;
+    }
+    const key = record.building.trim().toLowerCase();
+    const building = buildingByKey.get(key);
+    if (!building) continue;
+    const group = groups.get(key) ?? { building, records: [] };
+    group.records.push(record);
+    groups.set(key, group);
+  }
+  if (groups.size === 0) return [];
+
+  const now = new Date();
+  const ranked = [...groups.values()]
+    .map((group) => ({
+      ...group,
+      best: [...group.records].sort((a, b) =>
+        compareFacilityRecords(a, b, now),
+      )[0],
+    }))
+    .filter((group) => group.best !== undefined)
+    .sort((a, b) => compareFacilityRecords(a.best, b.best, now))
+    .slice(0, MAX_PER_CATEGORY);
+
+  // Score sits between word-start name matches (1) and mid-word (2): a
+  // facility hit beats "-ics-" noise but never an exact building name.
+  return ranked.map((group, index) => ({
+    value: group.building.buildingName,
+    category: "building" as const,
+    building: group.building,
+    secondary: facilitySecondary(group.records),
+    lat: group.building.lat,
+    lon: group.building.lon,
+    score: 1.5 + index * 0.001,
+  }));
 }

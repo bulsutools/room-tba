@@ -1,6 +1,6 @@
 # E2E → Discord integration handoff
 
-**Audience:** agent wiring [uplbtools/discord-bot](https://github.com/uplbtools/discord-bot) to Room TBA Playwright CI. 
+**Audience:** agent wiring [bulsutools/discord-bot](https://github.com/bulsutools/discord-bot) to Room TBA Playwright CI. 
 **App repo:** `bulsutools/room-tba` 
 **Branch status (2026-07-03):** workflow gating + `e2e-reusable.yml` live on **`feat/testing-pyramid`** (13 commits ahead of origin); **not merged to `staging`/`main` yet**. `ci-notify-discord.yml` **does not exist** in room-tba: treat as planned/discord-bot-side draft only.
 
@@ -269,7 +269,7 @@ Uses existing envelope (`schemaVersion: 1`, `source: "github"`):
 
 | Secret | Required | Purpose |
 |--------|----------|---------|
-| `NOTIFICATION_GATEWAY_URL` | Yes | e.g. `https://uplbtools-discord-bot.herokuapp.com/notifications` |
+| `NOTIFICATION_GATEWAY_URL` | Yes | e.g. `https://bulsutools-discord-bot.herokuapp.com/notifications` |
 | `NOTIFICATION_INGRESS_SECRET` | Yes | Header `x-notification-secret` (matches bot) |
 | `E2E_DATABASE_URL` | Already set | Playwright jobs |
 | `E2E_ADMIN_PASSWORD` | Already set | Playwright jobs |
@@ -344,7 +344,7 @@ Refine `if:` to skip cancelled runs and optionally skip advisory unless `conclus
 | `NOTIFICATION_GATEWAY_URL` |: | ✅ new |
 | `NOTIFICATION_INGRESS_SECRET` |: | ✅ new |
 
-### Heroku: `uplbtools-discord-bot`
+### Heroku: `bulsutools-discord-bot`
 
 | Item | Action |
 |------|--------|

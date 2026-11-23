@@ -31,7 +31,7 @@
   const dormBadge = $derived(
     preview?.kind === "dorm"
       ? preview.isUpManaged
-        ? "UP-managed dorm"
+        ? "Campus-managed dorm"
         : "Private dorm"
       : null,
   );

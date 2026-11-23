@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/svelte";
-import { beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import AcademicCalendarScreen from "@ui/calendar/AcademicCalendarScreen.svelte";
 import {
   expectNoHorizontalOverflow,
@@ -7,6 +7,10 @@ import {
 } from "@test/layout-assertions";
 import { EVENT_MARKER_STEP_PCT } from "@lib/academic-calendar";
 import { termStore } from "@lib/store.svelte";
+import {
+  setAcademicCalendarsForTests,
+  type AcademicCalendarData,
+} from "@lib/academic-milestones";
 import type { TermWithCount } from "@lib/types";
 
 // Windows are placed around the real clock so the screen's "today" snapshot
@@ -87,20 +91,20 @@ describe("AcademicCalendarScreen", () => {
     ).not.toHaveAttribute("open");
   });
 
-  test("lists every active term with CRS id, date range, class count, and status", () => {
+  test("lists every active term with term id, date range, class count, and status", () => {
     render(AcademicCalendarScreen);
     const cards = [...document.querySelectorAll(".acal-card")];
     expect(cards).toHaveLength(3);
 
     const inSession = cards.find((card) =>
-      card.textContent?.includes("CRS 9002"),
+      card.textContent?.includes("Term 9002"),
     );
     expect(inSession?.textContent).toContain("In session");
     expect(inSession?.textContent).toContain("3400 classes campus-wide");
     expect(inSession?.classList.contains("acal-card--current")).toBe(true);
 
     const undated = cards.find((card) =>
-      card.textContent?.includes("CRS 9003"),
+      card.textContent?.includes("Term 9003"),
     );
     expect(undated?.textContent).toContain("Dates TBA");
   });
@@ -131,8 +135,88 @@ describe("AcademicCalendarScreen", () => {
     );
   });
 
-  describe("with the real AY 2026-2027 registrar calendar", () => {
+  // Fixture registrar calendar standing in for the (not yet imported) BulSU
+  // AY 2026-2027 calendar: two terms, staff-only rows, pre-term dates that
+  // fall off the Aug-Dec strip, and one official holiday.
+  const AY_2026_2027: AcademicCalendarData = {
+    milestones: [
+      {
+        termId: 1261,
+        label: "University Council Executive Committee Meeting",
+        kind: "milestone",
+        startsOn: "2026-07-15",
+        endsOn: "2026-07-15",
+      },
+      {
+        termId: 1261,
+        label: "Application for graduation",
+        kind: "deadline",
+        startsOn: "2026-06-15",
+        endsOn: "2026-06-19",
+      },
+      {
+        termId: 1261,
+        label: "General registration",
+        kind: "deadline",
+        startsOn: "2026-07-06",
+        endsOn: "2026-07-10",
+      },
+      {
+        termId: 1261,
+        label: "Completion/removal examinations",
+        kind: "period",
+        startsOn: "2026-07-13",
+        endsOn: "2026-07-17",
+      },
+      {
+        termId: 1261,
+        label: "Start of classes",
+        kind: "milestone",
+        startsOn: "2026-08-03",
+        endsOn: "2026-08-07",
+      },
+      {
+        termId: 1261,
+        label: "Dropping of subjects",
+        kind: "deadline",
+        startsOn: "2026-10-28",
+        endsOn: "2026-10-28",
+      },
+      {
+        termId: 1261,
+        label: "End of classes",
+        kind: "milestone",
+        startsOn: "2026-11-27",
+        endsOn: "2026-11-27",
+      },
+      {
+        termId: 1261,
+        label: "Final examinations",
+        kind: "period",
+        startsOn: "2026-12-01",
+        endsOn: "2026-12-07",
+      },
+      {
+        termId: 1262,
+        label: "Start of classes",
+        kind: "milestone",
+        startsOn: "2027-01-11",
+        endsOn: "2027-01-15",
+      },
+      {
+        termId: 1262,
+        label: "Final examinations",
+        kind: "period",
+        startsOn: "2027-04-26",
+        endsOn: "2027-05-01",
+      },
+    ],
+    holidays: [{ label: "Ninoy Aquino Day", startsOn: "2026-08-21" }],
+  };
+
+  describe("with a fixture AY 2026-2027 registrar calendar", () => {
     beforeEach(() => {
+      setAcademicCalendarsForTests([AY_2026_2027]);
       termStore.terms = [
         term(1261, {
           schoolYear: "2026-2027",
@@ -262,6 +346,9 @@ describe("AcademicCalendarScreen", () => {
         ?.textContent?.replace(/\s+/g, " ");
       expect(note).toContain("3 registrar dates fall outside the months shown");
       expect(note).toContain("in its card below");
+    });
+    afterEach(() => {
+      setAcademicCalendarsForTests(null);
     });
 
     test("@320px: no horizontal overflow with the full milestone list", () => {

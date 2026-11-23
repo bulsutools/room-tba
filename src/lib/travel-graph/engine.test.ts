@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import walkGraphJson from "../../generated/walk-graph.json";
-import { distanceMeters } from "../campus-route";
 import {
   buildTravelGraph,
   dijkstra,
@@ -163,33 +162,21 @@ describe("isochroneFeatures", () => {
   });
 });
 
-describe("real campus graph", () => {
+describe("bundled walk graph", () => {
   const campus = buildTravelGraph(walkGraphJson as unknown as WalkGraphData);
 
-  test("matches the converter's recorded counts", () => {
-    expect(campus.lat.length).toBe(walkGraphJson.meta.nodeCount);
-    expect(campus.edges.length).toBe(walkGraphJson.meta.edgeCount);
+  test("is empty until a BulSU OSM extract is imported", () => {
+    // The upstream walk network was removed; scripts/build-walk-graph.ts
+    // regenerates this file from a campus OSM GraphML export.
+    expect(walkGraphJson.meta.nodeCount).toBe(0);
+    expect(campus.lat.length).toBe(0);
+    expect(campus.edges.length).toBe(0);
   });
 
-  test("walking reaches the whole network (source graph is one component)", () => {
-    const { seconds } = dijkstra(campus, 0, "walk");
-    expect(seconds.every(Number.isFinite)).toBe(true);
-  });
-
-  test("a cross-campus walk is sane: longer than the crow flies, correct speed", () => {
-    // Oblation area to CAS area — well-known campus walk.
-    const from = nearestNodeIndex(campus, 14.167, 121.2435);
-    const to = nearestNodeIndex(campus, 14.1655, 121.2412);
-    const route = shortestPath(campus, from, to, "walk");
-    expect(route).not.toBeNull();
-    const straightLine = distanceMeters(
-      { lat: campus.lat[from], lon: campus.lng[from] },
-      { lat: campus.lat[to], lon: campus.lng[to] },
-    );
-    const routed = route as NonNullable<typeof route>;
-    expect(routed.meters).toBeGreaterThanOrEqual(straightLine * 0.99);
-    expect(routed.meters).toBeLessThan(straightLine * 3);
-    // Time follows directly from the walk speed constant.
-    expect(routed.seconds).toBeCloseTo(routed.meters / (4.5 / 3.6), 3);
+  test("nearest node, paths and isochrones degrade to nothing", () => {
+    expect(nearestNodeIndex(campus, 14.85, 120.81)).toBe(-1);
+    expect(shortestPath(campus, -1, -1, "walk")).toBeNull();
+    expect(dijkstra(campus, 0, "walk").seconds).toHaveLength(0);
+    expect(isochroneFeatures(campus, new Float64Array(0)).features).toEqual([]);
   });
 });

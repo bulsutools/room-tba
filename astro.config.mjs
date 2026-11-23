@@ -59,8 +59,8 @@ export default defineConfig({
           "changelog/index.html",
           "sponsors/index.html",
           "donate/index.html",
-          "wiki/emergency-hotlines/index.html",
-          "wiki/campus-curfew/index.html",
+          "wiki/index.html",
+          "wiki/using-room-tba/index.html",
         ],
         // #716: desktop-only.css is never fetched by mobile viewports at
         // runtime — don't undo that by precaching it into every install
@@ -290,12 +290,6 @@ export default defineConfig({
       DATABASE_URL: envField.string({
         access: "secret",
         context: "server",
-      }),
-      // Public Kubo integration directory. Override locally for fixture/API testing.
-      KUBO_ROOM_TBA_DIRECTORY_URL: envField.string({
-        access: "secret",
-        context: "server",
-        optional: true,
       }),
       // Google OAuth client ID (public, for client-side config check)
       PUBLIC_GOOGLE_CLIENT_ID: envField.string({
