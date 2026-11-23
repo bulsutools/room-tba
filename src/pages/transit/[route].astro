@@ -3,7 +3,9 @@ export const prerender = false;
 
 import AppRoot from "@ui/AppRoot.svelte";
 import Layout from "@layouts/Layout.astro";
-import { JEEPNEY_ROUTES } from "@constants/jeepney-routes";
+import { getTransitRouteForPage } from "@lib/services/transit-service";
+import { routeFareInfo, transitRouteNoun } from "@lib/transit-route-kind";
+import { routeScheduleSummary } from "@lib/transit-schedule";
 import { breadcrumbSchema, jsonLd, ogCardPath, webpageSchema } from "@lib/site";
 import { campusTransit } from "../../campus.config";
 
@@ -12,18 +14,32 @@ if (!campusTransit.enabled) {
 }
 
 const routeId = Astro.params.route;
-const route = JEEPNEY_ROUTES.find((entry) => entry.id === routeId);
-const routeName = route?.name ?? "UPLB jeepney route";
+const route = await getTransitRouteForPage(routeId);
+const fare = route ? routeFareInfo(route) : null;
+const fareText =
+  fare?.kind === "ticketed"
+    ? `Buy tickets on the ${fare.ticketing.operator} website (${fare.ticketing.url}), which lists the current fare.`
+    : fare?.kind === "fixed" || fare?.kind === "end-to-end"
+      ? `Fare ₱${fare.fare.regular} (₱${fare.fare.discounted} student, senior or PWD). ${fare.note}`
+      : (fare?.note ?? "");
+const schedule = route ? routeScheduleSummary(route.id) : null;
+const scheduleText = schedule
+  ? schedule.published
+    ? `${schedule.hours}. ${schedule.frequency}.${schedule.note ? ` ${schedule.note}` : ""}`
+    : `${schedule.hours}.`
+  : "";
+const routeName = route?.name ?? "BulSU transit route";
+const routeNoun = route ? transitRouteNoun(route) : "transit route";
 const canonicalPath = `/transit/${encodeURIComponent(routeId ?? "")}/`;
-const title = `${routeName} | UPLB Transit | Room TBA`;
+const title = `${routeName} | BulSU Transit | Room TBA`;
 const description =
   route?.description ??
-  "View this UPLB jeepney route, its stops, and map context in Room TBA.";
+  `View this BulSU ${routeNoun}, its stops, and map context in Room TBA.`;
 const structuredData = jsonLd(
   webpageSchema({ title, description, path: canonicalPath }),
   breadcrumbSchema([
     { name: "Home", path: "/" },
-    { name: "Jeepney routes", path: "/transit/" },
+    { name: "Jeep & bus routes", path: "/transit/" },
     { name: routeName, path: canonicalPath },
   ]),
 );
@@ -37,9 +53,11 @@ const structuredData = jsonLd(
   imagePath={ogCardPath({
     title: routeName,
     subtitle: route
-      ? `${route.stops.length} stops · PHP ${route.fare.regular} regular · PHP ${route.fare.discounted} discounted`
-      : "Transit at UPLB",
-    kicker: "Transit at UPLB",
+      ? fare?.kind === "fixed" || fare?.kind === "end-to-end"
+        ? `${route.stops.length} stops, PHP ${fare.fare.regular} regular, PHP ${fare.fare.discounted} discounted`
+        : `${route.stops.length} stops`
+      : "Transit at BulSU",
+    kicker: "Transit at BulSU",
   })}
   {structuredData}
 >
@@ -47,7 +65,18 @@ const structuredData = jsonLd(
     <article class="sr-only">
       <h1>{routeName}</h1>
       <p>{description}</p>
-      {route && <p>{route.stops.length} stops. Regular fare: ₱{route.fare.regular}.</p>}
+      {route && (
+        <p>
+          The route has {route.stops.length} stops.{" "}
+          {fareText}
+        </p>
+      )}
+      {route && <p>{scheduleText}</p>}
+      {route && (
+        <ol>
+          {route.stops.map((stop) => <li>{stop.name}</li>)}
+        </ol>
+      )}
     </article>
     <AppRoot client:only="svelte" suppressLandingModal={true} />
   </main>

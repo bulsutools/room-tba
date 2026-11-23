@@ -45,7 +45,7 @@ test.describe("community redirects", () => {
   });
 });
 
-const TRANSPARENCY_TARGET = "https://www.uplb.tools/transparency";
+const TRANSPARENCY_TARGET = "https://bulsu.tools/transparency";
 
 /**
  * The money report used to be src/pages/transparency.astro and now lives on the
@@ -65,14 +65,24 @@ test.describe("transparency report redirects", () => {
 });
 
 test.describe("admin redirects", () => {
-  test("/admin redirects to in-app login", async ({ page }) => {
-    await page.goto("/admin");
-    await expect(page).toHaveURL(/editor=login/);
+  // The app consumes ?editor=login (opens the dialog, then cleans the URL),
+  // so asserting the browser URL raced that cleanup. Check the redirect
+  // itself, then that the login dialog opened.
+  test("/admin/login redirects to in-app login", async ({ page, request }) => {
+    const res = await request.get("/admin/login", { maxRedirects: 0 });
+    expect(res.status()).toBe(302);
+    expect(res.headers().location).toMatch(/editor=login/);
+
+    await page.goto("/admin/login");
+    await expect(page.locator("#admin-login-title")).toBeVisible();
   });
 
-  test("/admin/login redirects to in-app login", async ({ page }) => {
-    await page.goto("/admin/login");
-    await expect(page).toHaveURL(/editor=login/);
+  // /admin itself is the landing page now (auth audit item 15); signed out
+  // it links to the same in-app login.
+  test("/admin links signed-out visitors to in-app login", async ({ page }) => {
+    await page.goto("/admin");
+    await page.getByRole("link", { name: "Sign in" }).click();
+    await expect(page.locator("#admin-login-title")).toBeVisible();
   });
 
   test("/?editor=login opens login dialog", async ({ page }) => {

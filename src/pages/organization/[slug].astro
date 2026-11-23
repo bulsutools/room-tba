@@ -33,10 +33,10 @@ const kind = isStudentOrganization(organization.category)
   ? "Student organization"
   : "Office or academic unit";
 const canonicalPath = getOrganizationCanonicalPath(organization);
-const title = `${organization.name} | ${kind} at UPLB | Room TBA`;
+const title = `${organization.name} | ${kind} at BulSU | Room TBA`;
 const description = organization.description
-  ? `${organization.name} is a ${kind.toLowerCase()} at UPLB. ${organization.description}`
-  : `Find ${organization.name}, a ${kind.toLowerCase()} at UPLB, on the Room TBA campus map.`;
+  ? `${organization.name} is a ${kind.toLowerCase()} at BulSU. ${organization.description}`
+  : `Find ${organization.name}, a ${kind.toLowerCase()} at BulSU, on the Room TBA campus map.`;
 const facts = [
   category,
   buildingName ? `Located in ${buildingName}` : null,
@@ -74,10 +74,10 @@ const structuredData = jsonLd(
     : null}
   ogCard={{
     title: organization.name,
-    subtitle: buildingName ? `${category} · ${buildingName}` : category,
-    kicker: `${kind} at UPLB`,
+    subtitle: buildingName ? `${category}, ${buildingName}` : category,
+    kicker: `${kind} at BulSU`,
   }}
-  heading={`${organization.name} at UPLB`}
+  heading={`${organization.name} at BulSU`}
   intro={description}
   {facts}
   breadcrumbs={[

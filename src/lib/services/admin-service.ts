@@ -2,6 +2,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { parsePublishingActor } from "@lib/admin/auth";
 import { recordEditorContribution } from "./contribution-service";
+import { changedKeys, classifyContribution } from "@lib/contributors/scoring";
 import {
   buildingsTable,
   collegesTable,
@@ -158,6 +159,11 @@ export async function recordEditorHistory({
       entityId,
       entityLabel:
         typeof label === "string" ? label : `${entityType} #${entityId}`,
+      kind: classifyContribution({
+        entityType,
+        action,
+        keys: changedKeys(before, after),
+      }),
     });
   }
 }
@@ -1140,8 +1146,8 @@ export async function updatePlace(
   id: number,
   input: PlaceUpdateInput,
   expectedVersion?: number,
-  _editedBy = "admin",
-  _history?: EditorHistoryOverride,
+  editedBy = "admin",
+  history?: EditorHistoryOverride,
 ): Promise<PlaceData | null> {
   const updates: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(input)) {
@@ -1152,6 +1158,7 @@ export async function updatePlace(
   }
   if (Object.keys(updates).length === 0) return getPlaceById(id);
 
+  const before = await getPlaceById(id);
   const where =
     expectedVersion === undefined
       ? eq(placesTable.id, id)
@@ -1165,6 +1172,19 @@ export async function updatePlace(
   if (!updated && expectedVersion !== undefined) {
     throw new EditConflictError(await getPlaceById(id));
   }
+  if (before && updated) {
+    await recordEditorHistory({
+      entityType: "place",
+      entityId: id,
+      action: history?.action ?? "update",
+      before,
+      after: updated,
+      versionBefore: before.version,
+      versionAfter: updated.version,
+      editedBy,
+      summary: history?.summary ?? null,
+    });
+  }
   await refreshSyncKey("places");
   return updated ?? (await getPlaceById(id));
 }
@@ -1176,7 +1196,7 @@ export type PlaceCreateInput = PlaceUpdateInput & {
 
 export async function createPlace(
   input: PlaceCreateInput,
-  _editedBy = "admin",
+  editedBy = "admin",
 ): Promise<PlaceData | null> {
   const [inserted] = await db
     .insert(placesTable)
@@ -1192,6 +1212,17 @@ export async function createPlace(
       imageUrl: input.imageUrl ?? null,
     })
     .returning();
+  if (inserted) {
+    await recordEditorHistory({
+      entityType: "place",
+      entityId: inserted.id,
+      action: "create",
+      before: null,
+      after: inserted,
+      versionAfter: inserted.version,
+      editedBy,
+    });
+  }
   await refreshSyncKey("places");
   return inserted ?? null;
 }

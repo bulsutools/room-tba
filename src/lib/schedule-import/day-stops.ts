@@ -28,9 +28,9 @@ export function parseSlotMinutes(
   };
 }
 
-/** Tokenize AMIS day string (handles T vs Th). */
+/** Tokenize a registrar day string (handles T vs Th). */
 export function tokenizeScheduleDays(days: string): Weekday[] {
-  // Case-insensitive: AMIS/DB data mixes casing — seed "Th"/"TTh" vs
+  // Case-insensitive: import/DB data mixes casing — seed "Th"/"TTh" vs
   // production "TH"/"TTH". Check the 2-char Thursday token before single T.
   const upper = days.toUpperCase();
   const tokens: Weekday[] = [];

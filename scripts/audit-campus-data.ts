@@ -46,7 +46,7 @@ config({ path: ".env", quiet: true });
 
 /**
  * Thresholds, calibrated against the 59 buildings / 53 places / 15 dorms / 362
- * organizations on the UPLB prod dataset rather than guessed. UPLB is ~2 km
+ * organizations on the upstream prod dataset rather than guessed. The upstream campus is ~2 km
  * across, and pins are single points on buildings that are themselves 30-80 m
  * long, so "adjacent" is never 0 m.
  */
@@ -593,8 +593,8 @@ async function main(): Promise<void> {
   say();
   say("### Headline counts");
   say();
-  say(`| Detection | Findings |`);
-  say(`| --- | --- |`);
+  say("| Detection | Findings |");
+  say("| --- | --- |");
   say(`| 1. Pin contradicts its own directions | ${contradictions.length} |`);
   say(`| 2a. Tenants scattered from their building | ${scattered.length} |`);
   say(

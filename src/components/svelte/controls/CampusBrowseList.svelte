@@ -2,25 +2,31 @@
   import EntitySkeleton from "@ui/EntitySkeleton.svelte";
   import LoadingIndicator from "@ui/LoadingIndicator.svelte";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
+  import Printer from "@lucide/svelte/icons/printer";
   import EntityEmptyState from "./EntityEmptyState.svelte";
-  import EntityPanelFilter from "./EntityPanelFilter.svelte";
   import EntityPanelHeader from "./EntityPanelHeader.svelte";
   import { getAppData } from "@lib/context";
   import type { CampusBrowseTab } from "@lib/browse-campus";
   import {
     isStudentOrganization,
+    normalizeOrgCategory,
     orgCategoryLabel,
+    type OrgCategory,
   } from "@constants/org-categories";
+  import { collegeLabel, displayOrgName } from "@lib/directory-labels";
   import {
     isLandmarkPlaceCategory,
     placeDirectoryLabel,
   } from "@constants/place-categories";
   import {
+    appBootstrapStore,
     jeepneyStore,
     queryStore,
     sidePanelStore,
     transitStore,
   } from "@lib/store.svelte";
+  import { campusListState } from "@lib/campus-list-state";
+  import { onlineStatus } from "@lib/stores/online-status.svelte";
   import CollegeResult from "./CollegeResult.svelte";
   import BuildingResult from "./BuildingResult.svelte";
   import DivisionResult from "./DivisionResult.svelte";
@@ -28,22 +34,29 @@
   import DormResult from "./DormResult.svelte";
   import PlaceResult from "./PlaceResult.svelte";
   import { campusTransit } from "../../../campus.config";
+  import {
+    JEEPNEY_ROUTES,
+    ROUTE_LINE_CODES,
+    ROUTE_SIGNBOARDS,
+  } from "@constants/jeepney-routes";
+  import { darkenForWhiteText } from "@lib/color-contrast";
+  import TransitSignboard from "../modal/TransitSignboard.svelte";
+  import {
+    distinctStopCount,
+    transitRouteKind,
+    type TransitRouteKind,
+  } from "@lib/transit-route-kind";
 
-  // Derived from campusTransit.label so a fork edits one place:
-  // label Jeepney routes → title Jeepney Routes, plural jeepney routes,
-  // noun jeepney route, placeholder Search jeepney routes…
-  const transitPlural = campusTransit.label.toLowerCase();
+  // Derived from campusTransit.label so a fork edits one place.
   const transitTitle = campusTransit.label.replace(/(^|\s)\p{L}/gu, (c) =>
     c.toUpperCase(),
   );
-  // ponytail: trailing-s trim; give the label a regular plural or adjust here.
-  const transitNoun = transitPlural.replace(/s$/, "");
 
   const appData = getAppData();
   const { buildings, colleges, divisions, dorms, organizations, places, loaded } =
     $derived(appData());
 
-  let filterText = $state("");
+  let orgCategory = $state<OrgCategory | "all">("all");
 
   const activeTab = $derived.by((): CampusBrowseTab => {
     const value = queryStore.queryValue;
@@ -77,7 +90,7 @@
       case "landmarks":
         return "Landmarks";
       case "services":
-        return "Services & Establishments";
+        return "Food & stores";
       case "jeepney":
         return transitTitle;
       default:
@@ -91,147 +104,164 @@
         return {
           noun: "college",
           plural: "colleges",
-          placeholder: "Search colleges…",
         };
       case "dorms":
         return {
           noun: "dorm",
           plural: "dorms",
-          placeholder: "Search dorms…",
         };
       case "divisions":
         return {
           noun: "division",
           plural: "divisions",
-          placeholder: "Search divisions…",
         };
       case "organizations":
         return {
           noun: "student organization",
           plural: "student organizations",
-          placeholder: "Search student organizations…",
         };
       case "offices":
         return {
           noun: "office or academic unit",
           plural: "offices & academic units",
-          placeholder: "Search offices & academic units…",
         };
       case "landmarks":
         return {
           noun: "landmark",
           plural: "landmarks",
-          placeholder: "Search landmarks…",
         };
       case "services":
         return {
           noun: "service or establishment",
           plural: "services & establishments",
-          placeholder: "Search services & establishments…",
         };
       case "jeepney":
-        return {
-          noun: transitNoun,
-          plural: transitPlural,
-          placeholder: `Search ${transitPlural}…`,
-        };
+        return { noun: "route", plural: "routes" };
       default:
         return {
           noun: "building",
           plural: "buildings",
-          placeholder: "Search buildings…",
         };
     }
   });
 
+  // No filter box in the sheet: the list is the result for the chip named
+  // in the search bar, and typing there searches the whole campus.
   const filteredBuildings = $derived.by(() => {
     if (!loaded || !buildings) return [];
-    const needle = filterText.trim().toLowerCase();
-    const rows = [...buildings].sort((a, b) =>
+    return [...buildings].sort((a, b) =>
       a.buildingName.localeCompare(b.buildingName),
-    );
-    if (!needle) return rows;
-    return rows.filter((row) =>
-      row.buildingName.toLowerCase().includes(needle),
     );
   });
 
   const filteredColleges = $derived.by(() => {
     if (!loaded || !colleges) return [];
-    const needle = filterText.trim().toLowerCase();
-    const rows = [...colleges].sort((a, b) =>
+    return [...colleges].sort((a, b) =>
       a.collegeName.localeCompare(b.collegeName),
     );
-    if (!needle) return rows;
-    return rows.filter((row) => row.collegeName.toLowerCase().includes(needle));
   });
 
   const filteredDivisions = $derived.by(() => {
     if (!loaded || !divisions) return [];
-    const needle = filterText.trim().toLowerCase();
-    const rows = [...divisions].sort((a, b) =>
+    return [...divisions].sort((a, b) =>
       a.divisionName.localeCompare(b.divisionName),
-    );
-    if (!needle) return rows;
-    return rows.filter((row) =>
-      row.divisionName.toLowerCase().includes(needle),
     );
   });
 
-  const filteredOrganizations = $derived.by(() => {
+  const tabOrganizations = $derived.by(() => {
     if (!loaded || !organizations) return [];
     if (activeTab !== "organizations" && activeTab !== "offices") return [];
-    const needle = filterText.trim().toLowerCase();
-    const rows = organizations.filter((row) => {
-      return activeTab === "organizations"
-        ? isStudentOrganization(row.category)
-        : !isStudentOrganization(row.category);
-    }).sort((a, b) =>
-      a.name.localeCompare(b.name),
+    return organizations
+      .filter((row) =>
+        activeTab === "organizations"
+          ? isStudentOrganization(row.category)
+          : !isStudentOrganization(row.category),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
+
+  // Filter chips only when the list really mixes kinds (orgs, councils,
+  // publications); one chip per kind present, with its count.
+  const orgCategoryChips = $derived.by(() => {
+    if (activeTab !== "organizations") return [];
+    const counts = new Map<OrgCategory, number>();
+    for (const row of tabOrganizations) {
+      const category = normalizeOrgCategory(row.category);
+      if (category) counts.set(category, (counts.get(category) ?? 0) + 1);
+    }
+    if (counts.size < 2) return [];
+    return [...counts].map(([category, count]) => ({
+      category,
+      count,
+      label: orgCategoryLabel(category) ?? category,
+    }));
+  });
+
+  $effect(() => {
+    void activeTab;
+    orgCategory = "all";
+  });
+
+  const filteredOrganizations = $derived.by(() => {
+    return tabOrganizations.filter(
+      (row) =>
+        orgCategory === "all" ||
+        normalizeOrgCategory(row.category) === orgCategory,
     );
-    if (!needle) return rows;
-    return rows.filter((row) => row.name.toLowerCase().includes(needle));
+  });
+
+  // Same rule the map uses to place an org: its own pin or its building's.
+  const locatedOrgCount = $derived.by(() => {
+    if (activeTab !== "organizations") return 0;
+    const pinned = new Set(
+      (buildings ?? [])
+        .filter((b) => b.lat !== null && b.lon !== null)
+        .map((b) => b.id),
+    );
+    return filteredOrganizations.filter(
+      (org) =>
+        (org.lat !== null && org.lon !== null) ||
+        (org.buildingId !== null && pinned.has(org.buildingId)),
+    ).length;
   });
 
   const filteredDorms = $derived.by(() => {
     if (!loaded || !dorms || activeTab !== "dorms") return [];
-    const needle = filterText.trim().toLowerCase();
-    const rows = [...dorms].sort((a, b) => a.dormName.localeCompare(b.dormName));
-    return needle
-      ? rows.filter((row) => row.dormName.toLowerCase().includes(needle))
-      : rows;
+    return [...dorms].sort((a, b) => a.dormName.localeCompare(b.dormName));
   });
 
   const filteredPlaces = $derived.by(() => {
     if (!loaded || !places || (activeTab !== "landmarks" && activeTab !== "services")) {
       return [];
     }
-    const needle = filterText.trim().toLowerCase();
-    const rows = places
+    return places
       .filter((row) => {
         const landmark = isLandmarkPlaceCategory(row.category);
         return activeTab === "landmarks" ? landmark : !landmark;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-    return needle
-      ? rows.filter((row) => row.name.toLowerCase().includes(needle))
-      : rows;
   });
 
   const visibleItems = $derived.by(() => {
     if (activeTab === "colleges") {
-      return filteredColleges.map((row) => ({
-        id: row.id,
-        label: row.collegeName,
-        meta: null as string | null,
-        open: () => openCollege(row.collegeName),
-      }));
+      return filteredColleges.map((row) => {
+        const { name, acronym } = collegeLabel(
+          row.collegeName,
+          row.websiteLink,
+        );
+        return {
+          id: row.id,
+          label: name,
+          meta: acronym,
+          open: () => openCollege(row.collegeName),
+        };
+      });
     }
     if (activeTab === "dorms") {
       return filteredDorms.map((row) => ({
         id: row.id,
         label: row.dormName,
-        meta: row.isUpManaged ? "UP-managed dorm" : "Private dorm",
+        meta: row.isUpManaged ? "Campus-managed dorm" : "Private dorm",
         open: () => openDorm(row.dormName),
       }));
     }
@@ -246,8 +276,14 @@
     if (activeTab === "organizations" || activeTab === "offices") {
       return filteredOrganizations.map((row) => ({
         id: row.id,
-        label: row.name,
-        meta: orgCategoryLabel(row.category),
+        label: activeTab === "organizations" ? displayOrgName(row.name) : row.name,
+        // Every row in the student list is a student org; only say so when it
+        // is a different kind (council, publication).
+        meta:
+          activeTab === "organizations" &&
+          normalizeOrgCategory(row.category) === "student-org"
+            ? null
+            : orgCategoryLabel(row.category),
         open: () => openOrg(row.name),
       }));
     }
@@ -263,7 +299,7 @@
       return filteredJeepneyRoutes.map((route) => ({
         id: route.id,
         label: route.name,
-        meta: `${route.stops.length} stops`,
+        meta: `${distinctStopCount(route)} stops`,
         open: () => openJeepneyRoute(route.id),
       }));
     }
@@ -277,12 +313,22 @@
 
   const visibleCount = $derived(visibleItems.length);
 
+  // Campus data loads behind the live map, so an empty list may still be
+  // loading, or never saved on this device while offline.
+  const listState = $derived(
+    campusListState({
+      count: visibleCount,
+      loaded,
+      phase: appBootstrapStore.phase,
+      online: onlineStatus.online,
+    }),
+  );
+
   const emptyState = $derived.by(() => {
-    const query = filterText.trim();
-    if (query) {
+    if (listState === "offline") {
       return {
-        title: "Nothing in this corner of campus",
-        description: `No ${tabMeta.plural} match “${query}”. Try a shorter name or another keyword.`,
+        title: "Not available offline",
+        description: `${tabTitle} haven’t been saved on this device yet. Connect to the internet once and they’ll stay available offline.`,
       };
     }
     return {
@@ -293,13 +339,11 @@
 
   const statusLine = $derived.by(() => {
     if (!loaded) return "Loading campus directory…";
-    if (visibleCount === 0) {
-      const query = filterText.trim();
-      return query
-        ? `No ${tabMeta.plural} match “${query}”.`
-        : `No ${tabMeta.plural} listed.`;
-    }
+    if (visibleCount === 0) return `No ${tabMeta.plural} listed.`;
     const unit = visibleCount === 1 ? tabMeta.noun : tabMeta.plural;
+    if (activeTab === "organizations") {
+      return `${visibleCount} ${unit}, ${locatedOrgCount} on the map`;
+    }
     return `${visibleCount} ${unit}`;
   });
 
@@ -381,48 +425,78 @@
     });
   }
 
+  // Campus jeeps first (in their bundled order, Kaliwa/Kanan leading), then
+  // town jeeps, then buses. Sorted by id, a Manila bus led the list and the
+  // busiest campus loop sat third.
+  const KIND_ORDER: TransitRouteKind[] = ["campus", "town", "bus"];
+  const KIND_HEADING: Record<TransitRouteKind, string> = {
+    campus: "Campus jeepneys",
+    town: "Town jeepneys",
+    bus: "Buses",
+  };
+  const campusOrder = new Map(JEEPNEY_ROUTES.map((r, i) => [r.id, i]));
+
   const filteredJeepneyRoutes = $derived.by(() => {
     if (activeTab !== "jeepney") return [];
-    const needle = filterText.trim().toLowerCase();
-    if (!needle) return transitStore.routes;
-    return transitStore.routes.filter(
-      (route) =>
-        route.name.toLowerCase().includes(needle) ||
-        route.description.toLowerCase().includes(needle) ||
-        route.stops.some((stop) => stop.name.toLowerCase().includes(needle)),
+    return [...transitStore.routes].sort(
+      (a, b) =>
+        KIND_ORDER.indexOf(transitRouteKind(a)) -
+          KIND_ORDER.indexOf(transitRouteKind(b)) ||
+        (campusOrder.get(a.id) ?? 99) - (campusOrder.get(b.id) ?? 99) ||
+        a.name.localeCompare(b.name),
     );
   });
+
+  const jeepneyRouteGroups = $derived(
+    KIND_ORDER.map((kind) => ({
+      kind,
+      heading: KIND_HEADING[kind],
+      routes: filteredJeepneyRoutes.filter((r) => transitRouteKind(r) === kind),
+    })).filter((group) => group.routes.length > 0),
+  );
 
   function openJeepneyRoute(id: string) {
     jeepneyStore.openRouteOnMap(id);
   }
 
-  function closeList() {
-    queryStore.clearQuery();
-    sidePanelStore.closePanel();
-  }
-
-  function onFilterInput(event: Event) {
-    filterText = (event.currentTarget as HTMLInputElement).value;
-  }
 </script>
 
 <div class="campus-browse-panel">
-  <EntityPanelHeader
-    closeAriaLabel="Close browse list"
-    closeTitle="Close"
-    onclose={closeList}
-  >
+  <!-- One close control: the search bar's X, which names this list. -->
+  <EntityPanelHeader>
     {#snippet trailing()}
       <h2 class="entity-header__title">{tabTitle}</h2>
-      <EntityPanelFilter
-        value={filterText}
-        label={`Filter ${tabMeta.plural}`}
-        placeholder={tabMeta.placeholder}
-        search
-        oninput={onFilterInput}
-      />
-      {#if !loaded}
+      {#if orgCategoryChips.length > 0}
+        <div
+          class="campus-browse-chips"
+          role="group"
+          aria-label="Filter by kind"
+        >
+          <button
+            type="button"
+            class="map-chrome-chip"
+            class:map-chrome-chip--filter-selected={orgCategory === "all"}
+            aria-pressed={orgCategory === "all"}
+            onclick={() => (orgCategory = "all")}
+          >
+            All
+          </button>
+          {#each orgCategoryChips as chip (chip.category)}
+            <button
+              type="button"
+              class="map-chrome-chip"
+              class:map-chrome-chip--filter-selected={orgCategory ===
+                chip.category}
+              aria-pressed={orgCategory === chip.category}
+              onclick={() => (orgCategory = chip.category)}
+            >
+              {chip.label}
+              <span class="map-chrome-chip__count">{chip.count}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+      {#if listState === "loading" && activeTab !== "jeepney"}
         <p class="entity-panel-status">
           <LoadingIndicator label="Loading campus directory…" />
         </p>
@@ -438,8 +512,23 @@
     aria-label={`${tabMeta.plural} list`}
   >
     {#if activeTab === "jeepney" && filteredJeepneyRoutes.length > 0}
+      <!-- Every route on one sheet, to print or keep on a phone. -->
+      <a
+        class="entity-list-row transit-print-link"
+        href="/api/transit-map"
+        target="_blank"
+        rel="noreferrer"
+      >
+        <Printer size={18} aria-hidden="true" />
+        <span class="entity-list-row__label">Printable transit map</span>
+        <span class="entity-list-row__meta">PDF</span>
+      </a>
+      {#each jeepneyRouteGroups as group (group.kind)}
+      {#if jeepneyRouteGroups.length > 1}
+        <h3 class="jeepney-route-group">{group.heading}</h3>
+      {/if}
       <ul class="entity-nav-list">
-        {#each filteredJeepneyRoutes as route (route.id)}
+        {#each group.routes as route (route.id)}
           <li>
             <button
               type="button"
@@ -448,19 +537,40 @@
               title={`Open ${route.name} route details`}
               onclick={() => openJeepneyRoute(route.id)}
             >
-              <span
-                class="jeepney-route-item__dot"
-                style:background-color={route.color}
-                aria-hidden="true"
-              ></span>
+              {#if ROUTE_LINE_CODES[route.id]}
+                <span class="jeepney-route-item__codes" aria-hidden="true">
+                  {#each ROUTE_LINE_CODES[route.id] as code (code)}
+                    <span
+                      class="jeepney-route-item__code"
+                      style:background-color={darkenForWhiteText(route.color)}
+                      >{code}</span
+                    >
+                  {/each}
+                </span>
+              {:else if ROUTE_SIGNBOARDS[route.id]}
+                <span aria-hidden="true">
+                  <TransitSignboard
+                    lines={ROUTE_SIGNBOARDS[route.id]!}
+                    tone={transitRouteKind(route) === "bus" ? "yellow" : "red"}
+                    small
+                  />
+                </span>
+              {:else}
+                <span
+                  class="jeepney-route-item__dot"
+                  style:background-color={route.color}
+                  aria-hidden="true"
+                ></span>
+              {/if}
               <span class="entity-list-row__label">{route.name}</span>
               <span class="entity-list-row__meta"
-                >{route.stops.length} stops</span
+                >{distinctStopCount(route)} stops</span
               >
             </button>
           </li>
         {/each}
       </ul>
+      {/each}
     {:else if activeTab !== "jeepney" && loaded && visibleCount > 0}
       <ul class="entity-nav-list">
         {#each visibleItems as item (item.id)}
@@ -484,7 +594,7 @@
           </li>
         {/each}
       </ul>
-    {:else if !loaded && activeTab !== "jeepney"}
+    {:else if listState === "loading" && activeTab !== "jeepney"}
       <!-- Header LoadingIndicator already announces the load; empty label keeps
            the skeleton out of the accessibility tree. -->
       <EntitySkeleton variant="directory" label="" />
@@ -558,15 +668,75 @@
     margin-left: auto;
     padding: 0.0625rem 0.4375rem;
     border-radius: 999px;
-    background: hsl(5, 30%, 94%);
-    color: hsl(5, 40%, 34%);
+    background: var(--theme-accent-soft, hsl(5, 30%, 94%));
+    color: var(--theme-accent-text, hsl(5, 40%, 34%));
     font-size: 0.6875rem;
     font-weight: 600;
     white-space: nowrap;
   }
 
+  /* Long college and org names wrap to a second line instead of losing
+     the words that tell them apart. */
+  .campus-browse-body .entity-list-row__label {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+  }
+
+  .campus-browse-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .campus-browse-chips .map-chrome-chip {
+    min-height: 2.25rem;
+    height: auto;
+    font-size: 0.75rem;
+  }
+
+  .transit-print-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+    color: var(--theme-accent-text, hsl(345, 75%, 31%));
+    text-decoration: none;
+  }
+
+  .jeepney-route-group {
+    margin: 0.75rem 0 0.25rem;
+    padding: 0 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--theme-text-2, hsl(0, 0%, 40%));
+  }
+
+  .jeepney-route-group:first-child {
+    margin-top: 0;
+  }
+
   .jeepney-route-item--active {
-    background: hsl(5, 53%, 96%);
+    background: var(--theme-accent-soft, hsl(5, 53%, 96%));
+  }
+
+  .jeepney-route-item__codes {
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 0.1875rem;
+  }
+
+  .jeepney-route-item__code {
+    padding: 0.0625rem 0.3125rem;
+    border-radius: 0.25rem;
+    color: white;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
   }
 
   .jeepney-route-item__dot {

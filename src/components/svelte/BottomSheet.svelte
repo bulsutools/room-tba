@@ -1,19 +1,27 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
+  import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import {
+    LANDSCAPE_COMPACT_MEDIA,
     resolveBottomSheetRelease,
     sheetTranslateY,
     type BottomSheetSnap,
   } from "@lib/bottom-sheet-snap";
+  import { sidePanelStore } from "@lib/store.svelte";
+  import { trapFocus } from "@lib/focus-trap";
 
   let {
     open = false,
-    snap = $bindable<"peek" | "expanded">("peek"),
+    snap = $bindable<BottomSheetSnap>("peek"),
     peekRatio = 0.48,
+    peekFitTo,
     expandedRatio = 0.92,
+    fullScreen = false,
     topInset = "0px",
     bottomInset = "0px",
+    scrollResetKey,
+    contentEl = $bindable(null),
     onDismiss,
     children,
   }: {
@@ -21,15 +29,37 @@
     snap?: BottomSheetSnap;
     /** Fraction of the available height used for peek (0–1). */
     peekRatio?: number;
+    /**
+     * Selector inside the content (e.g. ".entity-actions"). When present,
+     * peek ends just below it instead of at peekRatio, never taller than
+     * peekRatio and never under PEEK_FIT_MIN_RATIO: on a tall phone a fixed
+     * ratio covered a third of the map with photo and body text nobody had
+     * scrolled to yet.
+     */
+    peekFitTo?: string;
     /** Fraction used when expanded — leave a map strip for tap-to-collapse. */
     expandedRatio?: number;
+    /**
+     * Expanded covers the whole screen behind a back bar and never drags
+     * (entity detail). A tap on the peek opens it.
+     */
+    fullScreen?: boolean;
     topInset?: string;
     bottomInset?: string;
+    /**
+     * Scroll the body back to the top whenever this changes (another entity
+     * opened): a room opened from a long building sheet must start at its
+     * own name, not at the parent's scroll offset.
+     */
+    scrollResetKey?: unknown;
+    contentEl?: HTMLElement | null;
     onDismiss?: () => void;
     children: Snippet;
   } = $props();
 
   const reducedMotion = new MediaQuery("(prefers-reduced-motion: reduce)");
+  /** Phone landscape: a full-height left side panel, no snaps or dragging. */
+  const sidePanel = new MediaQuery(LANDSCAPE_COMPACT_MEDIA);
 
   const DRAG_THRESHOLD = 6;
   const FOLLOW_THRESHOLD = 40;
@@ -38,7 +68,7 @@
 
   let rootEl = $state<HTMLElement | null>(null);
   let sheetEl = $state<HTMLElement | null>(null);
-  let contentEl = $state<HTMLElement | null>(null);
+  let backEl = $state<HTMLElement | null>(null);
 
   let availableH = $state(0);
   let dragStartY: number | null = null;
@@ -47,8 +77,26 @@
   let dragFromHandle = false;
   let dragOffset = $state(0);
 
-  const peekH = $derived(Math.round(availableH * peekRatio));
-  const expandedH = $derived(Math.round(availableH * expandedRatio));
+  /** Content offset (px from the sheet top) where a fitted peek should end. */
+  let peekFitPx = $state<number | null>(null);
+  const PEEK_FIT_MIN_RATIO = 0.25;
+  const PEEK_FIT_GAP_PX = 12;
+  const peekH = $derived(
+    Math.round(
+      peekFitPx === null
+        ? availableH * peekRatio
+        : Math.min(
+            availableH * peekRatio,
+            Math.max(availableH * PEEK_FIT_MIN_RATIO, peekFitPx),
+          ),
+    ),
+  );
+  const full = $derived(
+    fullScreen && snap === "expanded" && !sidePanel.current,
+  );
+  const expandedH = $derived(
+    Math.round(availableH * (fullScreen ? 1 : expandedRatio)),
+  );
   const visibleH = $derived(snap === "expanded" ? expandedH : peekH);
   const baseTranslate = $derived(sheetTranslateY(visibleH, availableH));
   const liveTranslate = $derived(
@@ -79,6 +127,53 @@
     };
   });
 
+  function measurePeekFit() {
+    const target =
+      peekFitTo && contentEl
+        ? contentEl.querySelector<HTMLElement>(peekFitTo)
+        : null;
+    if (!target || !sheetEl || !contentEl) {
+      peekFitPx = null;
+      return;
+    }
+    // Rects move together with the sheet's translate, so the difference is
+    // the target's position in the sheet whatever the current snap.
+    const bottom =
+      target.getBoundingClientRect().bottom -
+      sheetEl.getBoundingClientRect().top +
+      contentEl.scrollTop;
+    peekFitPx = bottom > 0 ? Math.ceil(bottom + PEEK_FIT_GAP_PX) : null;
+  }
+
+  // Re-fit whenever the content changes (another place opened, photos or
+  // actions loaded in).
+  $effect(() => {
+    if (!open || !peekFitTo || !contentEl) {
+      peekFitPx = null;
+      return;
+    }
+    let frame = 0;
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measurePeekFit);
+    };
+    schedule();
+    const mo = new MutationObserver(schedule);
+    mo.observe(contentEl, { childList: true, subtree: true });
+    const ro = new ResizeObserver(schedule);
+    ro.observe(contentEl);
+    return () => {
+      cancelAnimationFrame(frame);
+      mo.disconnect();
+      ro.disconnect();
+    };
+  });
+
+  $effect(() => {
+    void scrollResetKey;
+    if (contentEl) contentEl.scrollTop = 0;
+  });
+
   $effect(() => {
     if (open) return;
     dragStartY = null;
@@ -104,7 +199,7 @@
   }
 
   function beginDrag(event: PointerEvent, fromHandle: boolean) {
-    if (!open) return;
+    if (!open || sidePanel.current || full) return;
     dragStartY = event.clientY;
     dragStartTime = performance.now();
     dragMoved = false;
@@ -161,8 +256,10 @@
       // no-move press on the handle as the tap it is, or the handle can
       // only be dragged, never tapped.
       if (fromHandle) {
-        snap = snap === "peek" ? "expanded" : "peek";
+        cycleSnap();
         pointerToggledAt = performance.now();
+      } else if (fullScreen && snap === "peek") {
+        snap = "expanded";
       }
       return;
     }
@@ -171,8 +268,8 @@
       delta,
       velocity,
       snap,
-      followThreshold: FOLLOW_THRESHOLD,
-      dismissThreshold: DISMISS_THRESHOLD,
+      followThreshold: Math.max(FOLLOW_THRESHOLD, visibleH * 0.12),
+      dismissThreshold: Math.max(DISMISS_THRESHOLD, peekH * 0.25),
       flickVelocity: FLICK_VELOCITY,
     });
 
@@ -197,15 +294,51 @@
       dragMoved = false;
       return;
     }
+    cycleSnap();
+  }
+
+  function cycleSnap() {
     snap = snap === "peek" ? "expanded" : "peek";
   }
 
   const transitionMs = $derived(reducedMotion.current ? 0 : 320);
+
+  // Full screen is a modal: Tab stays inside and Escape returns to the peek.
+  $effect(() => {
+    if (!full || !sheetEl) return;
+    return trapFocus(sheetEl, {
+      onEscape: () => {
+        // An open photo viewer inside the sheet closes first.
+        if (!sheetEl?.querySelector("dialog[open]")) snap = "peek";
+      },
+      initialFocus: backEl,
+    });
+  });
+
+  // Publish where the sheet's top edge rests so map controls can sit just
+  // above it (Entry's locate button at peek). The resting snap, not the live
+  // drag: controls should not chase the finger.
+  $effect(() => {
+    if (!open || !rootEl || availableH === 0 || full) return;
+    const top = rootEl.getBoundingClientRect().top + baseTranslate;
+    const root = document.documentElement;
+    root.style.setProperty("--bottom-sheet-top", `${Math.round(top)}px`);
+    sidePanelStore.setMobileSheetTop(Math.round(top));
+    return () => {
+      root.style.removeProperty("--bottom-sheet-top");
+      sidePanelStore.setMobileSheetTop(0);
+    };
+  });
 </script>
 
 {#if open}
   <div
     class="bottom-sheet-root"
+    class:bottom-sheet-root--side={sidePanel.current}
+    class:bottom-sheet-root--full={full}
+    class:bottom-sheet-root--preview={fullScreen &&
+      snap === "peek" &&
+      !sidePanel.current}
     bind:this={rootEl}
     style:--bs-top={topInset}
     style:--bs-bottom={bottomInset}
@@ -221,26 +354,43 @@
       class="bottom-sheet"
       class:bottom-sheet--dragging={isDragging}
       bind:this={sheetEl}
-      style:transform="translate3d(0, {liveTranslate}px, 0)"
-      style:height="{availableH || 0}px"
+      role={full ? "dialog" : undefined}
+      aria-modal={full ? "true" : undefined}
+      aria-label={full ? "Place details" : undefined}
+      style:transform={sidePanel.current
+        ? undefined
+        : `translate3d(0, ${liveTranslate}px, 0)`}
+      style:height={sidePanel.current ? undefined : `${availableH || 0}px`}
       onpointerdown={onSheetPointerDown}
       onpointermove={onSheetPointerMove}
       onpointerup={onSheetPointerUp}
       onpointercancel={onSheetPointerCancel}
       onlostpointercapture={onSheetPointerCancel}
     >
+      {#if full}
+        <div class="bottom-sheet__bar">
+          <button
+            type="button"
+            class="bottom-sheet__back"
+            bind:this={backEl}
+            aria-label="Back to map"
+            onclick={() => (snap = "peek")}
+          >
+            <ArrowLeft size={22} aria-hidden="true" />
+          </button>
+        </div>
+      {:else if !sidePanel.current}
       <button
         type="button"
         class="bottom-sheet__handle"
-        aria-label={snap === "peek"
-          ? "Expand details"
-          : "Collapse details"}
-        aria-expanded={snap === "expanded"}
+        aria-label={snap === "expanded" ? "Collapse details" : "Expand details"}
+        aria-expanded={snap !== "peek"}
         onclick={onHandleClick}
         onpointerdown={onHandlePointerDown}
       >
         <span class="bottom-sheet__grab" aria-hidden="true"></span>
       </button>
+      {/if}
 
       <div class="bottom-sheet__body" bind:this={contentEl}>
         {@render children()}
@@ -251,7 +401,9 @@
 
 <style>
   .bottom-sheet-root {
-    /* Flush to the screen bottom (covers bottom nav); no side gutter. */
+    /* Full width, no side gutter. The bottom is the caller's bottomInset:
+       place sheets stop above the bottom nav so Map, Planner, Today and You
+       stay reachable. */
     position: fixed;
     top: var(--bs-top, 0px);
     right: 0;
@@ -260,6 +412,11 @@
     /* Above map-tools + bottom nav so locate/3D/zoom never paint over it. */
     z-index: var(--z-mobile-sheet, 16);
     pointer-events: none;
+    /* The sheet is full height and translated down to its snap; with a
+       bottom inset (browse lists stop above the bottom nav) the translated
+       part must not paint over what sits below. Top stays open for the
+       shadow. */
+    clip-path: inset(-2rem 0 0 0);
   }
 
   .bottom-sheet {
@@ -272,16 +429,16 @@
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
-    border: 1px solid var(--map-chrome-border, hsl(5 10% 68%));
+    border: 1px solid var(--map-chrome-border, var(--theme-border-strong, hsl(5 10% 68%)));
     border-bottom: none;
     /* Grounded: round only the top; flush to the screen bottom edge. */
-    border-radius: var(--map-chrome-radius, 1rem) var(--map-chrome-radius, 1rem)
-      0 0;
-    background: #fff;
-    box-shadow: var(
-      --shadow-results,
-      0 2px 6px rgb(36 37 46 / 0.2)
-    );
+    border-radius: 1.25rem 1.25rem 0 0;
+    background: var(--theme-surface, #fff);
+    /* An upward shadow so the sheet's top edge reads as a surface lifted over
+       the map, not a line cut through it. */
+    box-shadow:
+      0 -4px 16px rgb(0 0 0 / 0.22),
+      var(--shadow-results, 0 2px 6px rgb(36 37 46 / 0.2));
     pointer-events: auto;
     touch-action: none;
     will-change: transform;
@@ -299,9 +456,9 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 2rem;
+    min-height: 3rem;
     margin: 0;
-    padding: 0.625rem 0 0.375rem;
+    padding: 0.5rem 0 0.25rem;
     border: none;
     background: transparent;
     cursor: grab;
@@ -312,17 +469,65 @@
     cursor: grabbing;
   }
 
+  /* A grabber you can see on both themes: the old surface-3 fill was within
+     1.2:1 of the sheet in dark mode. */
   .bottom-sheet__grab {
     display: block;
-    width: 2.75rem;
-    height: 0.25rem;
+    width: 2.5rem;
+    height: 0.3125rem;
     border-radius: 999px;
-    background: #d4d4d8;
+    background: var(--theme-border-strong, #8e8e93);
   }
 
   .bottom-sheet__handle:hover .bottom-sheet__grab,
   .bottom-sheet__handle:focus-visible .bottom-sheet__grab {
-    background: #a1a1aa;
+    background: var(--theme-text-2, #52525b);
+  }
+
+  .bottom-sheet__handle:focus-visible {
+    outline: 2px solid var(--theme-accent-text, #7b1113);
+    outline-offset: -2px;
+    border-radius: 1rem 1rem 0 0;
+  }
+
+  /* Full screen: a page over the search bar and the bottom nav. */
+  .bottom-sheet-root--full {
+    top: var(--staging-banner-height, 0px);
+    bottom: 0;
+    z-index: calc(var(--z-search-elevated, 18) + 1);
+    clip-path: none;
+  }
+
+  .bottom-sheet-root--full .bottom-sheet {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    touch-action: auto;
+  }
+
+  .bottom-sheet__bar {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    min-height: 3.5rem;
+    padding: env(safe-area-inset-top, 0px) 0.25rem 0;
+  }
+
+  .bottom-sheet__back {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--theme-text, #18181b);
+    cursor: pointer;
+  }
+
+  .bottom-sheet__back:focus-visible {
+    outline: 2px solid var(--theme-accent-text, #7b1113);
+    outline-offset: -2px;
   }
 
   .bottom-sheet__body {
@@ -351,13 +556,38 @@
     z-index: 3;
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
-    border-top: 1px solid #ececec;
-    background: #fff;
+    border-top: 1px solid var(--theme-border, #ececec);
+    background: var(--theme-surface, #fff);
   }
 
   @media (prefers-reduced-motion: reduce) {
     .bottom-sheet {
       transition: none;
     }
+  }
+
+  /* Phone landscape: left side panel from under the search bar, sized to its
+     content and never past the (icon-only) bottom nav, so the nav never
+     covers route cards or the navigation ETA, and the map stays visible to
+     the right. The width is repeated by DirectionsRouteChips. */
+  .bottom-sheet-root--side {
+    right: auto;
+    bottom: var(--mobile-bottom-nav-height, 2.75rem);
+    left: max(0.375rem, env(safe-area-inset-left, 0px));
+    width: min(24rem, 52vw);
+    clip-path: none;
+  }
+
+  .bottom-sheet-root--side .bottom-sheet {
+    top: 0;
+    bottom: auto;
+    height: auto;
+    max-height: calc(100% - 0.375rem);
+    padding-top: 0.5rem;
+    border-bottom: 1px solid
+      var(--map-chrome-border, var(--theme-border-strong, hsl(5 10% 68%)));
+    border-radius: var(--map-chrome-radius, 1rem);
+    touch-action: auto;
+    transition: none;
   }
 </style>

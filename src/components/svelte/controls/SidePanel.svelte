@@ -6,6 +6,7 @@
     sidePanelStore,
     jeepneyStore,
     directionsStore,
+    mapEditStore,
   } from "@lib/store.svelte";
   import JeepneyStopPanel from "./JeepneyStopPanel.svelte";
   import JeepneyRouteModal from "@ui/modal/JeepneyRouteModal.svelte";
@@ -14,9 +15,17 @@
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import { MediaQuery } from "svelte/reactivity";
   import { resolvePanelContent } from "@lib/side-panel-content";
-  import type { BottomSheetSnap } from "@lib/bottom-sheet-snap";
+  import {
+    LANDSCAPE_COMPACT_MEDIA,
+    type BottomSheetSnap,
+  } from "@lib/bottom-sheet-snap";
+  import TransitRouteLifecycle from "./TransitRouteLifecycle.svelte";
+  import { trackOverlay } from "@lib/track-overlay.svelte";
+  import { parseEntityPathname } from "@lib/entity-urls";
+  import { on } from "svelte/events";
 
   const mobile = new MediaQuery("max-width:48rem");
+  const landscape = new MediaQuery(LANDSCAPE_COMPACT_MEDIA);
   // Entity detail views only, never list/browse panels (docs/ad-policy.md).
   const SPONSOR_CATEGORIES = new Set([
     "building",
@@ -36,8 +45,34 @@
       !directionsStore.active,
   );
   let lastPanelIdentity = $state<string | null>(null);
+  let detailsEl = $state<HTMLElement | null>(null);
   /** Mobile sheet snap, independent of sidePanelStore.collapsed (Map.expand race). */
   let mobileSnap = $state<BottomSheetSnap>("peek");
+  let openedFromPlaceUrl = parseEntityPathname(location.pathname) !== null;
+  let sheetBody = $state<HTMLElement | null>(null);
+
+  // Back to a place left from its full-screen view reopens it at the same
+  // scroll.
+  const fullScreenScroll = new Map<string, number>();
+  let sheetScroll = 0;
+  let historyIdx = 0;
+  $effect(() => {
+    const body = sheetBody;
+    if (body) return on(body, "scroll", () => (sheetScroll = body.scrollTop));
+  });
+
+  function scrollSheetTo(top: number) {
+    // The place may still be loading, so retry for up to a second.
+    let frames = 0;
+    const step = () => {
+      if (!sheetBody) return;
+      sheetBody.scrollTop = top;
+      if (sheetBody.scrollTop < top - 1 && ++frames < 60) {
+        requestAnimationFrame(step);
+      }
+    };
+    requestAnimationFrame(step);
+  }
 
   /** Navigation is a map-first view: the bar takes a strip, the map the rest. */
   const navPeek = $derived(directionsStore.navigating);
@@ -45,16 +80,27 @@
   const directionsPeek = $derived(
     directionsStore.active && !directionsStore.navigating,
   );
-  // Directions peek must clear the first option + Show on map / Start;
-  // 0.3 only showed the Walk card.
+  /**
+   * Browse lists (colleges, orgs, classes) carry a title, a filter and a count
+   * above the rows, so the entity peek left room for about two rows. They
+   * open taller; the filtered pins above stay in view.
+   */
+  const listPeek = $derived(
+    !directionsStore.active &&
+      jeepneyStore.selectedStopIndex === null &&
+      (queryStore.category === "classes" ||
+        (queryStore.category === "browse" &&
+          queryStore.queryValue !== "jeepney")),
+  );
+  // Directions peek ends under the Start row (peekFitTo); the ratio is only
+  // the ceiling, and the fallback before that row exists.
   const sheetPeekRatio = $derived(
-    navPeek ? 0.22 : directionsPeek ? 0.44 : 0.48,
+    navPeek ? 0.22 : directionsPeek ? 0.44 : listPeek ? 0.68 : 0.48,
   );
 
-  // Entering follow mode from an expanded sheet would otherwise leave the map
-  // hidden behind the very panel that is meant to be guiding it.
+  // Follow mode and map edit both need the map, so the sheet drops to peek.
   $effect(() => {
-    if (directionsStore.navigating) mobileSnap = "peek";
+    if (directionsStore.navigating || mapEditStore.enabled) mobileSnap = "peek";
   });
 
   // Opening Get Directions starts at peek so the map + search stay usable;
@@ -88,10 +134,38 @@
     resolvePanelContent(sidePanelStore.state, queryStore.category),
   );
 
+  /** Every sheet stops above the bottom nav (and the FAB overhanging it), so
+      Map, Planner, Today and You stay reachable while a place is open. The
+      nav is hidden while following a route, and its height var is 0 then. */
+  const sheetBottomInset =
+    "calc(var(--mobile-bottom-nav-height, 4.5rem) + 0.25rem)";
+
+  /** Place sheets are a preview card that opens full screen, like GMaps. */
+  const entitySheet = $derived(
+    !directionsStore.active &&
+      jeepneyStore.selectedStopIndex === null &&
+      queryStore.category !== null &&
+      SPONSOR_CATEGORIES.has(queryStore.category),
+  );
+
   const panelOpen = $derived(
     PanelContent !== null ||
       jeepneyStore.selectedStopIndex !== null ||
       directionsStore.active,
+  );
+
+  // Back leaves the full-screen view for the preview card.
+  trackOverlay(
+    "place-detail",
+    () =>
+      mobile.current &&
+      !landscape.current &&
+      panelOpen &&
+      entitySheet &&
+      mobileSnap === "expanded",
+    () => {
+      mobileSnap = "peek";
+    },
   );
 
   const toggleLabel = $derived(
@@ -103,18 +177,45 @@
   $effect(() => {
     const identity = panelIdentity;
     if (identity === lastPanelIdentity) return;
+    if (lastPanelIdentity !== null) {
+      if (mobileSnap === "expanded") {
+        fullScreenScroll.set(lastPanelIdentity, sheetScroll);
+      } else fullScreenScroll.delete(lastPanelIdentity);
+    }
+    sheetScroll = 0;
+    const idx = (history.state as { rtbaIdx?: number } | null)?.rtbaIdx ?? 0;
+    const wentBack = idx < historyIdx;
+    historyIdx = idx;
 
     if (identity !== null) {
       // Navigating to another entity drops the metadata the previous view was
       // opened with, so a still-open review queue cannot outlive the query that
       // replaced it.
       sidePanelStore.state = null;
-      // Always open at peek on mobile, ignoring Map.expand() full-screen.
-      mobileSnap = "peek";
+      // A new entity starts at its own header, not the previous scroll offset.
+      if (detailsEl) detailsEl.scrollTop = 0;
+      // Peek on mobile, except a place link opened cold or a place reached
+      // by Back after leaving it from full screen.
+      const backTo = wentBack ? fullScreenScroll.get(identity) : undefined;
+      mobileSnap =
+        (openedFromPlaceUrl || backTo !== undefined) && entitySheet
+          ? "expanded"
+          : "peek";
+      openedFromPlaceUrl = false;
+      if (backTo) scrollSheetTo(backTo);
       if (mobile.current) sidePanelStore.collapse();
       else sidePanelStore.expand();
     }
     lastPanelIdentity = identity;
+  });
+
+  // Sheet content (place tabs) can ask for a taller sheet; it never lowers.
+  $effect(() => {
+    const request = sidePanelStore.sheetSnapRequest;
+    if (!request) return;
+    sidePanelStore.sheetSnapRequest = null;
+    if (!mobile.current || !panelOpen) return;
+    mobileSnap = request;
   });
 
   // Drive map-control visibility in Entry (hide locate/3D/zoom while sheet open).
@@ -130,15 +231,25 @@
     sidePanelStore.collapsed = !sidePanelStore.collapsed;
   }
 
+  /** Exit a focused jeepney route: no route line, no stops, plain map. */
+  function closeJeepneyRoute() {
+    jeepneyStore.disableLayer();
+    queryStore.clearQuery();
+    sidePanelStore.closePanel();
+  }
+
   function dismissMobileSheet() {
     directionsStore.close();
-    jeepneyStore.closeStop();
+    // Swiping the sheet away must not strand a drawn route with no panel.
+    jeepneyStore.clearRoute();
     queryStore.clearQuery();
     sidePanelStore.closePanel();
     mobileSnap = "peek";
     sidePanelStore.setMobileSheetSnap("closed");
   }
 </script>
+
+<TransitRouteLifecycle />
 
 {#snippet panelBody()}
   {#if directionsStore.active}
@@ -149,6 +260,7 @@
     <JeepneyRouteModal
       routeId={jeepneyStore.selectedRouteId}
       onback={() => jeepneyStore.clearRoute()}
+      onclose={closeJeepneyRoute}
     />
   {:else if PanelContent}
     <PanelContent />
@@ -163,8 +275,16 @@
     open={panelOpen}
     bind:snap={mobileSnap}
     peekRatio={sheetPeekRatio}
+    fullScreen={entitySheet}
+    peekFitTo={navPeek
+      ? ".nav__bar"
+      : directionsPeek
+        ? ".directions__start-row"
+        : ".place-sheet-header__actions, .sk-detail__actions"}
     topInset="var(--mobile-detail-sheet-top-inset, 0px)"
-    bottomInset="0px"
+    bottomInset={sheetBottomInset}
+    scrollResetKey={panelIdentity}
+    bind:contentEl={sheetBody}
     onDismiss={dismissMobileSheet}
   >
     {@render panelBody()}
@@ -189,6 +309,7 @@
       </button>
       <div class="drawer-card">
         <div
+          bind:this={detailsEl}
           id="side-panel-details"
           class="side-panel-details map-chrome-scroll"
           aria-hidden={sidePanelStore.collapsed}
@@ -233,14 +354,19 @@
   .drawer-card {
     pointer-events: auto;
     height: 100%;
-    background-color: var(--map-chrome-panel-bg, hsl(5 18% 96%));
-    border: 1px solid var(--map-chrome-border, hsl(5 10% 68%));
+    background-color: var(--map-chrome-panel-bg, var(--theme-surface, hsl(5 18% 96%)));
+    border: 1px solid var(--map-chrome-border, var(--theme-border-strong, hsl(5 10% 68%)));
     border-left: 3px solid
       var(--map-chrome-panel-accent-border, hsl(5 15% 78%));
     border-radius: 0.8125rem;
     padding: 1.125rem;
     box-shadow: var(--map-chrome-panel-shadow);
     overflow: hidden;
+    /* Backdrop for the sticky place-sheet header (entity-detail.css). */
+    --entity-sheet-bg: var(
+      --map-chrome-panel-bg,
+      var(--theme-surface, hsl(5 18% 96%))
+    );
     display: flex;
     flex-direction: column;
   }
@@ -250,8 +376,9 @@
     border-left: none;
     border-radius: var(--map-chrome-radius, 0.75rem);
     padding: 0.75rem 0.875rem;
-    background-color: #fff;
+    background-color: var(--theme-surface, #fff);
     box-shadow: var(--shadow-results, 0 2px 6px rgb(36 37 46 / 0.2));
+    --entity-sheet-bg: var(--theme-surface, #fff);
   }
 
   :global(.app-layout.redesign-desktop) .drawer-handle {
@@ -261,14 +388,14 @@
     height: 3.25rem;
     border: none;
     border-radius: 0 0.625rem 0.625rem 0;
-    background-color: #fff;
-    color: var(--color-brand, #8d1437);
+    background-color: var(--theme-surface, #fff);
+    color: var(--color-brand, var(--theme-accent-text, #8d1437));
     box-shadow: var(--shadow-search, 0 1px 3.5px rgb(58 58 71 / 0.2));
   }
 
   :global(.app-layout.redesign-desktop) .drawer-handle:hover,
   :global(.app-layout.redesign-desktop) .drawer-handle:focus-visible {
-    background-color: #fff;
+    background-color: var(--theme-surface, #fff);
   }
 
   .drawer-sheet {
@@ -295,6 +422,15 @@
     overscroll-behavior: contain;
     scroll-padding: 4px 0 0.5rem;
   }
+  /* With a mouse, the scrollbar is a stray grey line running down the
+     panel's edge beside the content; show the thumb only while the panel is
+     hovered or has focus (wheel and keyboard scroll work either way). */
+  @media (hover: hover) and (pointer: fine) {
+    .side-panel-details:not(:hover):not(:focus-within) {
+      --map-chrome-scrollbar-thumb: transparent;
+    }
+  }
+
   .side-panel-details > :global(*) {
     flex: 0 1 auto;
     min-height: 0;
@@ -313,19 +449,19 @@
     align-items: center;
     justify-content: center;
     pointer-events: auto;
-    border: 1px solid var(--map-chrome-border, hsl(5 10% 68%));
+    border: 1px solid var(--map-chrome-border, var(--theme-border-strong, hsl(5 10% 68%)));
     border-left: none;
     border-radius: 0 0.75rem 0.75rem 0;
-    background-color: var(--map-chrome-surface, hsl(5 20% 97%));
-    color: #7b1113;
+    background-color: var(--map-chrome-surface, var(--theme-surface, hsl(5 20% 97%)));
+    color: var(--theme-accent-text, #7b1113);
     cursor: pointer;
   }
   .drawer-handle:hover,
   .drawer-handle:focus-visible {
-    background-color: #fdf3f3;
+    background-color: var(--theme-accent-soft, #fdf3f3);
   }
   .drawer-handle:focus-visible {
-    outline: 2px solid #7b1113;
+    outline: 2px solid var(--theme-accent-text, #7b1113);
     outline-offset: 2px;
   }
 

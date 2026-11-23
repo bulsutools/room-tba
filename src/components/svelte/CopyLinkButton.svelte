@@ -11,7 +11,7 @@
     label = "Copy link",
     ariaLabel = label,
     successMessage = "Link copied.",
-    errorMessage = "Could not copy link.",
+    errorMessage = "Couldn't copy link.",
     feedback = "none",
     block = false,
     toolbar = false,
@@ -112,7 +112,7 @@
 
   .copy-link-status {
     min-width: 4.5rem;
-    color: #065f46;
+    color: var(--theme-green-text, #065f46);
     font-size: 0.8125rem;
     font-weight: 500;
   }

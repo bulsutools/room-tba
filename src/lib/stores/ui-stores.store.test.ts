@@ -26,7 +26,7 @@ describe("QueryStore pin filter reset (#chip mislabel)", () => {
     queryStore.updateQuery({
       type: "result",
       category: "dorm",
-      value: "Makiling Residence Hall",
+      value: "Riverside Residence Hall",
     });
     expect(buildingTypeFilter.value).toBe("up-managed-dorm");
   });
@@ -45,6 +45,59 @@ describe("QueryStore pin filter reset (#chip mislabel)", () => {
     buildingTypeFilter.set("non-up-managed-dorm");
     queryStore.updateQuery({ type: "query", category: null, value: "caf" });
     expect(buildingTypeFilter.value).toBe("non-up-managed-dorm");
+  });
+});
+
+describe("QueryStore browseOrigin (list breadcrumb)", () => {
+  beforeEach(() => queryStore.clearQuery());
+
+  test("a place picked from a list remembers that list", () => {
+    queryStore.updateQuery({
+      type: "result",
+      category: "browse",
+      value: "buildings",
+    });
+    queryStore.updateQuery({
+      type: "result",
+      category: "building",
+      value: "Physical Sciences Building",
+    });
+    expect(queryStore.browseOrigin).toBe("buildings");
+  });
+
+  test("a place opened from search or a deep link has no list", () => {
+    queryStore.updateQuery({
+      type: "result",
+      category: "building",
+      value: "Physical Sciences Building",
+    });
+    expect(queryStore.browseOrigin).toBeNull();
+
+    queryStore.hydrateQuery({
+      type: "result",
+      category: "dorm",
+      value: "Riverside Residence Hall",
+    });
+    expect(queryStore.browseOrigin).toBeNull();
+  });
+
+  test("re-hydrating the same place keeps its list", () => {
+    queryStore.updateQuery({
+      type: "result",
+      category: "browse",
+      value: "dorms",
+    });
+    queryStore.updateQuery({
+      type: "result",
+      category: "dorm",
+      value: "Riverside Residence Hall",
+    });
+    queryStore.hydrateQuery({
+      type: "result",
+      category: "dorm",
+      value: "Riverside Residence Hall",
+    });
+    expect(queryStore.browseOrigin).toBe("dorms");
   });
 });
 

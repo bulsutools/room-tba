@@ -34,7 +34,7 @@ import {
   classNaturalKey,
   matchRoomId,
   summarizeImportChanges,
-} from "@lib/amis/import-classes";
+} from "@lib/class-import/import-classes";
 import {
   formatRowIssues,
   normalizeGenericClasses,

@@ -31,7 +31,7 @@
       const data = (await response.json()) as { online?: number };
       if (typeof data.online === "number") online = data.online;
     } catch {
-      // Offline or API down: keep the last known count (0 renders as "--").
+      // Offline or API down: keep the last known count (0 renders nothing).
     }
   }
 
@@ -43,16 +43,14 @@
   });
 </script>
 
-<div class="online-counter" title="{online} online now">
-  <div class="pulse-dot"></div>
-  <span class="online-text">
-    {#if online > 0}
-      {online} online
-    {:else}
-      --
-    {/if}
-  </span>
-</div>
+<!-- Hidden until someone besides you is here: "--" before the first
+     heartbeat and "1 online" (just you) both read as a dead app. -->
+{#if online >= 2}
+  <div class="online-counter" role="status">
+    <div class="presence-dot" aria-hidden="true"></div>
+    <span class="online-text">{online} people online now</span>
+  </div>
+{/if}
 
 <style>
   .online-counter {
@@ -61,40 +59,25 @@
     gap: 0.375rem;
     height: 2.75rem; /* Match map chrome toggle size */
     padding: 0 0.875rem;
-    background: var(--map-chrome-surface, white);
-    border: 1px solid var(--map-chrome-border, #ccc);
+    background: var(--map-chrome-surface, var(--theme-surface, white));
+    border: 1px solid var(--map-chrome-border, var(--theme-border, #ccc));
     border-radius: var(--map-chrome-radius, 1rem);
     box-shadow: var(--map-chrome-shadow, 0 1px 3px rgba(0,0,0,0.1));
     font-size: 0.8125rem;
     font-weight: 600;
-    color: hsl(0, 0%, 25%);
+    color: var(--theme-text, hsl(0, 0%, 25%));
     white-space: nowrap;
     user-select: none;
     pointer-events: auto;
     box-sizing: border-box;
   }
 
-  .pulse-dot {
+  /* Static on purpose: a pulsing dot read as noise in the App menu. */
+  .presence-dot {
     width: 0.5rem;
     height: 0.5rem;
     background-color: hsl(142, 70%, 40%);
     border-radius: 50%;
-    position: relative;
     flex-shrink: 0;
-  }
-
-  .pulse-dot::after {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    border-radius: 50%;
-    background-color: hsl(142, 70%, 40%);
-    opacity: 0.5;
-    animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  @keyframes pulse {
-    0% { transform: scale(0.8); opacity: 0.8; }
-    100% { transform: scale(2.5); opacity: 0; }
   }
 </style>

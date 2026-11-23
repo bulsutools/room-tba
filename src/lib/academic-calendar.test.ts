@@ -37,11 +37,8 @@ describe("resolveTermWindow", () => {
     expect(window).toEqual({ startsOn: "2026-01-05", endsOn: "2026-05-20" });
   });
 
-  it("falls back to TERM_CALENDAR_WINDOWS when DB dates are missing (#335)", () => {
-    expect(resolveTermWindow(term(1253))).toEqual({
-      startsOn: "2026-06-08",
-      endsOn: "2026-07-26",
-    });
+  it("returns null when DB dates are missing and the windows map is empty (#335)", () => {
+    expect(resolveTermWindow(term(1253))).toBeNull();
   });
 
   it("returns null for a term with no dates anywhere", () => {

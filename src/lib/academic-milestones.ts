@@ -1,11 +1,9 @@
-import academicCalendar2024 from "../../data/academic-calendar-2024-2025.json";
-import academicCalendar2026 from "../../data/academic-calendar-2026-2027.json";
 import type { Milestone, MilestoneKind } from "./academic-calendar-pdf";
 
 /**
  * Registrar milestones for the calendar screen.
  *
- * The JSON stores every row the OUR calendar prints; this module decides which
+ * The JSON stores every row the registrar calendar prints; this module decides which
  * of them a student sees. Rows that only concern staff (faculty/UC/BOR
  * meetings, tentative-list submissions) stay in the data and out of the UI —
  * flipping one on is an edit to SURFACED, not a re-parse.
@@ -38,7 +36,10 @@ const SURFACED: { pattern: RegExp; display: string }[] = [
     display: "Waiver of prerequisite deadline",
   },
   { pattern: /^start of classes/i, display: "Start of classes" },
-  { pattern: /^change of matriculation/i, display: "Change of matriculation" },
+  {
+    pattern: /change of (?:matriculation|enrollment)/i,
+    display: "Change of enrollment",
+  },
   {
     pattern: /withdrawal of enlistment/i,
     display: "Withdrawal of enlistment deadline",
@@ -57,13 +58,35 @@ const SURFACED: { pattern: RegExp; display: string }[] = [
   { pattern: /^final examinations/i, display: "Final examinations" },
   { pattern: /grade submission/i, display: "Grade submission deadline" },
   { pattern: /^christmas vacation/i, display: "Christmas vacation" },
-  { pattern: /^uplb commencement/i, display: "UPLB commencement" },
+  {
+    pattern: /^bulsu commencement/i,
+    display: "BulSU commencement",
+  },
   { pattern: /hooding ceremony/i, display: "Graduate hooding ceremony" },
-  { pattern: /^uplb foundation day/i, display: "UPLB Foundation Day" },
+  {
+    pattern: /^bulsu foundation day/i,
+    display: "BulSU Foundation Day",
+  },
   { pattern: /^loyalty day/i, display: "Loyalty Day" },
 ];
 
-const CALENDARS = [academicCalendar2024, academicCalendar2026];
+export type AcademicCalendarData = {
+  milestones: Milestone[];
+  holidays: { label: string; startsOn: string }[];
+};
+
+// No BulSU registrar calendar has been imported yet; add parsed calendars
+// here (data shape: { terms, milestones, holidays }) when one exists.
+const CALENDARS: AcademicCalendarData[] = [];
+
+let activeCalendars = CALENDARS;
+
+/** Test hook: run milestone lookups against fixture calendars. */
+export function setAcademicCalendarsForTests(
+  fixture: AcademicCalendarData[] | null,
+) {
+  activeCalendars = fixture ?? CALENDARS;
+}
 
 /** A dateless milestone is never guessed onto the strip; the PDF had no date. */
 function isDated(
@@ -73,14 +96,14 @@ function isDated(
 }
 
 /**
- * Milestones to show for the given CRS term ids, chronological. Rows outside
+ * Milestones to show for the given term ids, chronological. Rows outside
  * SURFACED stay in the JSON and are skipped here.
  */
 export function milestonesForTerms(termIds: number[]): CalendarMilestone[] {
   const wanted = new Set(termIds);
   const picked: CalendarMilestone[] = [];
 
-  for (const calendar of CALENDARS) {
+  for (const calendar of activeCalendars) {
     for (const milestone of calendar.milestones as Milestone[]) {
       if (!wanted.has(milestone.termId) || !isDated(milestone)) continue;
       const match = SURFACED.find((entry) =>
@@ -109,7 +132,7 @@ export function holidaysWithin(
   rangeEnd: string,
 ): CalendarMilestone[] {
   const holidays: CalendarMilestone[] = [];
-  for (const calendar of CALENDARS) {
+  for (const calendar of activeCalendars) {
     for (const holiday of calendar.holidays) {
       if (holiday.startsOn < rangeStart || holiday.startsOn > rangeEnd)
         continue;

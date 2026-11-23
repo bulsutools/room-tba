@@ -32,12 +32,46 @@ export function bearingDegrees(
   return (Math.round(deg) + 360) % 360;
 }
 
+/** Haversine distance in metres. */
+export function distanceMetres(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const h =
+    Math.sin(toRad(b.lat - a.lat) / 2) ** 2 +
+    Math.cos(toRad(a.lat)) *
+      Math.cos(toRad(b.lat)) *
+      Math.sin(toRad(b.lng - a.lng) / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(h));
+}
+
 /**
  * Facade headings around the pano-to-building bearing. One frame centered on
  * the building plus one to each side, so a frontage wider than the 90-degree
  * field of view still gets covered end to end.
  */
 export const HEADING_SPREAD = 55;
+
+/**
+ * `count` points on a circle `metres` from `center`, for probing Street View
+ * coverage around a building when the nearest pano is a user upload.
+ */
+export function ringPoints(
+  center: { lat: number; lng: number },
+  metres: number,
+  count = 8,
+): { lat: number; lng: number }[] {
+  const mPerDegLat = 111320;
+  const mPerDegLng = mPerDegLat * Math.cos((center.lat * Math.PI) / 180);
+  return Array.from({ length: count }, (_, i) => {
+    const angle = (2 * Math.PI * i) / count;
+    return {
+      lat: center.lat + (Math.cos(angle) * metres) / mPerDegLat,
+      lng: center.lng + (Math.sin(angle) * metres) / mPerDegLng,
+    };
+  });
+}
 
 export function facadeHeadings(base: number): number[] {
   return [-HEADING_SPREAD, 0, HEADING_SPREAD].map(
@@ -46,6 +80,8 @@ export function facadeHeadings(base: number): number[] {
 }
 
 const PHOTO_EXTENSIONS = /\.(jpe?g|png|webp)$/i;
+/** Geotagged campus maps and logos are rasters too. */
+const NOT_A_PHOTO = /(^|[^a-z])(maps?|logo|seal|diagram)([^a-z]|$)/i;
 
 /**
  * Keep photographs, drop maps/diagrams/documents. Commons geosearch returns
@@ -53,7 +89,7 @@ const PHOTO_EXTENSIONS = /\.(jpe?g|png|webp)$/i;
  * building is worse than no photo.
  */
 export function isLikelyPhotoTitle(title: string): boolean {
-  return PHOTO_EXTENSIONS.test(title);
+  return PHOTO_EXTENSIONS.test(title) && !NOT_A_PHOTO.test(title);
 }
 
 /**
@@ -69,4 +105,98 @@ export function stripHtml(value: string): string {
     .replace(/[<>]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/**
+ * Street View copyright reads "© Google" on Google's own captures and the
+ * uploader's name on user-contributed photospheres. Only Google captures are
+ * kept: a user photo needs that person credited, and they are often indoor
+ * or off-subject anyway.
+ */
+export function isGoogleCapture(copyright: string | undefined): boolean {
+  return /google/i.test(copyright ?? "");
+}
+
+/**
+ * Organizations that occupy a place (offices, units, academic departments,
+ * service desks). Student orgs, councils and publications are groups of
+ * people; a photo of their pin is a photo of somebody else's building.
+ */
+const PHYSICAL_ORG_CATEGORIES = new Set([
+  "office",
+  "unit",
+  "academic",
+  "service",
+]);
+
+export function isPhysicalOrgCategory(category: string | null): boolean {
+  return category != null && PHYSICAL_ORG_CATEGORIES.has(category);
+}
+
+/** Words too generic to say a Commons file is about this particular place. */
+const GENERIC_WORDS = new Set([
+  "bulsu",
+  "university",
+  "philippines",
+  "college",
+  "building",
+  "office",
+  "center",
+  "centre",
+  "hall",
+  // Parent-campus acronyms: every file on the IRRI or UPOU grounds says them.
+  "irri",
+  "upou",
+  "laguna",
+  "banos",
+  "baños",
+]);
+
+export function nameTokens(name: string): string[] {
+  return name
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((word) => word.length >= 4 && !GENERIC_WORDS.has(word));
+}
+
+const ACRONYM_SKIP = new Set([
+  "of",
+  "and",
+  "the",
+  "at",
+  "with",
+  "in",
+  "for",
+  "a",
+]);
+
+/** First letters of a title's words, e.g. "College of Human Ecology" is "che". */
+function titleInitials(title: string): string {
+  return title
+    .replace(/^File:/i, "")
+    .replace(/\.[a-z0-9]+$/i, "")
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((word) => word && !ACRONYM_SKIP.has(word.toLowerCase()))
+    .map((word) => word[0].toLowerCase())
+    .join("");
+}
+
+/**
+ * Commons filter for every place. Nearest-within-radius drags in whatever is
+ * next door: a bird photographed 15m from the post office is still a bird,
+ * and a portrait taken outside a building is not the building. Only files
+ * whose title names the place are kept, either by a whole distinctive word or
+ * by an all-caps acronym in the place name that the title spells out
+ * ("CEM Building" and "College of Economics and Management").
+ */
+export function titleNamesPlace(title: string, name: string): boolean {
+  const titleWords = new Set(nameTokens(title));
+  if (nameTokens(name).some((token) => titleWords.has(token))) return true;
+  const initials = titleInitials(title);
+  return name
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(
+      (word) => /^[A-Z]{2,6}$/.test(word) && word !== "BULSU" && word !== "BSU",
+    )
+    .some((acronym) => initials.includes(acronym.toLowerCase()));
 }

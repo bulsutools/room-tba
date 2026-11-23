@@ -25,7 +25,7 @@ describe("canonicalKey", () => {
   });
 
   it("matches equivalent variants", () => {
-    expect(canonicalKey("PhySci C-128")).toBe("PHYSCIC128");
-    expect(canonicalKey("PHYSCI_C128")).toBe("PHYSCIC128");
+    expect(canonicalKey("SciBldg C-128")).toBe("SCIBLDGC128");
+    expect(canonicalKey("SCIBLDG_C128")).toBe("SCIBLDGC128");
   });
 });

@@ -1,11 +1,10 @@
-import academicCalendar2024 from "../../data/academic-calendar-2024-2025.json";
-import academicCalendar2026 from "../../data/academic-calendar-2026-2027.json";
 import type { Term } from "@lib/types";
 
-/** Hand-kept instructional windows (date-only, Asia/Manila) for AYs whose
- *  registrar calendar PDF has no text layer (2025-2026) or only OCR garbage
- *  (2023-2024). Finals windows verified against the finals-schedule PDFs in
- *  data/registrar/. */
+/**
+ * Instructional windows per term (date-only, Asia/Manila). The BulSU fork has
+ * no registrar calendar import yet, so the map is empty: entries land here
+ * (or in the terms table) once a BulSU academic calendar source exists.
+ */
 export const TERM_CALENDAR_WINDOWS: Record<
   number,
   {
@@ -14,62 +13,16 @@ export const TERM_CALENDAR_WINDOWS: Record<
     finalsStartsOn?: string;
     finalsEndsOn?: string;
   }
-> = {
-  // CRS 1231 — AY 2023-2024 1st semester (Aug–Jan)
-  1231: {
-    startsOn: "2023-08-29",
-    endsOn: "2024-01-11",
-    finalsStartsOn: "2024-01-04",
-    finalsEndsOn: "2024-01-11",
-  },
-  // CRS 1232 — AY 2023-2024 2nd semester (Feb–Jun)
-  1232: {
-    startsOn: "2024-02-05",
-    endsOn: "2024-06-10",
-    finalsStartsOn: "2024-06-03",
-    finalsEndsOn: "2024-06-10",
-  },
-  // CRS 1252 — 2nd semester (Jan–May)
-  1252: {
-    startsOn: "2026-01-19",
-    endsOn: "2026-05-31",
-    finalsStartsOn: "2026-05-15",
-    finalsEndsOn: "2026-05-22",
-  },
-  // CRS 1253 — midyear (Jun–Jul)
-  1253: {
-    startsOn: "2026-06-08",
-    endsOn: "2026-07-26",
-    finalsStartsOn: "2026-07-21",
-    finalsEndsOn: "2026-07-25",
-  },
-};
+> = {};
 
 /**
- * Last day of change of matriculation per term (Asia/Manila, date-only). Until
+ * Last day of change of enrollment per term (Asia/Manila, date-only). Until
  * this date, course offerings can still change — surfaced in the planner note.
  */
 export const CHANGE_OF_MATRICULATION_ENDS: Record<number, string> = {};
 
-// AYs with a machine-readable registrar calendar PDF come straight from
-// scripts/extract-academic-calendar-pdf.ts output. AY 2025-2026 is missing
-// here on purpose: its PDF is an image-only scan with no text layer, so its
-// windows stay in the hand-kept constants above and it has no milestones.
-for (const calendar of [academicCalendar2024, academicCalendar2026]) {
-  for (const [termId, window] of Object.entries(calendar.terms)) {
-    TERM_CALENDAR_WINDOWS[Number(termId)] = {
-      startsOn: window.startsOn,
-      endsOn: window.endsOn,
-      finalsStartsOn: window.finalsStartsOn,
-      finalsEndsOn: window.finalsEndsOn,
-    };
-    CHANGE_OF_MATRICULATION_ENDS[Number(termId)] =
-      window.changeOfMatriculationEndsOn;
-  }
-}
-
 /** Human date ("August 7, 2026") for a term's last day of change of
- *  matriculation, or null when unknown. */
+ *  enrollment, or null when unknown. */
 export function changeOfMatriculationLabel(
   termId: number | null | undefined,
 ): string | null {
@@ -82,6 +35,68 @@ export function changeOfMatriculationLabel(
     year: "numeric",
     timeZone: "UTC",
   });
+}
+
+/** A term's change of enrollment (CE) window, date-only (Asia/Manila). */
+export type ChangeOfMatriculationPeriod = { startsOn: string; endsOn: string };
+
+/**
+ * Parsed registrar calendar milestones (the upstream registrar PDFs fed this
+ * shape via a PDF extractor). Empty until a BulSU academic calendar source
+ * exists.
+ */
+const REGISTRAR_CALENDAR_MILESTONES: {
+  termId: number;
+  label: string;
+  startsOn?: string;
+  endsOn?: string;
+}[] = [];
+
+/**
+ * The registrar's "Change of Enrollment Period" for a term, from the
+ * calendar milestones. Falls back to term start through the last CE day when
+ * only the end is known. Null when neither is on file.
+ */
+export function changeOfMatriculationPeriod(
+  termId: number | null | undefined,
+): ChangeOfMatriculationPeriod | null {
+  if (termId == null) return null;
+  const milestone = REGISTRAR_CALENDAR_MILESTONES.find(
+    (m) =>
+      m.termId === termId &&
+      /change of (?:matriculation|enrollment)/i.test(m.label) &&
+      m.startsOn &&
+      m.endsOn,
+  );
+  if (milestone?.startsOn && milestone.endsOn) {
+    return { startsOn: milestone.startsOn, endsOn: milestone.endsOn };
+  }
+  const endsOn = CHANGE_OF_MATRICULATION_ENDS[termId];
+  const startsOn = TERM_CALENDAR_WINDOWS[termId]?.startsOn;
+  return endsOn && startsOn ? { startsOn, endsOn } : null;
+}
+
+/** "Aug 3–7, 2026", "Jan 30 – Feb 3, 2027", "Dec 28, 2026 – Jan 2, 2027". */
+export function formatDateRange(startsOn: string, endsOn: string): string {
+  const parse = (iso: string) => {
+    const [year, month, day] = iso.split("-").map(Number);
+    return new Date(Date.UTC(year, month - 1, day));
+  };
+  const start = parse(startsOn);
+  const end = parse(endsOn);
+  const fmt = (date: Date, options: Intl.DateTimeFormatOptions) =>
+    date.toLocaleDateString("en-US", { ...options, timeZone: "UTC" });
+  const sameYear = start.getUTCFullYear() === end.getUTCFullYear();
+  if (startsOn === endsOn) {
+    return fmt(start, { month: "short", day: "numeric", year: "numeric" });
+  }
+  if (sameYear && start.getUTCMonth() === end.getUTCMonth()) {
+    return `${fmt(start, { month: "short", day: "numeric" })}\u2013${end.getUTCDate()}, ${end.getUTCFullYear()}`;
+  }
+  if (sameYear) {
+    return `${fmt(start, { month: "short", day: "numeric" })} \u2013 ${fmt(end, { month: "short", day: "numeric", year: "numeric" })}`;
+  }
+  return `${fmt(start, { month: "short", day: "numeric", year: "numeric" })} \u2013 ${fmt(end, { month: "short", day: "numeric", year: "numeric" })}`;
 }
 
 /** YYYY-MM-DD for `date` as seen in Asia/Manila — the app's notion of "today". */

@@ -6,9 +6,9 @@ labels:
 body:
   - type: markdown
     value: |
-      **No pull request required.** Use this after filling [data/campus-gate-coordinates-template.csv](https://github.com/uplbtools/room-tba/blob/staging/data/campus-gate-coordinates-template.csv).
+      **No pull request required.** Use this after filling [data/campus-gate-coordinates-template.csv](https://github.com/bulsutools/room-tba/blob/staging/data/campus-gate-coordinates-template.csv).
 
-      Workflow: [CONTRIBUTING.md § Campus gate coordinates](https://github.com/uplbtools/room-tba/blob/staging/CONTRIBUTING.md#campus-gate-coordinates). Parent feature: [#157](https://github.com/uplbtools/room-tba/issues/157).
+      Workflow: [CONTRIBUTING.md § Campus gate coordinates](https://github.com/bulsutools/room-tba/blob/staging/CONTRIBUTING.md#campus-gate-coordinates). Parent feature: [#157](https://github.com/bulsutools/room-tba/issues/157).
   - type: input
     id: batch_label
     attributes:
@@ -24,7 +24,7 @@ body:
       description: List gate names in this batch (one per line)
       placeholder: |
         Raymundo Gate
-        Main Gate (Oblation)
+        Main Gate
     validations:
       required: true
   - type: textarea

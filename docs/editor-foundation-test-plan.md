@@ -23,12 +23,12 @@ Use this checklist before merging the in-app editor foundation PR.
 
 ## Terrain Mode
 
-- The Makiling terrain control is reachable inside the Map tools flyout.
+- The terrain control is reachable inside the Map tools flyout when terrain is enabled.
 - Terrain mode is off by default and does not request hosted elevation tiles before it is enabled.
-- Enabling terrain loads the hosted DEM layer, expands the map bounds toward Mt. Makiling, and moves to the Makiling terrain view.
+- Enabling terrain loads the hosted DEM layer, expands the map bounds toward the configured camera area, and moves to the terrain view.
 - Turning terrain off restores the flat campus map bounds and leaves building, dorm, jeepney, and location markers usable.
 - Exaggeration controls update the terrain without clearing the current search or route state.
-- Reset view returns to the Makiling terrain camera without clearing the current search.
+- Reset view returns to the terrain camera without clearing the current search.
 - Offline mode shows terrain as unavailable and keeps the flat map usable.
 - Failed or blocked terrain tile requests do not leave the control implying terrain is active.
 - MapTiler attribution/logo remains visible when terrain is active.
@@ -121,7 +121,8 @@ See also `docs/map-ui-mode-matrix.md` for chrome visibility by mode. Verify at *
 - Disabled users (`is_active = false`) receive 401 on login.
 - Admin writes store the signed-in username/display name in `editor_history.edited_by`.
 - Session cookie remains httpOnly; `/admin` still redirects to in-app login.
-- Legacy `ADMIN_PASSWORD`-only login bootstraps user `admin` when `admin_users` is empty.
+- There is no shared-password login. The first admin is created (or reset) with `ADMIN_NEW_PASSWORD='...' bun run scripts/set-admin-user.ts <username>`.
+- Password change/reset, role change, deactivation and "Sign out of all devices" revoke existing sessions (session version).
 
 ## Version History
 

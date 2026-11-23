@@ -8,7 +8,7 @@ For human developers contributing code. Start with [CONTRIBUTING.md](../CONTRIBU
 | ---------------- | --------------------------------------------------------------- |
 | Bun 1.3+ | Package manager and test runner |
 | `DATABASE_URL` | Supabase Postgres; use the **session pooler** URL for local dev |
-| `ADMIN_PASSWORD` | Optional; enables in-app editor login locally |
+| `ADMIN_SESSION_SECRET` | Optional; signs editor sessions. Create the admin account with `ADMIN_NEW_PASSWORD='...' bun run scripts/set-admin-user.ts <username>` |
 
 ```sh
 cp .env.example .env.local
@@ -61,7 +61,7 @@ Unit tests live under `src/**/*.test.ts`. Run all: `bun test src`. Add tests whe
 
 ## Getting help
 
-- [Discord](https://discord.gg/SrVDgfcrVt) or [Messenger (contribute)](https://room-tba.uplb.tools/messenger/contribute)
-- Open a [coding task issue](https://github.com/uplbtools/room-tba/issues/new?template=coding_task.yml) or draft PR early for feedback
+- [GitHub issues](https://github.com/bulsutools/room-tba/issues) or [Messenger (contribute)](https://room-tba.bulsu.tools/messenger/contribute)
+- Open a [coding task issue](https://github.com/bulsutools/room-tba/issues/new?template=coding_task.yml) or draft PR early for feedback
 
-**Messenger redirects:** `room-tba.uplb.tools/messenger/contribute`, `/messenger/maintain`, and `/maintain` redirect on the app domain (see `redirects` in `astro.config.mjs`) to the `MESSENGER_*_TARGET` URLs in [`src/constants/community-links.ts`](../src/constants/community-links.ts). The legacy Cloudflare Worker lives in [`website/workers/messenger-redirect`](https://github.com/uplbtools/website/tree/main/workers/messenger-redirect).
+**Messenger redirects:** `room-tba.bulsu.tools/messenger/contribute`, `/messenger/maintain`, and `/maintain` redirect on the app domain (see `redirects` in `astro.config.mjs`) to the `MESSENGER_*_TARGET` URLs in [`src/constants/community-links.ts`](../src/constants/community-links.ts). The legacy Cloudflare Worker lives in [`website/workers/messenger-redirect`](https://github.com/bulsutools/website).
