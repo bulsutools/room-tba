@@ -26,12 +26,18 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Deploy Karunungan Worker via Wrangler
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || 'ee40d544c91d2b9f1bd9e0f7b2b304b8' }}
-          command: deploy
+      - name: Build
+        run: bun run build
+        env:
+          # No page queries the database at build time; the schema only
+          # requires the variable to be set. A real secret wins when present.
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgres://127.0.0.1:1/placeholder' }}
+
+      # The root wrangler.jsonc is the dev config (`wrangler dev`); `main`
+      # there is a package specifier, not a built file. `astro build` emits
+      # dist/server/wrangler.json + entry.mjs — deploy against that instead.
+      - name: Deploy Worker via Wrangler
+        run: bun run deploy:cf
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || 'ee40d544c91d2b9f1bd9e0f7b2b304b8' }}
