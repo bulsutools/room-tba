@@ -42,6 +42,7 @@
   import GoogleCalendarIcon from "@ui/icons/GoogleCalendarIcon.svelte";
   import PlannerCourseSearch from "./PlannerCourseSearch.svelte";
   import PlannerGrid from "./PlannerGrid.svelte";
+  import TimetableAssistant from "./TimetableAssistant.svelte";
   import type { ClassMapValue, FinalExamRow } from "@lib/types";
   import { tick } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
@@ -635,6 +636,7 @@
           The registrar doesn't list instructors here. Jot each section's professor
           below. Notes stay private and sync to your account when you're signed in.
         </p>
+        <TimetableAssistant rows={courseRows} onopenroom={openRoom} />
         <ul class="planner-offerings">
           {#each courseGroups as group (group.courseCode)}
             <li class="planner-offering planner-offering--group">
