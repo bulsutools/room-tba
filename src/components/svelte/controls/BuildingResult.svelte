@@ -23,6 +23,7 @@
   import PlaceSheetHeader from "./PlaceSheetHeader.svelte";
   import EntityBackToList from "./EntityBackToList.svelte";
   import EntityGoogleMapsLink from "./EntityGoogleMapsLink.svelte";
+  import EntityExternalLink from "./EntityExternalLink.svelte";
   import EntityPrintableMapLink from "./EntityPrintableMapLink.svelte";
   import EntityStreetAddress from "./EntityStreetAddress.svelte";
   import EntityDirectionsChip from "./EntityDirectionsChip.svelte";
@@ -70,6 +71,15 @@
     crFacilityLabel,
     sanitizeCrFacilities,
   } from "@constants/cr-facilities";
+  import {
+    FACILITY_REPORT_ISSUE_URL,
+    FACILITY_TYPE_LABELS,
+    facilityAttributeChips,
+    facilityFreshness,
+    facilityRecordsForBuilding,
+    facilityVerifiedLabel,
+    groupFacilityRecordsByFloor,
+  } from "@lib/facility-status";
 
   type BuildingEditableField =
     | "buildingName"
@@ -99,6 +109,23 @@
   $effect(() => {
     if (building?.id) pinnedBuildingId = building.id;
   });
+
+  // Facility status index (#9/#11/#14): per-floor restroom/lab/clinic/canteen
+  // reports from data/facility-status.json. Empty until #10/#15 field work.
+  const facilityGroups = $derived.by(() => {
+    if (!building) return [];
+    return groupFacilityRecordsByFloor(
+      facilityRecordsForBuilding(building.buildingName),
+    );
+  });
+  const facilityRecordCount = $derived(
+    facilityGroups.reduce((sum, group) => sum + group.records.length, 0),
+  );
+  const staleFacilityCount = $derived(
+    facilityGroups
+      .flatMap((group) => group.records)
+      .filter((record) => facilityFreshness(record) === "stale").length,
+  );
 
   // Reverse-lookup: orgs and offices housed in this building.
   const buildingOrgs = $derived(
@@ -975,6 +1002,81 @@
           lon={building.lon ?? 0}
         />
       {/if}
+      <details class="entity-details-collapse building-facilities">
+        <summary>
+          Facility status
+          {#if facilityRecordCount > 0}
+            <span class="building-facilities__count"
+              >{facilityRecordCount}</span
+            >
+          {/if}
+          {#if staleFacilityCount > 0}
+            <span class="building-facilities__stale"
+              >{staleFacilityCount} outdated</span
+            >
+          {/if}
+        </summary>
+        <div class="entity-details-collapse__body">
+          {#if facilityGroups.length === 0}
+            <p class="building-facilities__empty">
+              No facility reports for this building yet.
+            </p>
+          {:else}
+            {#each facilityGroups as group (group.label)}
+              <div class="building-facilities__floor">
+                <h4 class="building-facilities__floor-label">
+                  {group.label}
+                </h4>
+                {#each group.records as record (record.id)}
+                  <div class="building-facilities__record">
+                    <div class="building-facilities__record-head">
+                      <span class="building-facilities__type">
+                        {FACILITY_TYPE_LABELS[record.type]}
+                      </span>
+                      {#if record.room}
+                        <span class="building-facilities__room"
+                          >{record.room}</span
+                        >
+                      {/if}
+                    </div>
+                    {#if facilityAttributeChips(record).length > 0}
+                      <div class="entity-tag-list building-facilities__chips">
+                        {#each facilityAttributeChips(record) as chip (chip.label)}
+                          <span
+                            class="entity-tag-chip building-facilities__chip"
+                            class:building-facilities__chip--fail={chip.ok ===
+                              false}>{chip.label}{chip.ok === true
+                              ? " ✓"
+                              : chip.ok === false
+                                ? " ✗"
+                                : ""}</span
+                          >
+                        {/each}
+                      </div>
+                    {/if}
+                    <p class="building-facilities__meta">
+                      {facilityVerifiedLabel(record)}{#if facilityFreshness(
+                          record,
+                        ) ===
+                        "stale"}<span class="building-facilities__stale"
+                          > — may be outdated</span
+                        >{/if}{#if record.verifiedBy}
+                        · checked by {record.verifiedBy}{/if}
+                    </p>
+                    {#if record.note}
+                      <p class="building-facilities__note">{record.note}</p>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {/each}
+          {/if}
+          <EntityExternalLink
+            href={FACILITY_REPORT_ISSUE_URL}
+            label="Report facility status"
+          />
+        </div>
+      </details>
     {/if}
   {:else}
     <EntitySkeleton variant="detail" label="Loading building…" />
@@ -1095,6 +1197,91 @@
 
   .building-cr {
     padding: 0.5rem 0.25rem 0;
+  }
+
+  .building-facilities {
+    margin: 0.5rem 0.25rem 0;
+  }
+
+  .building-facilities__count {
+    margin-left: 0.375rem;
+    padding: 0 0.375rem;
+    border-radius: 999px;
+    background: hsl(5, 53%, 92%);
+    color: hsl(5, 53%, 32%);
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+
+  .building-facilities__stale {
+    margin-left: 0.375rem;
+    color: hsl(25, 70%, 38%);
+    font-weight: 600;
+  }
+
+  .building-facilities__empty {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: #52525b;
+  }
+
+  .building-facilities__floor + .building-facilities__floor {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #ececec;
+  }
+
+  .building-facilities__floor-label {
+    margin: 0 0 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #52525b;
+  }
+
+  .building-facilities__record + .building-facilities__record {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed #ececec;
+  }
+
+  .building-facilities__record-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    align-items: baseline;
+  }
+
+  .building-facilities__type {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #3f3f46;
+  }
+
+  .building-facilities__room {
+    font-size: 0.75rem;
+    color: #71717a;
+  }
+
+  .building-facilities__chips {
+    margin-top: 0.25rem;
+  }
+
+  .building-facilities__chip--fail {
+    border-color: hsl(25, 70%, 75%);
+    background: hsl(25, 80%, 95%);
+    color: hsl(25, 70%, 32%);
+  }
+
+  .building-facilities__meta,
+  .building-facilities__note {
+    margin: 0.25rem 0 0;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: #71717a;
+  }
+
+  .building-facilities__note {
+    color: #52525b;
   }
 
   .cr-facilities-editor {

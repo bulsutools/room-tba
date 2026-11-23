@@ -7,6 +7,7 @@ Thanks for helping BulSU students find rooms. You do **not** need to clone this 
 | Path | Who | What to do | Open a PR? |
 | ------------------------------------------------------------------------------------------------------------ | ----------------- | --------------------------------------- | ---------- |
 | [Report wrong data](#report-wrong-data) | Anyone on campus | File a data issue or use in-app suggest | No |
+| [Report facility status](#report-facility-status) | Anyone on campus | File a facility report issue | No |
 | [Campus gate coordinates](#campus-gate-coordinates) | Data volunteers | Fill gate spreadsheet, file batch issue | No |
 | [Campus QA](#campus-qa) | Testers | Verify the app on your phone | No |
 | [Developers](#developers-no-ai-required) | Coders | Branch, code, PR to `staging` | Yes |
@@ -35,6 +36,19 @@ Include:
 **You do not need to open a pull request.** Someone else will ship the fix and reply on the issue.
 
 Approved suggest-edits for campus map entities (buildings, rooms, pins, and similar fields) are licensed **[CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)**. Details: [Terms — Data licenses](https://room-tba.bulsu.tools/terms#data-licenses).
+
+---
+
+## Report facility status
+
+Use this for restroom (CR), computer lab, clinic, and canteen status — "does the flush work", "are lab units free", "how long is the clinic queue". Reports feed the facility status index shown on building pages and in search.
+
+1. **In the app:** open the building → **Facility status** → **Report facility status**.
+2. **On GitHub:** [New facility status report](https://github.com/bulsutools/room-tba/issues/new?template=facility_status.yml).
+
+Only report what you checked yourself. Include the building, floor or room, what you saw, and the date. Restroom reports can list attributes (bidet, flush, pail + dipper, water, PWD-accessible, cleanliness 1–5); lab reports can include units free; clinic reports an estimated wait; canteen reports a crowd level.
+
+**You do not need to open a pull request.** A maintainer reviews verified reports and adds them to `data/facility-status.json`.
 
 ---
 

@@ -10,6 +10,7 @@
   } from "@lib/local/data/utils";
   import { isLocalCacheReady } from "@lib/local/data/pgliteDB";
   import { fetchClassPage } from "@lib/classes-api";
+  import { FACILITY_RECORDS } from "@lib/facility-status";
   import {
     EXPANDED_LIMITS,
     enterAction,
@@ -256,6 +257,7 @@
           events,
           organizations,
           places,
+          facilityRecords: FACILITY_RECORDS,
         }),
         ...(aliasFor === query
           ? scoreAliases(query, aliasResults, filteredBuildings, places)
