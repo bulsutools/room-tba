@@ -30,6 +30,7 @@
     locationStore,
     mapStore,
     queryStore,
+    roomFinderStore,
     termStore,
   } from "@lib/store.svelte";
   import type { ClassMapValue } from "@lib/types";
@@ -133,6 +134,37 @@
       cancelled = true;
     };
   });
+
+  // Natural-language room finder (#4): "free room near the library at 2pm".
+  // The store gates on the deterministic parser, so plain entity searches
+  // never hit /api/room-finder.
+  $effect(() => {
+    void roomFinderStore.search(queryStore.inputValue);
+  });
+
+  const finderResults = $derived(
+    roomFinderStore.results.filter(
+      (result) =>
+        !roomResults.some(
+          (room) => room.value.toUpperCase() === result.code.toUpperCase(),
+        ),
+    ),
+  );
+
+  const finderHeader = $derived(
+    [roomFinderStore.slotLabel, roomFinderStore.placeLabel]
+      .filter((part): part is string => Boolean(part))
+      .join(" · ") || null,
+  );
+
+  function finderSecondary(result: {
+    availabilityLabel: string;
+    distanceM: number | null;
+  }) {
+    return result.distanceM === null
+      ? result.availabilityLabel
+      : `${result.availabilityLabel} · ${result.distanceM} m`;
+  }
 
   $effect(() => {
     const trimmed = query;
@@ -436,6 +468,32 @@
     </div>
     <FinalExamSuggestion onSelect={() => {}} />
     <SearchQuerySuggestion />
+  {/if}
+
+  {#if roomFinderStore.matched}
+    {#if finderHeader}
+      <h2 class="suggestions-header">Rooms · {finderHeader}</h2>
+    {:else}
+      <h2 class="suggestions-header">Suggested rooms</h2>
+    {/if}
+    {#if roomFinderStore.loading}
+      <p class="suggestions-status">
+        <LoadingIndicator label="Finding rooms…" />
+      </p>
+    {:else}
+      {#each finderResults as result (result.code)}
+        <Suggestion
+          value={result.code}
+          category="room"
+          secondary={finderSecondary(result)}
+          lat={result.lat}
+          lon={result.lon}
+        />
+      {/each}
+      {#if finderResults.length === 0}
+        <p class="suggestions-status">No rooms matched that description.</p>
+      {/if}
+    {/if}
   {/if}
 </div>
 

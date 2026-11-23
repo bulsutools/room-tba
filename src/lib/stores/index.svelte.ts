@@ -196,6 +196,7 @@ import {
   PlannerBuildingsStore,
 } from "./data-stores.svelte";
 import { PlannerStore } from "./planner-store.svelte";
+import { RoomFinderStore } from "./room-finder-store.svelte";
 import { TransitStore } from "./transit-store.svelte";
 import { AnnouncementsStore } from "./announcements-store.svelte";
 import {
@@ -1305,6 +1306,7 @@ export const roomClassesStore = new RoomClassesStore();
 export const classVenuesStore = new ClassVenuesStore();
 export const plannerBuildingsStore = new PlannerBuildingsStore();
 export const plannerStore = new PlannerStore(() => termStore.activeTermId);
+export const roomFinderStore = new RoomFinderStore();
 export const scheduleRouteStore = new ScheduleRouteStore();
 export const offlineStore = new OfflineStore();
 export const modalStore = new ModalStore();
