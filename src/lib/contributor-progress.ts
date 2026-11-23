@@ -99,6 +99,13 @@ export function progressPercent(filled: number, total: number): number {
   return Math.floor((filled / total) * 100);
 }
 
+/** Bar colour band, so 6% and 100% stop looking the same. */
+export function progressLevel(percent: number): "low" | "mid" | "high" {
+  if (percent >= 80) return "high";
+  if (percent >= 40) return "mid";
+  return "low";
+}
+
 export function emptyProgressCount(total: number): ProgressCount {
   return { filled: 0, total };
 }
@@ -217,7 +224,7 @@ export function missingFieldLabel(
   roomCode: string,
   category: RoomFieldCategory,
 ): string {
-  return `${roomCode} — ${ROOM_FIELD_LABELS[category].toLowerCase()} missing`;
+  return `${roomCode} is missing its ${ROOM_FIELD_LABELS[category].toLowerCase()}`;
 }
 
 type ContributorProgressApiResponse = {

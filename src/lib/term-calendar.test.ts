@@ -1,17 +1,17 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import {
   changeOfMatriculationLabel,
+  changeOfMatriculationPeriod,
+  formatDateRange,
   finalsWindowLabel,
   isDateWithinTerm,
   isFinalsWeek,
   resolveActiveTermByDate,
   resolveInitialTermId,
-  TERM_CALENDAR_WINDOWS,
 } from "./term-calendar";
 import type { Term } from "./types";
 
 function term(id: number, overrides: Partial<Term> = {}): Term {
-  const window = TERM_CALENDAR_WINDOWS[id];
   const semester =
     id === 1253 ? "midyear" : id === 1252 ? "2" : String(id - 1250);
   return {
@@ -19,8 +19,8 @@ function term(id: number, overrides: Partial<Term> = {}): Term {
     label: `Term ${id}`,
     schoolYear: "2025-2026",
     semester,
-    startsOn: window?.startsOn ?? null,
-    endsOn: window?.endsOn ?? null,
+    startsOn: null,
+    endsOn: null,
     isDefault: id === 1253,
     isActive: true,
     sortOrder: id,
@@ -30,9 +30,21 @@ function term(id: number, overrides: Partial<Term> = {}): Term {
   };
 }
 
+const MIDYEAR_1253 = {
+  startsOn: "2026-06-08",
+  endsOn: "2026-07-26",
+} as const;
+
+const SECOND_SEM_1252 = {
+  startsOn: "2026-01-19",
+  endsOn: "2026-05-31",
+  finalsStartsOn: "2026-05-15",
+  finalsEndsOn: "2026-05-22",
+} as const;
+
 describe("term-calendar", () => {
   it("detects midyear from Manila calendar date", () => {
-    const midyear = term(1253);
+    const midyear = term(1253, MIDYEAR_1253);
     expect(
       isDateWithinTerm(midyear, new Date("2026-06-29T12:00:00+08:00")),
     ).toBe(true);
@@ -42,7 +54,11 @@ describe("term-calendar", () => {
   });
 
   it("resolves the in-session term for today", () => {
-    const terms = [term(1251), term(1252), term(1253)];
+    const terms = [
+      term(1251, { startsOn: "2025-09-01", endsOn: "2025-12-20" }),
+      term(1252, SECOND_SEM_1252),
+      term(1253, MIDYEAR_1253),
+    ];
     expect(
       resolveActiveTermByDate(terms, new Date("2026-06-29T08:00:00+08:00"))?.id,
     ).toBe(1253);
@@ -63,8 +79,8 @@ describe("term-calendar", () => {
 
   it("ignores stale local picks for undated terms during midyear", () => {
     const terms = [
-      { ...term(1252), classCount: 4351 },
-      { ...term(1253), classCount: 200 },
+      { ...term(1252, SECOND_SEM_1252), classCount: 4351 },
+      { ...term(1253, MIDYEAR_1253), classCount: 200 },
       { ...term(1251), classCount: 0 },
     ];
     const midyearDay = new Date("2026-06-29T08:00:00+08:00");
@@ -80,8 +96,8 @@ describe("term-calendar", () => {
 
   it("keeps a usable stored term during the same instructional window", () => {
     const terms = [
-      { ...term(1252), classCount: 4351 },
-      { ...term(1253), classCount: 200 },
+      { ...term(1252, SECOND_SEM_1252), classCount: 4351 },
+      { ...term(1253, MIDYEAR_1253), classCount: 200 },
       { ...term(1251), classCount: 0 },
     ];
     const midyearDay = new Date("2026-06-29T08:00:00+08:00");
@@ -97,55 +113,51 @@ describe("term-calendar", () => {
 });
 
 describe("isFinalsWeek", () => {
-  it("detects 2nd sem finals window in Manila", () => {
-    // Registrar finals-schedule PDF: 15–22 May 2026.
+  it("is false for every term until registrar windows are imported", () => {
+    // TERM_CALENDAR_WINDOWS is empty on the BulSU fork; finalsWindowForTerm
+    // has no entry, so isFinalsWeek can never report true.
     expect(
       isFinalsWeek(new Date("2026-05-18T12:00:00+08:00"), term(1252)),
-    ).toBe(true);
-    expect(
-      isFinalsWeek(new Date("2026-05-14T12:00:00+08:00"), term(1252)),
     ).toBe(false);
-  });
-
-  it("loads AY 2024-2025 windows from the academic calendar data", () => {
-    expect(TERM_CALENDAR_WINDOWS[1241]).toEqual({
-      startsOn: "2024-08-19",
-      endsOn: "2024-12-20",
-      finalsStartsOn: "2024-12-14",
-      finalsEndsOn: "2024-12-20",
-    });
-  });
-
-  it("loads AY 2026-2027 windows from the academic calendar data", () => {
-    expect(TERM_CALENDAR_WINDOWS[1261]).toEqual({
-      startsOn: "2026-08-03",
-      endsOn: "2026-12-07",
-      finalsStartsOn: "2026-12-01",
-      finalsEndsOn: "2026-12-07",
-    });
     expect(
       isFinalsWeek(new Date("2026-12-03T12:00:00+08:00"), term(1261)),
-    ).toBe(true);
-    expect(
-      isFinalsWeek(new Date("2026-12-08T12:00:00+08:00"), term(1261)),
     ).toBe(false);
   });
 });
 
 describe("finalsWindowLabel", () => {
-  it("formats the official window and handles unknown terms", () => {
-    expect(finalsWindowLabel(1261)).toBe("Dec 1 – Dec 7");
+  it("returns null while the windows map is empty", () => {
+    expect(finalsWindowLabel(1261)).toBeNull();
     expect(finalsWindowLabel(1251)).toBeNull();
     expect(finalsWindowLabel(null)).toBeNull();
   });
 });
 
 describe("changeOfMatriculationLabel", () => {
-  it("formats the last day for a known term", () => {
-    expect(changeOfMatriculationLabel(1261)).toBe("August 7, 2026");
-  });
-  it("returns null for unknown terms / null", () => {
+  it("returns null while the COM map is empty", () => {
+    expect(changeOfMatriculationLabel(1261)).toBeNull();
     expect(changeOfMatriculationLabel(1252)).toBeNull();
     expect(changeOfMatriculationLabel(null)).toBeNull();
+  });
+});
+
+describe("changeOfMatriculationPeriod", () => {
+  test("returns null for every term while the map is empty", () => {
+    expect(changeOfMatriculationPeriod(1261)).toBeNull();
+    expect(changeOfMatriculationPeriod(9999)).toBeNull();
+    expect(changeOfMatriculationPeriod(null)).toBeNull();
+  });
+});
+
+describe("formatDateRange", () => {
+  test("shortens ranges inside one month or year", () => {
+    expect(formatDateRange("2026-08-03", "2026-08-07")).toBe("Aug 3–7, 2026");
+    expect(formatDateRange("2027-01-30", "2027-02-03")).toBe(
+      "Jan 30 – Feb 3, 2027",
+    );
+    expect(formatDateRange("2026-12-28", "2027-01-02")).toBe(
+      "Dec 28, 2026 – Jan 2, 2027",
+    );
+    expect(formatDateRange("2027-06-08", "2027-06-08")).toBe("Jun 8, 2027");
   });
 });

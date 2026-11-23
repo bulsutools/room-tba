@@ -10,14 +10,14 @@ import {
   MESSENGER_MAINTAIN_URL,
   MESSENGER_URL,
   ORG_LABEL,
-  UPLB_TOOLS_URL,
+  ORG_URL,
 } from "./community-links.ts";
 import { SITE_URL } from "../lib/site.ts";
 
 describe("community-links", () => {
   test("org + github point at bulsutools fork", () => {
     expect(ORG_LABEL).toBe("bulsutools");
-    expect(UPLB_TOOLS_URL).toBe("https://github.com/bulsutools");
+    expect(ORG_URL).toBe("https://bulsu.tools");
     expect(GITHUB_ROOM_TBA_URL).toBe("https://github.com/bulsutools/room-tba");
     expect(GITHUB_REPO).toBe("bulsutools/room-tba");
   });

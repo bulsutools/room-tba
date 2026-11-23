@@ -3,12 +3,31 @@
   "name": "bulsu-room-tba",
   "account_id": "ee40d544c91d2b9f1bd9e0f7b2b304b8",
   "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@astrojs/cloudflare/entrypoints/server",
   "workers_dev": true,
+  "vars": {
+    // The adapter's loadWranglerEnv copies .env/.env.local into process.env at
+    // build time; an explicit var keeps production builds from baking the
+    // staging banner.
+    "PUBLIC_APP_ENV": "production"
+  },
   "assets": {
     "directory": "./dist/client",
-    "not_found_handling": "single-page-application"
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Browser navigations (sec-fetch-mode: navigate) to paths with no static
+    // asset otherwise get the SPA shell before the Worker runs — which broke
+    // every link-based GET endpoint: Google OAuth start/callback/link,
+    // email confirmation, password reset. The Worker serves assets itself
+    // through the ASSETS binding, so it must see every request.
+    "run_worker_first": true
   },
-  "routes": [
-    { "pattern": "room-tba.bulsu.tools", "custom_domain": true }
-  ]
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "975892a78bac4be69f30ca1d8fe73a97"
+    }
+  ],
+  "routes": [{ "pattern": "room-tba.bulsu.tools", "custom_domain": true }]
 }

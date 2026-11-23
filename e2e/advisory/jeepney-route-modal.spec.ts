@@ -1,9 +1,15 @@
 import { test, expect } from "@playwright/test";
+import { campusTransit } from "../../src/campus.config";
 import { waitForAppBoot } from "../helpers/app";
 import { openCampusDirectory } from "../helpers/map-tools";
 
 // Advisory (non-blocking): exercises the jeepney transit surface end to end.
-test.describe("jeepney route details @advisory", () => {
+// Campus transit is disabled on this fork.
+const describeTransit = campusTransit.enabled
+  ? test.describe
+  : test.describe.skip;
+
+describeTransit("jeepney route details @advisory", () => {
   test("opens the transit browse panel and a route details modal", async ({
     page,
   }) => {
@@ -13,7 +19,7 @@ test.describe("jeepney route details @advisory", () => {
     await openCampusDirectory(page, "jeepney");
 
     await expect(
-      page.getByRole("heading", { name: /Jeepney Routes/i }),
+      page.getByRole("heading", { name: /Jeepney (& Bus )?Routes/i }),
     ).toBeVisible({ timeout: 10_000 });
 
     // Each route row exposes a details button that opens the fare/stops modal.
@@ -31,8 +37,10 @@ test.describe("jeepney route details @advisory", () => {
       modal.getByRole("button", { name: /view on map/i }),
     ).toBeVisible();
 
-    // Fare + direction note render.
-    await expect(modal.getByText("₱13")).toBeVisible();
-    await expect(modal.getByText(/same loop/i)).toBeVisible();
+    // Fare + the Kaliwa / Kanan direction toggle render.
+    await expect(modal.getByText("₱14")).toBeVisible();
+    await expect(
+      modal.getByRole("button", { name: "Kaliwa", exact: true }),
+    ).toBeVisible();
   });
 });

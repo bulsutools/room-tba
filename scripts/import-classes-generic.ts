@@ -1,6 +1,6 @@
 /**
  * Import class schedules from a flat, registrar-agnostic CSV or JSON export.
- * The upstream campus keeps its own adapter (scripts/import-amis-classes.ts);
+ * The upstream campus keeps its own registrar adapter;
  * this is the one a fork points at whatever its registrar produces. Shape +
  * walkthrough: docs/fork-data-guide.md. Worked example:
  * data/sample-campus/classes.csv.
@@ -37,7 +37,7 @@ import {
   classNaturalKey,
   matchRoomId,
   summarizeImportChanges,
-} from "@lib/amis/import-classes";
+} from "@lib/class-import/import-classes";
 import {
   formatRowIssues,
   type NormalizedGenericClass,

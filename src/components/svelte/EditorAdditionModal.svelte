@@ -1,8 +1,6 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition";
-  import MapPinPlus from "@lucide/svelte/icons/map-pin-plus";
-  import X from "@lucide/svelte/icons/x";
-  import IconButton from "@ui/IconButton.svelte";
+  import ModalHeader from "@ui/modal/ModalHeader.svelte";
   import { adminAuthStore, editorChromeStore } from "@lib/store.svelte";
   import {
     modalContentDismiss,
@@ -65,20 +63,12 @@
       in:fly={modalContentReveal(reducedMotion.current)}
       out:fly={modalContentDismiss(reducedMotion.current)}
     >
-      <header class="editor-addition-header">
-        <div class="editor-addition-title" id="editor-addition-title">
-          <MapPinPlus size={16} aria-hidden="true" />
-          <span>Add to map</span>
-        </div>
-        <IconButton
-          size="sm"
-          shape="rounded"
-          label="Close add to map"
-          onclick={close}
-        >
-          <X size={18} aria-hidden="true" />
-        </IconButton>
-      </header>
+      <ModalHeader
+        id="editor-addition-title"
+        title="Add to map"
+        onclose={close}
+        closeLabel="Close add to map"
+      />
       <div class="editor-addition-body map-chrome-scroll">
         <SuggestAdditionPanel
           mode={adminAuthStore.canPublish ? "publish" : "proposal"}
@@ -123,33 +113,45 @@
     flex-direction: column;
     overflow: hidden;
     border-radius: 0.75rem;
-    border: 1px solid var(--map-chrome-border, hsl(5, 25%, 78%));
-    background: var(--map-chrome-surface, #fffafa);
+    border: 1px solid var(--map-chrome-border, var(--theme-accent-border, hsl(5, 25%, 78%)));
+    background: var(--map-chrome-surface, var(--theme-surface, #fffafa));
     box-shadow: var(--map-chrome-panel-shadow, 0 18px 38px rgba(0, 0, 0, 0.3));
   }
 
-  .editor-addition-header {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.625rem 0.875rem;
-    border-bottom: 1px solid hsl(0, 0%, 92%);
-  }
 
-  .editor-addition-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    color: hsl(0, 0%, 15%);
-  }
 
   .editor-addition-body {
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 1rem;
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* Phones: a full-screen sheet, like any app's "add a place" form. The map
+     is not needed while typing; "Pick on map" hides the sheet for the pin
+     drop and brings it back after (SuggestAdditionPanel.pickOnMap). */
+  @media (max-width: 47.99rem) {
+    .editor-addition-overlay {
+      align-items: stretch;
+      padding: 0;
+    }
+
+    .editor-addition-frame {
+      width: 100%;
+      height: 100dvh;
+      max-height: none;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .editor-addition-header {
+      padding-top: calc(0.625rem + env(safe-area-inset-top, 0px));
+    }
+
+    .editor-addition-body {
+      flex: 1;
+      padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
   }
 </style>

@@ -1,6 +1,6 @@
 name: Discord notify E2E
 
-# Listens for completed Playwright workflows and POSTs failures to uplbtools/discord-bot.
+# Listens for completed Playwright workflows and POSTs failures to bulsutools/discord-bot.
 # Must exist on the default branch (staging/main) to receive workflow_run events.
 
 on:

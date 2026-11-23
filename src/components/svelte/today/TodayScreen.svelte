@@ -1,7 +1,9 @@
 <script lang="ts">
+  import CalendarDays from "@lucide/svelte/icons/calendar-days";
   import ChevronLeft from "@lucide/svelte/icons/chevron-left";
   import MapPin from "@lucide/svelte/icons/map-pin";
   import Route from "@lucide/svelte/icons/route";
+  import ScheduleImportPanel from "@ui/ScheduleImportPanel.svelte";
   import { fly } from "svelte/transition";
   import { MediaQuery } from "svelte/reactivity";
   import { formatDistance, formatDuration } from "@lib/campus-route";
@@ -16,7 +18,10 @@
     sidebarStore,
     termStore,
   } from "@lib/store.svelte";
-  import { buildAgenda } from "@lib/today-agenda";
+  import { getRoomCoords } from "@lib/local/data/utils";
+  import { buildAgenda, leaveByNote } from "@lib/today-agenda";
+  import { loadTravelGraph } from "@lib/travel-graph/load";
+  import { planJourneys } from "@lib/travel-graph/journey";
   import { routableTodayWeekday, routeToday } from "@lib/today-route";
   import { formatTermDateRange, isDateWithinTerm } from "@lib/term-calendar";
 
@@ -39,6 +44,53 @@
     return range ? `${term.label} runs ${range}.` : null;
   });
 
+  // Header date, campus time: the screen is "Today", so say which day it is.
+  const todayLabel = new Date().toLocaleDateString("en-PH", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "Asia/Manila",
+  });
+
+  let leaveNotes = $state<Record<string, string>>({});
+  $effect(() => {
+    const list = days;
+    let stale = false;
+    void (async () => {
+      const notes: Record<string, string> = {};
+      for (const day of list) {
+        for (let i = 1; i < day.entries.length; i++) {
+          const prev = day.entries[i - 1];
+          const next = day.entries[i];
+          if (!prev.roomCode || !next.roomCode) continue;
+          const [from, to] = await Promise.all([
+            getRoomCoords(prev.roomCode),
+            getRoomCoords(next.roomCode),
+          ]);
+          if (!from || !to || (from[0] === to[0] && from[1] === to[1])) {
+            continue;
+          }
+          const walk = planJourneys({
+            graph: await loadTravelGraph(),
+            origin: { lat: from[1], lng: from[0] },
+            destination: { lat: to[1], lng: to[0] },
+            routes: [],
+          }).journeys[0];
+          if (walk) {
+            notes[day.dateKey + i] = leaveByNote(
+              prev.endMin,
+              next.startMin,
+              walk.seconds,
+              prev.roomCode,
+            );
+          }
+        }
+      }
+      if (!stale) leaveNotes = notes;
+    })();
+    return () => (stale = true);
+  });
+
   function close() {
     sidebarStore.changeOpened("map");
   }
@@ -51,9 +103,11 @@
     today?.dayIndex == null ? null : (WEEKDAYS[today.dayIndex] ?? null),
   );
   const canRouteToday = $derived(routableTodayWeekday() !== null);
+  // No plan: the empty state below says what to do. No classes today: the
+  // button is hidden and the reason shows in its place, never a faded button
+  // with nothing to explain it (Jakob audit, micro 14).
   const routeHint = $derived.by(() => {
-    if (canRouteToday) return null;
-    if (!hasPlan) return "Add classes in the Planner first.";
+    if (canRouteToday || !hasPlan) return null;
     if (todayWeekday === null) return "No classes on Sundays.";
     return "No classes to route today.";
   });
@@ -63,6 +117,8 @@
       locationStore.routeWaypoints !== null,
   );
   let routing = $state(false);
+  // Weekday picker for routing a day other than today (was in Layers).
+  let otherDayOpen = $state(false);
 
   async function routeMyDay() {
     if (routing) return;
@@ -118,44 +174,66 @@
       aria-label="Back to map"
       title="Back to map"
     >
-      <ChevronLeft size={18} aria-hidden="true" />
-      <span>Back to map</span>
+      <ChevronLeft size={22} aria-hidden="true" />
     </button>
-    <h1 class="today-title" id="today-screen-title">Today</h1>
+    <div class="today-heading">
+      <h1 class="today-title" id="today-screen-title">Today</h1>
+      <p class="today-date">{todayLabel}</p>
+    </div>
   </header>
 
   {#if offTermNote}
     <p class="today-note" role="note">{offTermNote}</p>
   {/if}
 
-  <div class="today-route">
-    <button
-      type="button"
-      class="today-route__button"
-      disabled={!canRouteToday || routing}
-      onclick={routeMyDay}
-    >
-      <Route size={16} aria-hidden="true" />
-      {routing ? "Routing…" : "Route my day"}
-    </button>
-    {#if routeHint}
-      <span class="today-route__hint">{routeHint}</span>
-    {:else if routedToday && scheduleRouteStore.routeTotals}
-      <span class="today-route__totals">
-        {formatDuration(scheduleRouteStore.routeTotals.seconds)} walk ·
-        {formatDistance(scheduleRouteStore.routeTotals.meters)}
-      </span>
+  {#if hasPlan}
+    <div class="today-route">
+      {#if canRouteToday}
+        <button
+          type="button"
+          class="today-route__button"
+          disabled={routing}
+          onclick={routeMyDay}
+        >
+          <Route size={16} aria-hidden="true" />
+          {routing ? "Routing…" : "Route my day"}
+        </button>
+      {/if}
+      {#if routeHint}
+        <span class="today-route__hint">{routeHint}</span>
+      {:else if routedToday && scheduleRouteStore.routeTotals}
+        <span class="today-route__totals">
+          {formatDuration(scheduleRouteStore.routeTotals.seconds)} walk,
+          {formatDistance(scheduleRouteStore.routeTotals.meters)}
+        </span>
+      {/if}
+      <button
+        type="button"
+        class="today-route__other"
+        aria-expanded={otherDayOpen}
+        aria-controls="today-other-day"
+        onclick={() => (otherDayOpen = !otherDayOpen)}
+      >
+        Route another day
+      </button>
+    </div>
+    {#if otherDayOpen}
+      <div id="today-other-day" class="today-other-day">
+        <ScheduleImportPanel embedded />
+      </div>
     {/if}
-  </div>
+  {/if}
 
   <div class="today-body">
     {#if !hasPlan}
-      <p class="today-empty-plan">
-        Add classes to see your day.
+      <div class="today-empty-plan">
+        <CalendarDays size={32} aria-hidden="true" />
+        <h2 class="today-empty-plan__title">Nothing planned yet</h2>
+        <p>Add classes to see your day.</p>
         <button type="button" onclick={() => sidebarStore.changeOpened("planner")}>
           Open the Planner
         </button>
-      </p>
+      </div>
     {:else}
       {#each days as day (day.dateKey)}
         <section
@@ -172,7 +250,7 @@
             <p class="today-day__empty">{day.emptyLabel}</p>
           {:else}
             <ul class="today-entries">
-              {#each day.entries as entry (entry.courseCode + entry.section + entry.type + entry.startMin)}
+              {#each day.entries as entry, i (entry.courseCode + entry.section + entry.type + entry.startMin)}
                 <li class="today-entry">
                   <span class="today-entry__time">{entry.timeLabel}</span>
                   <span class="today-entry__main">
@@ -202,6 +280,9 @@
                       Room TBA
                     </span>
                   {/if}
+                  {#if leaveNotes[day.dateKey + i]}
+                    <p class="today-entry__leave">{leaveNotes[day.dateKey + i]}</p>
+                  {/if}
                 </li>
               {/each}
             </ul>
@@ -221,51 +302,65 @@
     flex-direction: column;
     gap: 0.75rem;
     padding: 1rem 1.25rem calc(1rem + env(safe-area-inset-bottom, 0px));
-    background: hsl(0, 0%, 98%);
+    background: var(--theme-surface, hsl(0, 0%, 98%));
     pointer-events: auto;
     overflow: hidden;
   }
 
+  /* App bar: icon back button, then title over the date. */
   .today-header {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-left: -0.5rem;
   }
 
   .today-back {
     all: unset;
+    box-sizing: border-box;
     display: inline-flex;
+    flex: 0 0 auto;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: hsl(5, 53%, 32%);
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 999px;
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
     cursor: pointer;
   }
 
   .today-back:hover {
-    background: hsl(5, 30%, 94%);
+    background: var(--theme-accent-soft, hsl(5, 30%, 94%));
   }
 
   .today-back:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
+  }
+
+  .today-heading {
+    min-width: 0;
   }
 
   .today-title {
     margin: 0;
     font-size: 1.25rem;
     font-weight: 800;
-    color: hsl(0, 0%, 12%);
+    line-height: 1.2;
+    color: var(--theme-text, hsl(0, 0%, 12%));
+  }
+
+  .today-date {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--theme-text-2, hsl(0, 0%, 40%));
   }
 
   .today-note {
     margin: 0;
     max-width: 52rem;
     font-size: 0.8125rem;
-    color: hsl(0, 0%, 40%);
+    color: var(--theme-text-2, hsl(0, 0%, 40%));
   }
 
   .today-route {
@@ -283,9 +378,9 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.4375rem 0.875rem;
-    border: 1px solid hsl(5, 53%, 32%);
+    border: 1px solid var(--theme-accent-text, hsl(5, 53%, 32%));
     border-radius: 999px;
-    background: hsl(5, 53%, 32%);
+    background: var(--theme-accent-fill, hsl(5, 53%, 32%));
     color: #fff;
     font-size: 0.8125rem;
     font-weight: 700;
@@ -293,11 +388,11 @@
   }
 
   .today-route__button:hover:not(:disabled) {
-    background: hsl(5, 53%, 38%);
+    background: var(--theme-accent-fill, hsl(5, 53%, 38%));
   }
 
   .today-route__button:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
     outline-offset: 2px;
   }
 
@@ -306,15 +401,43 @@
     cursor: not-allowed;
   }
 
+  .today-route__other {
+    all: unset;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .today-route__other:hover {
+    background: var(--theme-accent-soft, hsl(5, 30%, 94%));
+  }
+
+  .today-route__other:focus-visible {
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
+  }
+
+  .today-other-day {
+    max-width: 52rem;
+    max-height: 50dvh;
+    overflow-y: auto;
+  }
+
   .today-route__hint,
   .today-route__totals {
     font-size: 0.8125rem;
-    color: hsl(0, 0%, 40%);
+    color: var(--theme-text-2, hsl(0, 0%, 40%));
   }
 
   .today-route__totals {
     font-weight: 600;
-    color: hsl(5, 53%, 22%);
+    color: var(--theme-accent-text, hsl(5, 53%, 22%));
   }
 
   .today-body {
@@ -328,23 +451,52 @@
   }
 
   .today-empty-plan {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin: auto 0;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--theme-text-2, hsl(0, 0%, 45%));
+  }
+
+  .today-empty-plan__title {
     margin: 0;
-    max-width: 52rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--theme-text, hsl(0, 0%, 15%));
+  }
+
+  .today-empty-plan p {
+    margin: 0;
     font-size: 0.875rem;
-    color: hsl(0, 0%, 35%);
+    color: var(--theme-text-2, hsl(0, 0%, 35%));
   }
 
   .today-empty-plan button {
     all: unset;
-    margin-left: 0.25rem;
-    color: hsl(5, 53%, 32%);
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    margin-top: 0.25rem;
+    padding: 0 1.125rem;
+    border-radius: 999px;
+    background: var(--theme-accent-fill, hsl(5, 53%, 32%));
+    color: #fff;
+    font-size: 0.875rem;
     font-weight: 700;
     cursor: pointer;
-    text-decoration: underline;
+  }
+
+  .today-empty-plan button:hover {
+    background: var(--theme-accent-fill, hsl(5, 53%, 38%));
   }
 
   .today-empty-plan button:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
+    outline-offset: 2px;
   }
 
   .today-day {
@@ -363,37 +515,37 @@
     padding: 0.25rem 0;
     font-size: 0.9375rem;
     font-weight: 700;
-    color: hsl(0, 0%, 20%);
+    color: var(--theme-text, hsl(0, 0%, 20%));
   }
 
   .today-day--now .today-day__title {
-    color: hsl(5, 53%, 32%);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
   }
 
   .today-day__date {
     font-size: 0.8125rem;
     font-weight: 500;
-    color: hsl(0, 0%, 45%);
+    color: var(--theme-text-2, hsl(0, 0%, 45%));
   }
 
   .today-day__empty {
     margin: 0;
     padding: 0.5rem 0.75rem;
-    border: 1px dashed hsl(0, 0%, 82%);
+    border: 1px dashed var(--theme-border, hsl(0, 0%, 82%));
     border-radius: 0.625rem;
     font-size: 0.8125rem;
-    color: hsl(0, 0%, 45%);
+    color: var(--theme-text-2, hsl(0, 0%, 45%));
   }
 
   /* Weekends read as a different kind of day, not just an empty weekday. */
   .today-day--weekend .today-day__heading {
-    color: hsl(0, 0%, 45%);
+    color: var(--theme-text-2, hsl(0, 0%, 45%));
   }
 
   .today-day--weekend .today-day__empty {
-    background: hsl(0, 0%, 95%);
+    background: var(--theme-surface-2, hsl(0, 0%, 95%));
     border-style: solid;
-    border-color: hsl(0, 0%, 88%);
+    border-color: var(--theme-border, hsl(0, 0%, 88%));
   }
 
   .today-entries {
@@ -411,15 +563,15 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
-    border: 1px solid hsl(0, 0%, 90%);
+    border: 1px solid var(--theme-border, hsl(0, 0%, 90%));
     border-radius: 0.625rem;
-    background: white;
+    background: var(--theme-surface, white);
   }
 
   .today-entry__time {
     font-size: 0.8125rem;
     font-weight: 700;
-    color: hsl(0, 0%, 25%);
+    color: var(--theme-text, hsl(0, 0%, 25%));
     font-variant-numeric: tabular-nums;
   }
 
@@ -432,20 +584,27 @@
   .today-entry__course {
     font-size: 0.875rem;
     font-weight: 700;
-    color: hsl(0, 0%, 15%);
+    color: var(--theme-text, hsl(0, 0%, 15%));
   }
 
   .today-entry__type,
   .today-entry__section {
     font-size: 0.75rem;
     font-weight: 600;
-    color: hsl(0, 0%, 42%);
+    color: var(--theme-text-2, hsl(0, 0%, 42%));
   }
 
   .today-entry__course-title {
     font-size: 0.75rem;
-    color: hsl(0, 0%, 42%);
+    color: var(--theme-text-2, hsl(0, 0%, 42%));
     overflow-wrap: anywhere;
+  }
+
+  .today-entry__leave {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--theme-text-2, hsl(0, 0%, 42%));
   }
 
   .today-entry__room {
@@ -457,9 +616,9 @@
     justify-self: end;
     min-height: 2rem;
     padding: 0.25rem 0.625rem;
-    border: 1px solid hsl(5, 53%, 82%);
+    border: 1px solid var(--theme-accent-border, hsl(5, 53%, 82%));
     border-radius: 999px;
-    color: hsl(5, 53%, 32%);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
     font-size: 0.75rem;
     font-weight: 700;
     cursor: pointer;
@@ -467,17 +626,17 @@
 
   .today-entry__room:hover,
   .today-entry__room:focus-visible {
-    background: hsl(5, 53%, 96%);
+    background: var(--theme-accent-soft, hsl(5, 53%, 96%));
   }
 
   .today-entry__room:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
     outline-offset: 1px;
   }
 
   .today-entry__room--tba {
-    border-color: hsl(0, 0%, 85%);
-    color: hsl(0, 0%, 45%);
+    border-color: var(--theme-border, hsl(0, 0%, 85%));
+    color: var(--theme-text-2, hsl(0, 0%, 45%));
     cursor: default;
   }
 

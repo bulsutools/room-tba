@@ -25,9 +25,18 @@ export async function dismissLandingIfPresent(page: Page) {
     }
   });
 
-  const getStarted = page.getByRole("button", { name: "Get Started" });
-  if (await getStarted.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await getStarted.click();
+  // First run shows a tip card over the map; the full welcome modal only
+  // opens from the menu now, but older flows may still surface it.
+  const gotIt = page.getByRole("button", { name: "Got it" });
+  if (await gotIt.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await gotIt.click();
+  }
+
+  const done = page
+    .getByRole("dialog", { name: "How Room TBA works" })
+    .getByRole("button", { name: "Done", exact: true });
+  if (await done.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await done.click();
   }
 
   const closeDialog = page.getByRole("button", { name: "Close dialog" });
@@ -47,6 +56,13 @@ export async function waitForAppBoot(page: Page, timeout = 120_000) {
   if ((await shell.count()) > 0) {
     await shell.waitFor({ state: "detached", timeout });
   }
+
+  // The shell now leaves as soon as the app mounts; campus data streams in
+  // behind the live map. Specs that boot and then search or browse need the
+  // rows, so also wait for the bootstrap phase AppRoot mirrors onto <html>.
+  await page
+    .locator('html[data-campus-data="ready"], html[data-campus-data="error"]')
+    .waitFor({ state: "attached", timeout });
 
   await dismissLandingIfPresent(page);
 
@@ -74,8 +90,8 @@ export async function clickIfAppears(
   return appeared;
 }
 
-/** Mobile details live in a bottom sheet; expand it so panel content is
- * reachable. Panel-identity changes snap the sheet back to peek right after
+/** Mobile details live in a bottom sheet, and a place opens full screen;
+ * expand it so panel content is reachable. Panel-identity changes snap the sheet back to peek right after
  * a toggle lands, so retry until the expanded label sticks. */
 export async function expandDetailsSheet(page: Page) {
   const expand = page.getByRole("button", {
@@ -83,8 +99,7 @@ export async function expandDetailsSheet(page: Page) {
     exact: true,
   });
   const collapse = page.getByRole("button", {
-    name: "Collapse details",
-    exact: true,
+    name: /^(Collapse details|Back to map)$/,
   });
   for (let attempt = 0; attempt < 4; attempt += 1) {
     if (!(await clickIfAppears(expand, attempt === 0 ? 2000 : 500))) return;

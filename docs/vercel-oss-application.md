@@ -39,7 +39,7 @@ work done for readiness. Owner: maintainer. Goal: apply in the next window.
 
 ## Our application skeleton (fill numbers at submit time)
 
-- **What it is:** open-source campus map + class finder for UPLB (~12k
+- **What it is:** open-source campus map + class finder for BulSU (~12k
   students); rooms, schedules, walking routes, offline PWA.
 - **Traction (usage, not stars):** ~21k page views/30d measured off-term
   (July 2026, Vercel Analytics; term-time peaks land in enlistment weeks),

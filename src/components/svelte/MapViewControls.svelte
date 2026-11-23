@@ -4,12 +4,6 @@
   import RotateCw from "@lucide/svelte/icons/rotate-cw";
   import ChevronUp from "@lucide/svelte/icons/chevron-up";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
-  import Box from "@lucide/svelte/icons/box";
-  import CalendarDays from "@lucide/svelte/icons/calendar-days";
-  import GraduationCap from "@lucide/svelte/icons/graduation-cap";
-  import MapIcon from "@lucide/svelte/icons/map";
-  import Satellite from "@lucide/svelte/icons/satellite";
-  import Gauge from "@lucide/svelte/icons/gauge";
   import {
     mapStore,
     mapViewStore,
@@ -27,18 +21,24 @@
     enterTiltedMapDimension,
   } from "@lib/map-dimension-layers";
   import type { MapLibreMap } from "maplibre-gl";
+  import { debugMode } from "@lib/debug-flag";
 
   type Props = {
     /** When true, omit outer card chrome (used inside MapToolsFlyout). */
     embedded?: boolean;
-    /** modes = pins + 2D/3D in flyout; camera = desktop rotate/tilt/north on map face. */
-    variant?: "modes" | "camera";
+    /**
+     * camera = desktop rotate/tilt/north on map face; settings = pins, class
+     * highlight, map style and basemap as labelled rows (switches for on/off,
+     * segments for choices) for the Settings modal. The Layers sheet builds
+     * its own rows from the same stores.
+     */
+    variant?: "camera" | "settings";
   };
 
-  let { embedded = false, variant = "modes" }: Props = $props();
+  let { embedded = false, variant = "settings" }: Props = $props();
 
-  const showModes = $derived(variant === "modes");
   const showCameraNav = $derived(variant === "camera");
+  const showSettings = $derived(variant === "settings");
 
   const ROTATE_STEP = 30;
   const PITCH_STEP = 15;
@@ -55,25 +55,8 @@
 
   const northRotation = $derived(-NORTH_ICON_OFFSET - bearing);
   const is2D = $derived(isMap2DPitch(pitch));
-  const pinModeTitle = $derived(
-    mapViewStore.eventsOnly
-      ? "Showing event pins only. Switch to all pins."
-      : "Showing all pins. Switch to event pins only.",
-  );
   const hasPlannerClasses = $derived(
     (plannerStore.activePlan?.sections.length ?? 0) > 0,
-  );
-  const classHighlightTitle = $derived(
-    !hasPlannerClasses
-      ? "Add classes in the Planner to highlight their buildings."
-      : mapViewStore.highlightMyBuildings
-        ? "Highlighting your class buildings. Switch back to normal pins."
-        : "Highlight the buildings your planned classes are in.",
-  );
-  const cameraModeTitle = $derived(
-    is2D
-      ? "Camera is flat 2D. Switch to tilted 3D."
-      : "Camera is tilted 3D. Switch to flat 2D.",
   );
   // Satellite tiles need a working MapTiler key. Gate on the provider that
   // actually served the basemap: a configured-but-rejected key (#863) falls
@@ -81,11 +64,6 @@
   let basemapProvider = $state(getBasemapProvider());
   onMount(() => onBasemapProviderChange((next) => (basemapProvider = next)));
   const satelliteAvailable = $derived(basemapProvider === "maptiler");
-  const satelliteTitle = $derived(
-    mapViewStore.satellite
-      ? "Showing satellite imagery. Switch to the standard map."
-      : "Showing the standard map. Switch to satellite imagery.",
-  );
   const cameraDebugTitle = $derived(
     mapViewStore.cameraDebug
       ? "Hide the live camera readout."
@@ -148,6 +126,11 @@
   const resetNorth = () =>
     withMap((map) => map.easeTo({ bearing: 0, duration: 400 }));
 
+  function setTilted(tilted: boolean) {
+    if (tilted === !is2D) return;
+    toggleView();
+  }
+
   const toggleView = () =>
     withMap((map) => {
       if (!isMap2DPitch(map.getPitch())) {
@@ -166,113 +149,140 @@
   class="map-view-controls"
   class:embedded
   class:camera-only={showCameraNav}
+  class:settings={showSettings}
   aria-label={showCameraNav ? "Map camera controls" : "Map display controls"}
 >
-  {#if showModes}
-    <button
-      class="control mode-toggle pin-toggle"
-      class:active={mapViewStore.eventsOnly}
-      onclick={mapViewStore.toggleEventsOnly}
-      title={pinModeTitle}
-      aria-label={pinModeTitle}
-      aria-pressed={mapViewStore.eventsOnly}
-    >
-      <CalendarDays size={18} aria-hidden="true" />
-      <span class="control-copy">
-        <span class="control-kicker">Pins</span>
-        <span class="control-value">
-          {mapViewStore.eventsOnly ? "Events" : "All"}
-        </span>
-      </span>
-    </button>
+  {#if showSettings}
+    <div class="map-chrome-row">
+      <span class="map-chrome-row__label" id="map-settings-pins">Pins</span>
+      <div
+        class="map-chrome-row__control"
+        role="group"
+        aria-labelledby="map-settings-pins"
+      >
+        <button
+          type="button"
+          class="map-chrome-chip"
+          class:map-chrome-chip--toggle-active={!mapViewStore.eventsOnly}
+          aria-pressed={!mapViewStore.eventsOnly}
+          onclick={() => mapViewStore.eventsOnly && mapViewStore.toggleEventsOnly()}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          class="map-chrome-chip"
+          class:map-chrome-chip--toggle-active={mapViewStore.eventsOnly}
+          aria-pressed={mapViewStore.eventsOnly}
+          onclick={() => !mapViewStore.eventsOnly && mapViewStore.toggleEventsOnly()}
+        >
+          Events only
+        </button>
+      </div>
+    </div>
 
-    <div class="divider"></div>
-
-    <button
-      class="control mode-toggle class-highlight-toggle"
-      class:active={mapViewStore.highlightMyBuildings}
-      onclick={mapViewStore.toggleHighlightMyBuildings}
-      disabled={!hasPlannerClasses}
-      title={classHighlightTitle}
-      aria-label={classHighlightTitle}
-      aria-pressed={mapViewStore.highlightMyBuildings}
-    >
-      <GraduationCap size={18} aria-hidden="true" />
-      <span class="control-copy">
-        <span class="control-kicker">My classes</span>
-        <span class="control-value">
-          {mapViewStore.highlightMyBuildings ? "Highlighted" : "Off"}
-        </span>
+    <div class="map-chrome-row">
+      <span class="map-chrome-row__label" id="map-settings-my-classes">
+        Highlight my class buildings
       </span>
-    </button>
+      <button
+        type="button"
+        role="switch"
+        class="map-chrome-switch"
+        aria-checked={mapViewStore.highlightMyBuildings}
+        aria-labelledby="map-settings-my-classes"
+        aria-describedby={hasPlannerClasses
+          ? undefined
+          : "map-settings-my-classes-hint"}
+        disabled={!hasPlannerClasses}
+        onclick={mapViewStore.toggleHighlightMyBuildings}
+      ></button>
+    </div>
     {#if !hasPlannerClasses}
-      <p class="control-hint">Add classes in the Planner first.</p>
+      <p id="map-settings-my-classes-hint" class="map-chrome-row-hint">
+        Add classes in the Planner first.
+      </p>
     {/if}
 
-    <div class="divider"></div>
-
-    <button
-      class="control mode-toggle camera-toggle"
-      class:active={!is2D}
-      onclick={toggleView}
-      title={cameraModeTitle}
-      aria-label={cameraModeTitle}
-      aria-pressed={!is2D}
-    >
-      {#if is2D}
-        <MapIcon size={18} aria-hidden="true" />
-      {:else}
-        <Box size={18} aria-hidden="true" />
-      {/if}
-      <span class="control-copy">
-        <span class="control-kicker">View</span>
-        <span class="control-value">{is2D ? "2D flat" : "3D tilted"}</span>
+    <div class="map-chrome-row">
+      <span class="map-chrome-row__label" id="map-settings-style">
+        Map style
       </span>
-    </button>
+      <div
+        class="map-chrome-row__control"
+        role="group"
+        aria-labelledby="map-settings-style"
+      >
+        <button
+          type="button"
+          class="map-chrome-chip"
+          class:map-chrome-chip--toggle-active={is2D}
+          aria-pressed={is2D}
+          onclick={() => setTilted(false)}
+        >
+          2D flat
+        </button>
+        <button
+          type="button"
+          class="map-chrome-chip"
+          class:map-chrome-chip--toggle-active={!is2D}
+          aria-pressed={!is2D}
+          onclick={() => setTilted(true)}
+        >
+          3D tilted
+        </button>
+      </div>
+    </div>
 
     {#if satelliteAvailable}
-      <div class="divider"></div>
-
-      <button
-        class="control mode-toggle satellite-toggle"
-        class:active={mapViewStore.satellite}
-        onclick={mapViewStore.toggleSatellite}
-        title={satelliteTitle}
-        aria-label={satelliteTitle}
-        aria-pressed={mapViewStore.satellite}
-      >
-        {#if mapViewStore.satellite}
-          <Satellite size={18} aria-hidden="true" />
-        {:else}
-          <MapIcon size={18} aria-hidden="true" />
-        {/if}
-        <span class="control-copy">
-          <span class="control-kicker">Basemap</span>
-          <span class="control-value">
-            {mapViewStore.satellite ? "Satellite" : "Standard"}
-          </span>
+      <div class="map-chrome-row">
+        <span class="map-chrome-row__label" id="map-settings-basemap">
+          Basemap
         </span>
-      </button>
+        <div
+          class="map-chrome-row__control"
+          role="group"
+          aria-labelledby="map-settings-basemap"
+        >
+          <button
+            type="button"
+            class="map-chrome-chip"
+            class:map-chrome-chip--toggle-active={!mapViewStore.satellite}
+            aria-pressed={!mapViewStore.satellite}
+            onclick={() => mapViewStore.satellite && mapViewStore.toggleSatellite()}
+          >
+            Standard
+          </button>
+          <button
+            type="button"
+            class="map-chrome-chip"
+            class:map-chrome-chip--toggle-active={mapViewStore.satellite}
+            aria-pressed={mapViewStore.satellite}
+            onclick={() => !mapViewStore.satellite && mapViewStore.toggleSatellite()}
+          >
+            Satellite
+          </button>
+        </div>
+      </div>
     {/if}
 
-    <div class="divider"></div>
-
-    <button
-      class="control mode-toggle camera-debug-toggle"
-      class:active={mapViewStore.cameraDebug}
-      onclick={mapViewStore.toggleCameraDebug}
-      title={cameraDebugTitle}
-      aria-label={cameraDebugTitle}
-      aria-pressed={mapViewStore.cameraDebug}
-    >
-      <Gauge size={18} aria-hidden="true" />
-      <span class="control-copy">
-        <span class="control-kicker">Camera details</span>
-        <span class="control-value">
-          {mapViewStore.cameraDebug ? "On" : "Off"}
-        </span>
+    <!-- Developer tool: only with ?debug=1 / room-tba:debug. -->
+    {#if debugMode}
+    <div class="map-chrome-row">
+      <span class="map-chrome-row__label" id="map-settings-camera-details">
+        Camera details
       </span>
-    </button>
+      <button
+        type="button"
+        role="switch"
+        class="map-chrome-switch"
+        aria-checked={mapViewStore.cameraDebug}
+        aria-labelledby="map-settings-camera-details"
+        title={cameraDebugTitle}
+        onclick={mapViewStore.toggleCameraDebug}
+      ></button>
+    </div>
+    {/if}
   {/if}
 
   {#if showCameraNav}
@@ -339,9 +349,9 @@
     align-items: stretch;
     gap: 0.25rem;
     padding: 0.3125rem;
-    background-color: var(--map-chrome-surface, rgba(255, 255, 255, 0.98));
+    background-color: var(--map-chrome-surface, var(--theme-surface-translucent, rgba(255, 255, 255, 0.98)));
     backdrop-filter: blur(10px);
-    border: 1.5px solid var(--map-chrome-border, hsl(0, 0%, 58%));
+    border: 1.5px solid var(--map-chrome-border, var(--theme-border-strong, hsl(0, 0%, 58%)));
     border-radius: 0.875rem;
     box-shadow: var(
       --map-chrome-shadow,
@@ -385,10 +395,8 @@
     width: 100%;
   }
 
-  .divider {
-    height: 1px;
-    background-color: hsl(0, 0%, 90%);
-    margin: 0 0.125rem;
+  .map-view-controls.embedded.settings {
+    gap: 0.375rem;
   }
 
   .control {
@@ -401,7 +409,7 @@
     border-radius: var(--map-chrome-toggle-radius, 0.5rem);
     background-color: transparent;
     box-sizing: border-box;
-    color: hsl(0, 0%, 28%);
+    color: var(--theme-text, hsl(0, 0%, 28%));
     cursor: pointer;
     transition:
       background-color 0.15s ease,
@@ -414,7 +422,7 @@
   }
 
   .control:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
     outline-offset: 1px;
   }
 
@@ -427,19 +435,13 @@
   }
 
   .control:disabled {
-    color: hsl(0, 0%, 52%);
+    color: var(--theme-text-muted, hsl(0, 0%, 52%));
     cursor: default;
     background-color: transparent;
   }
 
-  /* The kicker's 0.72 opacity stacked on the disabled grey left the label at
-     1.76:1, so the row read as blank rather than disabled. */
-  .control:disabled .control-kicker {
-    opacity: 1;
-  }
-
   .north-btn {
-    color: hsl(5, 40%, 42%);
+    color: var(--theme-accent-text, hsl(5, 40%, 42%));
   }
 
   .north-icon {
@@ -453,141 +455,10 @@
     }
   }
 
-  .mode-toggle {
-    display: grid;
-    grid-template-columns: 1.125rem minmax(0, 1fr);
-    column-gap: 0.4375rem;
-    align-items: center;
-    justify-items: start;
-    width: 100%;
-    max-width: 100%;
-    min-height: 2.125rem;
-    height: auto;
-    padding: 0.25rem 0.5rem;
-    border: 1px solid hsl(0, 0%, 88%);
-    border-radius: 0.625rem;
-    box-sizing: border-box;
-    font-size: 0.75rem;
-    font-weight: 600;
-    line-height: 1.15;
-    color: hsl(5, 53%, 32%);
-    overflow: visible;
-  }
-
-  .mode-toggle :global(svg) {
-    grid-column: 1;
-    justify-self: center;
-    flex-shrink: 0;
-    width: 1.125rem;
-    height: 1.125rem;
-  }
-
-  .mode-toggle .control-copy {
-    grid-column: 2;
-    width: 100%;
-  }
-
-  .control-copy {
-    display: grid;
-    gap: 0.0625rem;
-    min-width: 0;
-    text-align: left;
-    overflow: visible;
-  }
-
-  .control-kicker {
-    font-size: 0.6875rem;
-    letter-spacing: 0.04em;
-    line-height: 1.15;
-    opacity: 0.8;
-    text-transform: uppercase;
-  }
-
-  .control-value {
-    overflow: visible;
-    font-size: 0.875rem;
-    line-height: 1.15;
-    text-overflow: clip;
-    white-space: nowrap;
-  }
-
-  .pin-toggle {
-    border-color: hsl(5, 34%, 78%);
-    background-color: hsl(0, 100%, 99%);
-  }
-
-  .pin-toggle:hover {
-    border-color: hsl(5, 34%, 68%);
-    background-color: hsl(0, 78%, 97%);
-  }
-
-  .class-highlight-toggle {
-    border-color: hsl(5, 34%, 78%);
-    background-color: hsl(0, 100%, 99%);
-  }
-
-  .class-highlight-toggle:hover:not(:disabled) {
-    border-color: hsl(5, 34%, 68%);
-    background-color: hsl(0, 78%, 97%);
-  }
-
-  .class-highlight-toggle:disabled {
-    border-color: hsl(0, 0%, 88%);
-    background-color: hsl(0, 0%, 98%);
-  }
-
-  .control-hint {
-    margin: 0;
-    padding: 0 0.25rem;
-    color: hsl(0, 0%, 45%);
-    font-size: 0.625rem;
-    line-height: 1.3;
-  }
-
-  .camera-toggle,
-  .satellite-toggle,
-  .camera-debug-toggle {
-    border-color: hsl(5, 34%, 78%);
-    background-color: hsl(0, 100%, 99%);
-  }
-
-  .camera-toggle:hover,
-  .satellite-toggle:hover,
-  .camera-debug-toggle:hover {
-    border-color: hsl(5, 34%, 68%);
-    background-color: hsl(0, 78%, 97%);
-  }
-
-  .mode-toggle.active {
-    border-color: hsl(5, 53%, 32%);
-    background-color: hsl(5, 53%, 32%);
-    color: white;
-  }
-
-  .mode-toggle.active .control-kicker,
-  .mode-toggle.active .control-value {
-    color: white;
-  }
-
-  .mode-toggle.active .control-kicker {
-    opacity: 0.88;
-  }
-
-  .mode-toggle.active:hover:not(:disabled) {
-    border-color: hsl(5, 53%, 32%);
-    background-color: hsl(5, 53%, 38%);
-  }
-
   @media (max-width: 48rem) {
     .icon-btn {
       width: 2rem;
       height: 2rem;
-    }
-
-    .mode-toggle {
-      width: 100%;
-      min-height: 2.25rem;
-      padding: 0.3125rem 0.5625rem;
     }
   }
 </style>

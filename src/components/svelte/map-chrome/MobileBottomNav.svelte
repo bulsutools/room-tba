@@ -7,7 +7,11 @@
 
   type TabId = "map" | "planner" | "today";
 
-  const active = $derived(sidebarStore.panelOpen);
+  let menuOpen = $state(false);
+  /** While the menu sheet is open it is the one "you are here"; the tab under
+      it must not also look selected. */
+  const active = $derived(menuOpen ? null : sidebarStore.panelOpen);
+  const tabs = ["map", "planner", "today"] as const;
 
   function go(id: TabId) {
     sidebarStore.changeOpened(id);
@@ -73,12 +77,11 @@
     <span>Today</span>
   </button>
 
-  <!-- Menu, not Account: this is the only mobile entry point to Final Exams,
-       the academic calendar, the changelog, coverage, the leaderboard and the
-       review queue (#951). Sign in / account settings sits inside it. Finals
-       lives here rather than the bar because it is seasonal (#951 follow-up:
-       daily-relevant Today earns the slot). -->
-  <AppMenu />
+  <!-- You: the account plus every destination that is not a tab (Final
+       exams, the academic calendar, the changelog, coverage, the leaderboard,
+       the review queue; #951). Finals lives there rather than the bar because
+       it is seasonal; daily-relevant Today earns the slot. -->
+  <AppMenu bind:open={menuOpen} hostTabs={tabs} />
 </nav>
 
 <style>
@@ -93,8 +96,8 @@
     min-height: 3.75rem;
     padding: 0.4rem 0.4rem calc(0.4rem + env(safe-area-inset-bottom, 0px));
     border: none;
-    border-top: 1px solid #f0eaeb;
-    background: #fff;
+    border-top: 1px solid var(--theme-accent-border, #f0eaeb);
+    background: var(--theme-surface, #fff);
     box-shadow: 0 -2px 12px rgb(0 0 0 / 0.06);
   }
 
@@ -111,7 +114,7 @@
     border: none;
     border-radius: 0.75rem;
     background: transparent;
-    color: #3a3032;
+    color: var(--theme-text, #3a3032);
     font: inherit;
     font-size: 0.625rem;
     font-weight: 500;
@@ -134,8 +137,8 @@
   }
 
   .mobile-bottom-nav__item--active {
-    background: #feeaea;
-    color: #8d1437;
+    background: var(--theme-accent-soft, #feeaea);
+    color: var(--theme-accent-text, #8d1437);
   }
 
   .mobile-bottom-nav__fab {
@@ -148,15 +151,17 @@
     padding: 0;
     border: none;
     border-radius: 1.05rem;
-    background: #8d1437;
+    background: var(--theme-accent-fill, #8d1437);
     color: #fff;
     box-shadow: 0 3px 10px rgb(141 20 55 / 0.35);
     cursor: pointer;
     transform: translateY(-0.65rem);
   }
 
-  .mobile-bottom-nav__fab:hover {
-    background: #7a1130;
+  @media (hover: hover) {
+    .mobile-bottom-nav__fab:hover {
+      background: var(--theme-accent-fill, #7a1130);
+    }
   }
 
   /* AppMenu ships its own chip styling for the status bar; here it has to read
@@ -188,7 +193,7 @@
     border-radius: 0.75rem;
     background: transparent;
     box-shadow: none;
-    color: #3a3032;
+    color: var(--theme-text, #3a3032);
     font: inherit;
     font-size: 0.625rem;
     font-weight: 500;
@@ -201,15 +206,66 @@
     opacity: 0.92;
   }
 
-  .mobile-bottom-nav :global(.app-menu__trigger span) {
+  .mobile-bottom-nav :global(.app-menu__trigger-label) {
     overflow: hidden;
     max-width: 100%;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .mobile-bottom-nav :global(.app-menu__trigger[aria-expanded="true"]) {
-    background: #feeaea;
-    color: #8d1437;
+  /* Beat map-chrome-chip's :hover (sticky after a tap on touch) so the
+     trigger only tints while the menu is actually open. */
+  .mobile-bottom-nav
+    :global(.app-menu button.app-menu__trigger.map-chrome-chip:hover) {
+    background: transparent;
+  }
+
+  .mobile-bottom-nav
+    :global(.app-menu button.app-menu__trigger.map-chrome-chip[aria-expanded="true"]) {
+    background: var(--theme-accent-soft, #feeaea);
+    color: var(--theme-accent-text, #8d1437);
+  }
+
+  /* Phone landscape (Jakob audit macro 14): every pixel of height is map, so
+     the bar goes icon-only at 44px with a flat, unraised FAB. Labels stay in
+     the DOM, visually hidden, so each tab keeps its accessible name. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .mobile-bottom-nav {
+      grid-template-columns: repeat(2, minmax(0, 5.5rem)) auto repeat(
+          2,
+          minmax(0, 5.5rem)
+        );
+      justify-content: center;
+      column-gap: 0.75rem;
+      min-height: 0;
+      padding: 0 max(0.5rem, env(safe-area-inset-right, 0px))
+        env(safe-area-inset-bottom, 0px)
+        max(0.5rem, env(safe-area-inset-left, 0px));
+    }
+
+    .mobile-bottom-nav__item,
+    .mobile-bottom-nav :global(.app-menu__trigger) {
+      position: relative;
+      min-height: 2.75rem;
+      padding: 0;
+    }
+
+    .mobile-bottom-nav__item span,
+    .mobile-bottom-nav :global(.app-menu__trigger-label) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .mobile-bottom-nav__fab {
+      width: 2.75rem;
+      height: 2.5rem;
+      border-radius: 0.875rem;
+      box-shadow: none;
+      transform: none;
+    }
   }
 </style>

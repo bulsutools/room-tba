@@ -35,7 +35,7 @@ describe("campus-gate-coordinates-template", () => {
     assertCampusGateCoordinatesHeaders(parsed.headers);
     expect(parsed.skippedInstructionRows).toBe(1);
     expect(parsed.rows.length).toBeGreaterThanOrEqual(4);
-    expect(parsed.rows.map((row) => row.name)).toContain("Raymundo Gate");
+    expect(parsed.rows.map((row) => row.name)).toContain("Main Gate");
     expect(parsed.rows.every((row) => !row.lat && !row.lon)).toBe(true);
   });
 
@@ -64,8 +64,8 @@ describe("campus-gate-coordinates-template", () => {
         short_name: "Raymundo",
         slug: "raymundo-gate",
         gate_type: "both",
-        lat: "14.16774",
-        lon: "121.24161",
+        lat: "14.8578",
+        lon: "120.8141",
         is_primary: "false",
         directions: "Along Raymundo Road",
         osm_link: "",

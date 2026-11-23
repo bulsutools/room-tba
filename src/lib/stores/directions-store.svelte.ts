@@ -7,11 +7,17 @@
  * without a store.
  */
 
-import { JEEPNEY_ROUTES } from "@constants/jeepney-routes";
 import {
-  type Journey,
-  type LatLng,
-  type PlanStatus,
+  JEEPNEY_ROUTES,
+  resolveRouteGeometry,
+  type StoredRouteGeometry,
+} from "@constants/jeepney-routes";
+import jeepneyGeometries from "@constants/jeepney-geometries.json";
+import type {
+  Journey,
+  LatLng,
+  PlanStatus,
+  RouteLines,
 } from "../travel-graph/journey";
 import { planMultiLegJourneys } from "../travel-graph/plan-multi-leg";
 import { journeyLineCoordinates } from "../travel-graph/route-proximity";
@@ -19,10 +25,55 @@ import { loadTravelGraph } from "../travel-graph/load";
 
 export type DirectionsPhase = "idle" | "planning" | "ready" | "error";
 
-export type DirectionsEndpoint = LatLng & { label: string };
+export type DirectionsEndpoint = LatLng & {
+  label: string;
+  /** Picked by tapping empty map, so no entity pin marks it. */
+  dropped?: boolean;
+};
+
+/** Which end of the trip the next search pick or map tap fills. */
+export type DirectionsPick = "origin" | "destination";
 
 /** Max intermediate stops between origin and destination. */
 export const MAX_DIRECTIONS_WAYPOINTS = 3;
+
+/** Label for an origin that follows the GPS fix. */
+export const YOUR_LOCATION_LABEL = "Your location";
+
+/**
+ * Road geometry per campus route, so a ride leg follows the street rather
+ * than a chord between stops. Stops-only routes are left out on purpose: a
+ * guessed line is no better than the chord.
+ */
+const ROUTE_LINES: RouteLines = Object.fromEntries(
+  JEEPNEY_ROUTES.flatMap((route) => {
+    const { source, line } = resolveRouteGeometry(
+      route,
+      jeepneyGeometries as Record<string, StoredRouteGeometry>,
+    );
+    return source !== "stops-only" && line
+      ? [[route.id, line.coordinates as [number, number][]]]
+      : [];
+  }),
+);
+
+/** Travel-mode tab: the kinds a journey can be. */
+export type DirectionsMode = Journey["kind"];
+
+/**
+ * Plain snapshot of a directions session, for a URL or history entry. The
+ * store does not write the URL itself; whoever owns routing reads
+ * getSnapshot() and hands it back to restore().
+ */
+export type DirectionsSnapshot = {
+  origin: DirectionsEndpoint | null;
+  /** False when the origin follows GPS ("Your location"). */
+  originFixed: boolean;
+  destination: DirectionsEndpoint | null;
+  waypoints: DirectionsEndpoint[];
+  mode: DirectionsMode | null;
+  navigating: boolean;
+};
 
 export class DirectionsStore {
   phase: DirectionsPhase = $state("idle");
@@ -35,6 +86,13 @@ export class DirectionsStore {
    * waypoint instead of replacing the destination.
    */
   addingStop: boolean = $state(false);
+  /** Set while the rider is choosing a start or end point. */
+  picking: DirectionsPick | null = $state(null);
+  /**
+   * True when the rider chose the start point. GPS fixes then leave the
+   * origin alone instead of replanning from the blue dot.
+   */
+  originFixed: boolean = $state(false);
   journeys: Journey[] = $state([]);
   selectedId: string | null = $state(null);
   /** Why an empty result is empty; drives the rider-facing note. */
@@ -68,6 +126,39 @@ export class DirectionsStore {
     );
   }
 
+  /** The quickest option, marked "Fastest" on its card. */
+  get fastestId(): string | null {
+    // Plans arrive ranked fastest first.
+    return this.journeys[0]?.id ?? null;
+  }
+
+  /** One tab per mode that has an option, with its quickest time. */
+  get modes(): { mode: DirectionsMode; seconds: number }[] {
+    const out: { mode: DirectionsMode; seconds: number }[] = [];
+    for (const mode of ["walk", "transit"] as const) {
+      const best = this.journeys.find((journey) => journey.kind === mode);
+      if (best) out.push({ mode, seconds: best.seconds });
+    }
+    return out;
+  }
+
+  /** The selected option's mode drives which tab is active. */
+  get mode(): DirectionsMode | null {
+    return this.selected?.kind ?? null;
+  }
+
+  /** The session as plain data (copies, safe to serialise). */
+  getSnapshot = (): DirectionsSnapshot => {
+    return {
+      origin: this.origin ? { ...this.origin } : null,
+      originFixed: this.originFixed,
+      destination: this.destination ? { ...this.destination } : null,
+      waypoints: this.waypoints.map((stop) => ({ ...stop })),
+      mode: this.mode,
+      navigating: this.navigating,
+    };
+  };
+
   /** Total seconds for the selected option — the "12 min" headline. */
   get selectedSeconds(): number | null {
     return this.selected?.seconds ?? null;
@@ -97,6 +188,8 @@ export class DirectionsStore {
     this.origin = origin;
     this.waypoints = [];
     this.addingStop = false;
+    this.picking = null;
+    this.originFixed = false;
     this.selectedId = null;
     this.journeys = [];
     this.status = null;
@@ -128,11 +221,17 @@ export class DirectionsStore {
         graph,
         points,
         routes: JEEPNEY_ROUTES,
+        routeLines: ROUTE_LINES,
       });
 
+      // Ranked fastest first, so the default pick is the quickest way there.
+      // A replan keeps the rider's mode tab when that mode still has options.
+      const keepMode = this.mode;
       this.journeys = plan.journeys;
       this.status = plan.status;
-      this.selectedId = plan.journeys[0]?.id ?? null;
+      this.selectedId =
+        (keepMode && plan.journeys.find((j) => j.kind === keepMode)?.id) ||
+        (plan.journeys[0]?.id ?? null);
       this.phase = "ready";
     } catch {
       if (token !== this.#planToken) return;
@@ -140,6 +239,144 @@ export class DirectionsStore {
       this.status = null;
       this.phase = "error";
     }
+  };
+
+  /**
+   * Start a session from a chosen point, such as "Directions from here" on a
+   * dropped pin. The next search pick or map tap becomes the destination.
+   */
+  openFrom = (origin: DirectionsEndpoint) => {
+    this.close();
+    this.origin = origin;
+    this.originFixed = true;
+    this.picking = "destination";
+    this.phase = "planning";
+  };
+
+  /**
+   * Directions from the home screen: start at the GPS fix (or wait for it)
+   * and ask where to. Like openFrom, but the start follows the blue dot.
+   */
+  openEmpty = (origin: DirectionsEndpoint | null) => {
+    this.close();
+    this.origin = origin;
+    this.originFixed = false;
+    this.picking = "destination";
+    this.phase = "planning";
+  };
+
+  /**
+   * Swap start and end (⇅). A GPS start becomes a fixed end at the current
+   * fix; with no start yet the old end becomes the start and the end is asked
+   * for again.
+   */
+  swap = async () => {
+    const origin = this.origin;
+    const destination = this.destination;
+    this.picking = null;
+    this.addingStop = false;
+    this.waypoints = [...this.waypoints].reverse();
+    this.origin = destination;
+    this.originFixed = destination !== null;
+    this.destination = origin;
+    if (!this.origin || !this.destination) {
+      // Nothing to plan from yet: drop the stale route and ask for the gap.
+      this.#planToken++;
+      this.journeys = [];
+      this.selectedId = null;
+      this.status = null;
+      this.phase = "planning";
+      this.picking = this.origin ? "destination" : "origin";
+      return;
+    }
+    await this.replan(this.origin, this.destination);
+  };
+
+  /**
+   * Rebuild a session from getSnapshot(), e.g. on Back or a shared link. A
+   * GPS start ("Your location") with no fix yet waits for one, as open() does.
+   */
+  restore = async (snapshot: DirectionsSnapshot) => {
+    this.close();
+    this.origin = snapshot.origin ? { ...snapshot.origin } : null;
+    this.originFixed = snapshot.originFixed && snapshot.origin !== null;
+    this.destination = snapshot.destination
+      ? { ...snapshot.destination }
+      : null;
+    this.waypoints = snapshot.waypoints.map((stop) => ({ ...stop }));
+    this.phase = "planning";
+    if (!this.destination) {
+      this.picking = "destination";
+      return;
+    }
+    if (!this.origin) return;
+    await this.replan(this.origin, this.destination);
+    if (snapshot.mode) this.selectMode(snapshot.mode);
+    if (snapshot.navigating) this.startNavigation();
+  };
+
+  /** Show the quickest option of a travel mode (the mode tabs). */
+  selectMode = (mode: DirectionsMode) => {
+    const best = this.journeys.find((journey) => journey.kind === mode);
+    if (best) this.selectedId = best.id;
+  };
+
+  /**
+   * Change where the trip starts. `fixed` false hands the origin back to GPS,
+   * which is what "Use my location" does.
+   */
+  setOrigin = async (origin: DirectionsEndpoint | null, fixed = true) => {
+    this.picking = null;
+    this.originFixed = fixed && origin !== null;
+    this.origin = origin;
+    if (!origin) {
+      // Waiting on GPS: drop the old plan so no stale route stays drawn.
+      this.#planToken++;
+      this.journeys = [];
+      this.selectedId = null;
+      this.status = null;
+      if (this.destination) this.phase = "planning";
+      return;
+    }
+    if (!this.destination) return;
+    await this.replan(origin, this.destination);
+  };
+
+  setDestination = async (destination: DirectionsEndpoint) => {
+    this.picking = null;
+    this.destination = destination;
+    if (!this.origin) return; // still waiting on GPS
+    await this.replan(this.origin, destination);
+  };
+
+  beginPick = (which: DirectionsPick) => {
+    this.addingStop = false;
+    this.picking = which;
+  };
+
+  cancelPick = () => {
+    this.picking = null;
+  };
+
+  /**
+   * Route a search pick or map tap into the session: a start point, an end
+   * point or an extra stop. Returns false when nothing was waiting for one.
+   */
+  takePick = (endpoint: DirectionsEndpoint): boolean => {
+    if (!this.active) return false;
+    if (this.picking === "origin") {
+      void this.setOrigin(endpoint);
+      return true;
+    }
+    if (this.picking === "destination") {
+      void this.setDestination(endpoint);
+      return true;
+    }
+    if (this.addingStop) {
+      void this.addWaypoint(endpoint);
+      return true;
+    }
+    return false;
   };
 
   /** Replan using current origin/destination/waypoints. */
@@ -150,6 +387,7 @@ export class DirectionsStore {
 
   beginAddStop = () => {
     if (this.waypoints.length >= MAX_DIRECTIONS_WAYPOINTS) return;
+    this.picking = null;
     this.addingStop = true;
   };
 
@@ -242,6 +480,8 @@ export class DirectionsStore {
     this.destination = null;
     this.waypoints = [];
     this.addingStop = false;
+    this.picking = null;
+    this.originFixed = false;
     this.journeys = [];
     this.selectedId = null;
     this.status = null;

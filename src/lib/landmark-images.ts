@@ -5,6 +5,8 @@
  * Wikimedia Commons photos are hotlinked with the attribution their licenses
  * require, and Street View is stored only as compass headings — the client
  * builds URLs with its own key because Google's terms forbid storing imagery.
+ * Entities the manifest misses (food spots, stores, newer pins) get one
+ * Street View shot from a runtime metadata lookup (street-view-lookup.ts).
  */
 import manifest from "@constants/landmark-images.json";
 import {
@@ -12,9 +14,10 @@ import {
   hasStreetViewKey,
   streetViewImageUrl,
 } from "./street-view";
+import type { StreetViewPano } from "./street-view-lookup";
 
 export type CommonsImage = {
-  /** Direct thumbnail URL on upload.wikimedia.org (hotlinking is supported). */
+  /** Direct thumbnail URL on thumb/upload.wikimedia.org (hotlinking is supported). */
   url: string;
   /** File page, where the full attribution lives. */
   pageUrl: string;
@@ -25,11 +28,23 @@ export type CommonsImage = {
 export type LandmarkImagesEntry = {
   /** Street View facade headings: center on the building, one to each side. */
   streetViewHeadings?: number[];
+  /**
+   * The panorama the headings were computed from. Pinned so the client shows
+   * that pano, not whichever one Google finds nearest at render time.
+   */
+  streetViewPanoId?: string;
+  /**
+   * Set when the pano is a photo sphere somebody uploaded to Google (often a
+   * classroom or lobby), not Google's own capture: the uploader's credit
+   * line ("© Ry Clark Media Arts"). Those panos are shown last.
+   */
+  streetViewCopyright?: string;
   commons?: CommonsImage[];
 };
 
 /**
- * Keyed `building:<buildingName>`, NOT by database id: ids differ between the
+ * Keyed `<kind>:<name>` (`building:<buildingName>`, `dorm:<dormName>`,
+ * `place:<name>`, `organization:<name>`), NOT by database id: ids differ between the
  * prod, staging, and e2e databases, and an id-keyed manifest would silently
  * hang the wrong photos on the wrong buildings everywhere but prod (the same
  * failure mode as the dorm id-matching incident, PR #764). A name that
@@ -51,9 +66,20 @@ export type LandmarkImage = {
   source: "contributor" | "street-view" | "commons";
 };
 
-const LANDMARK_IMAGES = manifest as LandmarkImagesManifest;
+let landmarkImagesManifest = manifest as LandmarkImagesManifest;
 
-export type BuildingImagesInput = {
+/** Test hook: run landmarkImages against a fixture manifest. */
+export function setLandmarkImagesManifestForTests(
+  fixture: LandmarkImagesManifest | null,
+) {
+  landmarkImagesManifest = fixture ?? (manifest as LandmarkImagesManifest);
+}
+
+export type LandmarkKind = "building" | "dorm" | "place" | "organization";
+
+export type LandmarkImagesInput = {
+  /** Manifest key prefix. Defaults to "building". */
+  kind?: LandmarkKind;
   name: string;
   imageUrl?: string | null;
   lat?: number | null;
@@ -61,31 +87,63 @@ export type BuildingImagesInput = {
   /** Cached Street View lookup (migration 0052). Null means no coverage. */
   panoId?: string | null;
   googleKey?: string;
+  /**
+   * Runtime metadata lookup (street-view-lookup.ts) for an entity with no
+   * manifest entry and no cached pano: pinned pano, aimed at the place.
+   */
+  lookedUpPano?: StreetViewPano | null;
 };
 
 /**
- * Every image the panel can show for a building, in display order:
- * contributor photo first (ours, current, chosen to show the entrance), then
- * Street View facade angles, then Commons photos. Capped at
+ * True when only a runtime lookup can find Street View for this entity: a
+ * key, coordinates, no manifest entry, and no cached pano from the caller
+ * (`panoId: null` is a cached "no coverage", so it skips the request too).
+ */
+export function needsStreetViewLookup(input: LandmarkImagesInput): boolean {
+  const { kind = "building", name, lat, lon, panoId, googleKey } = input;
+  return (
+    hasStreetViewKey(googleKey) &&
+    lat != null &&
+    lon != null &&
+    panoId === undefined &&
+    !landmarkImagesManifest[`${kind}:${name}`]
+  );
+}
+
+/**
+ * Every image the panel can show for a landmark, in display order: Google's
+ * own Street View facade angles first (the thumbnail), then the contributor
+ * photo, then Commons photos, and a pano somebody uploaded to Google last. Capped at
  * MAX_IMAGES_PER_LANDMARK; empty when no source has anything.
  */
-export function buildingLandmarkImages(
-  input: BuildingImagesInput,
-): LandmarkImage[] {
-  const { name, imageUrl, lat, lon, panoId, googleKey } = input;
-  const entry = LANDMARK_IMAGES[`building:${name}`];
-  const images: LandmarkImage[] = [];
-
-  if (imageUrl) {
-    images.push({ src: imageUrl, alt: name, source: "contributor" });
-  }
+export function landmarkImages(input: LandmarkImagesInput): LandmarkImage[] {
+  const { kind = "building", name, imageUrl, lat, lon, googleKey } = input;
+  const manifestEntry = landmarkImagesManifest[`${kind}:${name}`];
+  const lookedUp = manifestEntry ? null : input.lookedUpPano;
+  // A looked-up pano slots in as a one-heading manifest entry, so ordering and
+  // uploader credit follow the same rules.
+  const entry: LandmarkImagesEntry | undefined = lookedUp
+    ? {
+        streetViewPanoId: lookedUp.panoId,
+        streetViewHeadings:
+          lookedUp.heading === undefined ? undefined : [lookedUp.heading],
+        streetViewCopyright:
+          lookedUp.copyright && !/google/i.test(lookedUp.copyright)
+            ? lookedUp.copyright
+            : undefined,
+      }
+    : manifestEntry;
+  // A pinned manifest pano is itself proof of coverage: the fetch script only
+  // records one after the free metadata check found it.
+  const panoId = entry?.streetViewPanoId ?? input.panoId;
+  const streetView: LandmarkImage[] = [];
 
   if (hasStreetViewKey(googleKey) && panoId && lat != null && lon != null) {
     // No manifest entry still gets the pre-gallery single shot: Google points
     // the camera at the subject when no heading is given.
     const headings = entry?.streetViewHeadings ?? [undefined];
     for (const heading of headings) {
-      images.push({
+      streetView.push({
         src: streetViewImageUrl(
           { lat: Number(lat), lng: Number(lon) },
           googleKey,
@@ -97,13 +155,22 @@ export function buildingLandmarkImages(
             fov: 90,
             radius: 100,
             heading,
+            pano: entry?.streetViewPanoId,
           },
         ),
         alt: `Street View of ${name}`,
-        credit: STREET_VIEW_ATTRIBUTION,
+        credit: entry?.streetViewCopyright
+          ? `Street View image ${entry.streetViewCopyright}`
+          : STREET_VIEW_ATTRIBUTION,
         source: "street-view",
       });
     }
+  }
+
+  const uploadedPano = Boolean(entry?.streetViewCopyright);
+  const images: LandmarkImage[] = uploadedPano ? [] : [...streetView];
+  if (imageUrl) {
+    images.push({ src: imageUrl, alt: name, source: "contributor" });
   }
 
   for (const photo of entry?.commons ?? []) {
@@ -115,6 +182,8 @@ export function buildingLandmarkImages(
       source: "commons",
     });
   }
+
+  if (uploadedPano) images.push(...streetView);
 
   return images.slice(0, MAX_IMAGES_PER_LANDMARK);
 }

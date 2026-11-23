@@ -1,5 +1,5 @@
 /**
- * Parse the OUR "Academic Calendar" PDF (as `pdftotext -layout` text) into the
+ * Parse the registrar "Academic Calendar" PDF (as `pdftotext -layout` text) into the
  * term windows, milestone rows and official holidays that
  * data/academic-calendar-{AY}.json stores.
  *
@@ -291,7 +291,7 @@ function kindOf(label: string, window: { startsOn: string; endsOn: string }) {
     : ("period" as const);
 }
 
-/** CRS ids are 12<AY start year - 2020><1|2|3>; 1261/1262/1263 for 2026-2027. */
+/** Term ids follow the registrar convention; see the importer docs for yours. */
 export function termIdFor(ayStartYear: number, column: number) {
   // ponytail: breaks in 2030, same as the id scheme itself; revisit with the
   // registrar then.
@@ -381,10 +381,13 @@ export function parseAcademicCalendar(text: string): AcademicCalendar {
 
   const startOfClasses = findRow(rows, /^START OF CLASSES/i);
   const finals = findRow(rows, /^FINAL EXAMINATIONS/i);
-  const changeOfMatric = findRow(rows, /^Change of Matriculation/i);
+  const changeOfMatric = findRow(
+    rows,
+    /^Change of (?:Matriculation|Enrollment)/i,
+  );
   if (!startOfClasses || !finals || !changeOfMatric) {
     throw new Error(
-      "Missing a required row (START OF CLASSES / FINAL EXAMINATIONS / Change of Matriculation)",
+      "Missing a required row (START OF CLASSES / FINAL EXAMINATIONS / Change of Matriculation or Enrollment)",
     );
   }
 

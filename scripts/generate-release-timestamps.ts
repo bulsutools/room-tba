@@ -20,7 +20,7 @@ const OUT = join(
   "release-timestamps.json",
 );
 const API =
-  "https://api.github.com/repos/uplbtools/room-tba/releases?per_page=100";
+  "https://api.github.com/repos/bulsutools/room-tba/releases?per_page=100";
 
 type Release = { tag_name?: string; published_at?: string };
 

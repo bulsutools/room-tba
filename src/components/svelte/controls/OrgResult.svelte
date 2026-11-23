@@ -13,12 +13,14 @@
   import Info from "@lucide/svelte/icons/info";
   import Building2 from "@lucide/svelte/icons/building-2";
   import EntityGoogleMapsLink from "./EntityGoogleMapsLink.svelte";
+  import EntityPrintableMapLink from "./EntityPrintableMapLink.svelte";
   import EntityStreetAddress from "./EntityStreetAddress.svelte";
   import EntityDirectionsChip from "./EntityDirectionsChip.svelte";
   import EntityExternalLink from "./EntityExternalLink.svelte";
   import EntityLastUpdated from "../EntityLastUpdated.svelte";
   import EntityShareCopyLink from "./EntityShareCopyLink.svelte";
   import EntityBackToList from "./EntityBackToList.svelte";
+  import BuildingPhoto from "./BuildingPhoto.svelte";
   import EntityEditorToggle from "@ui/editor/EntityEditorToggle.svelte";
   import EntityEditorPinRow from "@ui/editor/EntityEditorPinRow.svelte";
   import type { OrgData } from "@lib/types";
@@ -118,7 +120,7 @@
     const name = nameDraft.trim();
     if (name !== current.name) {
       if (!name) {
-        fieldError = "Name cannot be empty.";
+        fieldError = "Name can't be empty.";
         return null;
       }
       patch.name = name;
@@ -183,7 +185,7 @@
 
       const outcome = handlePersistEntityResult<OrgData>(result, {
         syncFromServer,
-        fallbackError: `${current.name} could not be saved.`,
+        fallbackError: `${current.name} couldn't be saved.`,
       });
 
       if (outcome.error) {
@@ -202,7 +204,7 @@
       additionProposalStore.clearDraftPin();
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Network error";
-      fieldError = `${current.name} failed to save: ${reason}`;
+      fieldError = `${current.name} failed to save (${reason}).`;
     } finally {
       saving = false;
     }
@@ -277,6 +279,11 @@
             name={org.name}
             ariaLabel={`Open ${org.name} in Google Maps`}
           />
+          <EntityPrintableMapLink
+            lat={resolvedLat}
+            lon={resolvedLon}
+            name={org.name}
+          />
         {/if}
         <EntityShareCopyLink url={organizationShareUrl} entityLabel={org.name} />
         <EntityEditorToggle
@@ -306,7 +313,7 @@
         {:else if org.description}
           <p class="entity-directions__text">{org.description}</p>
         {/if}
-        {#if org.bio && org.description && org.description !== org.bio && !org.description.startsWith("Recognized UPLB student organization")}
+        {#if org.bio && org.description && org.description !== org.bio && !org.description.startsWith("Recognized BulSU student organization")}
           <p class="entity-directions__text">{org.description}</p>
         {/if}
 
@@ -348,19 +355,18 @@
           updatedAt={org.updatedAt}
           entityType="organization"
           entityId={org.id}
+          entityName={org.name}
         />
       </div>
     {/if}
 
-    {#if !editing && org.imageUrl}
-      <img
-        class="entity-image"
-        src={org.imageUrl}
-        alt={org.name}
-        width="800"
-        height="450"
-        loading="lazy"
-        decoding="async"
+    {#if !editing}
+      <BuildingPhoto
+        kind="organization"
+        name={org.name}
+        imageUrl={org.imageUrl}
+        lat={org.lat}
+        lon={org.lon}
       />
     {/if}
 
@@ -377,7 +383,7 @@
         </label>
         <EntityEditorPinRow
           label={draftPin
-            ? `Pin set · ${draftPin.lat.toFixed(5)}, ${draftPin.lon.toFixed(5)}`
+            ? `Pin set: ${draftPin.lat.toFixed(5)}, ${draftPin.lon.toFixed(5)}`
             : "Drop a pin on the map"}
           pickLabel={draftPin ? "Move pin" : "Pick on map"}
           disabled={saving}
@@ -475,28 +481,28 @@
     width: 1.375rem;
     height: 1.375rem;
     border-radius: 999px;
-    color: hsl(265, 45%, 45%);
+    color: var(--theme-purple-text, hsl(265, 45%, 45%));
     cursor: pointer;
   }
 
   .org-info-btn:hover,
   .org-info-btn:focus-visible {
-    background-color: hsl(265, 45%, 94%);
+    background-color: var(--theme-purple-soft, hsl(265, 45%, 94%));
   }
 
   /* Tone only; .entity-meta-chip derives the border + wash. */
   .org-badge {
-    color: hsl(265, 45%, 36%);
+    color: var(--theme-purple-text, hsl(265, 45%, 36%));
   }
 
   .building-badge {
-    color: hsl(5, 45%, 34%);
+    color: var(--theme-accent-text, hsl(5, 45%, 34%));
     cursor: pointer;
   }
 
   .building-badge:hover,
   .building-badge:focus-visible {
-    background-color: color-mix(in srgb, currentColor 14%, white);
+    background-color: color-mix(in srgb, currentColor 14%, var(--theme-surface, white));
   }
 
   .org-about {
@@ -509,7 +515,7 @@
     margin: 0;
     font-size: 0.8125rem;
     font-weight: 700;
-    color: #27272a;
+    color: var(--theme-text, #27272a);
   }
 
   .org-field {
@@ -524,20 +530,20 @@
     width: 100%;
     min-width: 0;
     padding: 0.4rem 0.55rem;
-    border: 1px solid hsl(0, 0%, 62%);
+    border: 1px solid var(--theme-border-strong, hsl(0, 0%, 62%));
     border-radius: 0.375rem;
     font: inherit;
-    color: #18181b;
-    background: white;
+    color: var(--theme-text, #18181b);
+    background: var(--theme-surface, white);
   }
 
   /* Editor labels need real contrast on the warm panel background. */
   .org-field .entity-detail-row__label {
-    color: #3f3f46;
+    color: var(--theme-text, #3f3f46);
   }
 
   .org-error {
-    color: hsl(0, 65%, 45%);
+    color: var(--theme-accent-text, hsl(0, 65%, 45%));
     font-size: 0.8125rem;
     margin: 0.25rem 0;
   }
@@ -559,7 +565,7 @@
   }
 
   .no-results {
-    color: #666;
+    color: var(--theme-text-2, #666);
     font-size: 0.875rem;
     text-align: center;
     padding: 1rem 0;

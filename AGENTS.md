@@ -2,7 +2,7 @@
 
 **Human developers and campus volunteers:** start with [CONTRIBUTING.md](CONTRIBUTING.md). You do not need this file.
 
-> **Org template:** Other [uplbtools](https://github.com/uplbtools) repos maintain a shorter `AGENTS.md` adapted from this file for their stack (discord-bot, gradesim, website, punta, iskedyul, laro-tayo, …).
+> **Org template:** Other [bulsutools](https://github.com/bulsutools) repos maintain a shorter `AGENTS.md` adapted from this file for their stack (discord-bot, gradesim, website, punta, iskedyul, laro-tayo, …).
 
 ## Doc map
 
@@ -17,7 +17,6 @@ Read the right doc for the task; do not rely on this file alone for detailed che
 | Caveman, Ponytail, Hallmark, token efficiency, Claude/Codex | [docs/agent-tooling.md](docs/agent-tooling.md) + [docs/agent-contract.md](docs/agent-contract.md)                                              |
 | Contributor proposals, review queue, suggest edit | [.cursor/skills/contributor-proposals/SKILL.md](.cursor/skills/contributor-proposals/SKILL.md)                                                 |
 | Discord notifications (room-tba + discord-bot)    | [.cursor/skills/discord-notifications/SKILL.md](.cursor/skills/discord-notifications/SKILL.md)                                                 |
-| AMIS class import, term_id triage                 | [.cursor/skills/amis-term-import/SKILL.md](.cursor/skills/amis-term-import/SKILL.md)                                                           |
 | Vercel env, deploy guards, Supabase migrations    | [.cursor/skills/vercel-supabase-ops/SKILL.md](.cursor/skills/vercel-supabase-ops/SKILL.md)                                                     |
 | Playwright E2E, integration CI, `run/e2e` label   | [.cursor/skills/playwright-e2e-ci/SKILL.md](.cursor/skills/playwright-e2e-ci/SKILL.md)                                                         |
 | Worktrees, multiple agents, push to `staging`     | [AGENTS.md § Worktrees and multiple agents](#worktrees-and-multiple-agents)                                                                    |
@@ -26,6 +25,7 @@ Read the right doc for the task; do not rely on this file alone for detailed che
 | Drizzle, API routes, migrations, PGlite           | [.cursor/rules/data-and-migrations.mdc](.cursor/rules/data-and-migrations.mdc)                                                                 |
 | Bulk / direct-database edits, audit trail         | [docs/bulk-data-history.md](docs/bulk-data-history.md)                                                                                          |
 | Stores and client state                           | [.cursor/rules/svelte-stores.mdc](.cursor/rules/svelte-stores.mdc)                                                                             |
+| Campus fork config, profile JSON spike            | [docs/campus-profile-spike.md](docs/campus-profile-spike.md) + [docs/fork-data-guide.md](docs/fork-data-guide.md)                               |
 | PR QA evidence and reporting                      | [docs/agentic-qa-process.md](docs/agentic-qa-process.md)                                                                                       |
 | **Tests for an issue / test backlog**             | [docs/issue-test-matrix.md](docs/issue-test-matrix.md) + [docs/testing.md](docs/testing.md) + [docs/test-inventory.md](docs/test-inventory.md) |
 | Editor manual checklist                           | [docs/editor-foundation-test-plan.md](docs/editor-foundation-test-plan.md)                                                                     |
@@ -59,7 +59,7 @@ Estimate like **Composer with repo + shell access**, not like a human developer 
 
 - **Do not quote human-day timelines** (“this will take a day”) for scoped repo work. Prefer **“I’ll do it in this session”** or split by **deliverable** (PR1, PR2), not calendar days.
 - **Scoped + discoverable path** (one feature, known files, existing patterns) → usually **minutes to one session**, not hours/days of “dev time.” Examples: env wiring, a Playwright smoke slice, a map chrome fix, one API route.
-- **Reserve multi-session / multi-PR** for true epics: broad refactors, full test matrices, ship pipeline (`staging` → `main`) with review, or hard external blocks (AMIS token, legal, prod credentials).
+- **Reserve multi-session / multi-PR** for true epics: broad refactors, full test matrices, ship pipeline (`staging` → `main`) with review, or hard external blocks (registrar credentials, legal, prod credentials).
 - **Say “blocked on you”** when waiting on secrets, passwords, or product decisions: not “implementation takes a day.”
 - **Infra cooldowns (rate limits, Supabase circuit breaker):** try once → if blocked, **~5 minutes + one retry** → report and parallelize other work. Do **not** default to “wait 30–60 minutes” unless a second failure proves a longer lockout.
 
@@ -108,8 +108,8 @@ When the user asks to **ship** a feature or fix, they mean the **full integratio
 
 | Stage              | PR                                                                                  | After merge                                              |
 | ------------------ | ----------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| **1: Integration** | `<feature-branch>` → **`staging`** (or equivalent PR landing the work on `staging`) | Staging preview deploy (`staging.room-tba.uplb.tools`) |
-| **2: Release**     | **`staging` → `main`**                                                              | Production deploy (`room-tba.uplb.tools`)              |
+| **1: Integration** | `<feature-branch>` → **`staging`** (or equivalent PR landing the work on `staging`) | Staging preview deploy (`staging.room-tba.bulsu.tools`) |
+| **2: Release**     | **`staging` → `main`**                                                              | Production deploy (`room-tba.bulsu.tools`)              |
 
 **Before each merge (both stages):**
 
@@ -140,7 +140,7 @@ Every push to `staging` or `main` (and every PR preview) triggers a Vercel deplo
 - **Prod schema drift (colleges/orgs API 500).** If code merged before `drizzle/*.sql` hit prod, Drizzle selects missing columns → `/api/colleges` etc. return 500 while buildings work. Release workflow now applies pending migrations first; still add new SQL files under `drizzle/` in the same release batch. Vercel production deploys on push in parallel with Actions; migrations usually finish first (~seconds vs minutes), but enable Vercel **Deployment Protection → Wait for GitHub Actions** on production if you want a hard gate.
 
 - **Tag/history divergence → first-release `v1.0.0` collision.** If `main` was ever rewritten so no `vX.Y.Z` tag is reachable from it (`git describe --tags origin/main` says "no tags can describe"), semantic-release assumes a first release, tries `git tag v1.0.0`, and dies (`already exists`). Fix: re-point the highest version tag onto `main`'s current tip as a **lightweight** tag; `git update-ref refs/tags/vX.Y.Z <main-sha>` then `git push origin refs/tags/vX.Y.Z --force`. Use `update-ref`, **not** `git tag -a`: `tag.gpgsign true` forces annotated tags, and semantic-release's ancestor check rejects annotated tags (it compares the tag-object SHA, which isn't a commit). Always **dry-run first**: on a local `staging→main` merge, `GITHUB_REF=refs/heads/main GITHUB_ACTIONS=true bunx semantic-release --dry-run --no-ci`; confirm "next release version is X.Y.Z" (not 1.0.0), and make sure the checked-out `main` ref equals the merge commit or it reads the wrong history.
-- **Version-sync PR opens but never merges.** The step that writes the bumped `package.json` + `CHANGELOG.md` back to `main` opens its PR fine — Actions is allowed to create PRs (`can_approve_pull_request_reviews: true`). It never **merges**. Ruleset `17637570` ("No push to default branch") applies `required_approving_review_count: 1` to `~DEFAULT_BRANCH`, and its only bypass actor is the **Admin repository role**. `GITHUB_TOKEN` is not an admin, GitHub forbids an actor approving its own PR, and the GitHub Actions app **cannot** be added to a repo-level ruleset bypass list (`422: must be part of the ruleset source or owner organization`). So `gh pr merge --auto` *arms* successfully and then waits forever. Diagnose with `gh pr view <n> --json mergeable,mergeStateStatus,reviewDecision` → `MERGEABLE` / `BLOCKED` / `REVIEW_REQUIRED`; step conclusions lie, check `gh api repos/uplbtools/room-tba/issues/<n>/timeline` for `auto_squash_enabled`. Symptom: `CHANGELOG.md` drifts behind the version (froze at 2.4.0 while tags reached 2.7.1, #868; earlier 1.23.0 vs 1.36.0); the in-app "What's new" / `/changelog` go stale. **Permanent fix:** set the `RELEASE_SYNC_TOKEN` secret to a repo-admin PAT (contents + pull-requests write) — `release.yml` prefers it over `GITHUB_TOKEN`, so the sync PR is opened by an actor the Admin bypass covers and auto-merge completes. **Catch-up in one shot:** pull every release body newer than the CHANGELOG top with `gh release view <tag> --json body --jq .body` and prepend newest-first, one blank line between entries — semantic-release generates the release body and the CHANGELOG entry from the same template, so the body is already the entry (h1 for minor/major, h2 for patch; no `sed` rewrite needed). **Do not** run `prettier --write CHANGELOG.md`: `biome.json` deliberately excludes the file, and prettier rewrites every current `* ` bullet to `- `.
+- **Version-sync PR opens but never merges.** The step that writes the bumped `package.json` + `CHANGELOG.md` back to `main` opens its PR fine — Actions is allowed to create PRs (`can_approve_pull_request_reviews: true`). It never **merges**. Ruleset `17637570` ("No push to default branch") applies `required_approving_review_count: 1` to `~DEFAULT_BRANCH`, and its only bypass actor is the **Admin repository role**. `GITHUB_TOKEN` is not an admin, GitHub forbids an actor approving its own PR, and the GitHub Actions app **cannot** be added to a repo-level ruleset bypass list (`422: must be part of the ruleset source or owner organization`). So `gh pr merge --auto` *arms* successfully and then waits forever. Diagnose with `gh pr view <n> --json mergeable,mergeStateStatus,reviewDecision` → `MERGEABLE` / `BLOCKED` / `REVIEW_REQUIRED`; step conclusions lie, check `gh api repos/bulsutools/room-tba/issues/<n>/timeline` for `auto_squash_enabled`. Symptom: `CHANGELOG.md` drifts behind the version (froze at 2.4.0 while tags reached 2.7.1, #868; earlier 1.23.0 vs 1.36.0); the in-app "What's new" / `/changelog` go stale. **Permanent fix:** set the `RELEASE_SYNC_TOKEN` secret to a repo-admin PAT (contents + pull-requests write) — `release.yml` prefers it over `GITHUB_TOKEN`, so the sync PR is opened by an actor the Admin bypass covers and auto-merge completes. **Catch-up in one shot:** pull every release body newer than the CHANGELOG top with `gh release view <tag> --json body --jq .body` and prepend newest-first, one blank line between entries — semantic-release generates the release body and the CHANGELOG entry from the same template, so the body is already the entry (h1 for minor/major, h2 for patch; no `sed` rewrite needed). **Do not** run `prettier --write CHANGELOG.md`: `biome.json` deliberately excludes the file, and prettier rewrites every current `* ` bullet to `- `.
 
 ### Databases, migrations, and the E2E secret: gotchas
 
@@ -179,7 +179,7 @@ git push origin staging
 - Push to **`staging`** when the user asks to land work on integration, ship to staging, or says push (and context is not a release to prod).
 - **Do not push to `main`** except via the **`staging` → `main`** release PR (or an explicit hotfix the user requested).
 - **Never `vercel deploy, prod`** unless `git branch, show-current` is `main` and matches `origin/main`. Staging integration uses `git push origin staging` only.
-- After pushing `staging`, Vercel builds the staging preview (`staging.room-tba.uplb.tools`). Preview env must have **`DATABASE_URL`** (same Supabase as production) or the build fails at prerender.
+- After pushing `staging`, Vercel builds the staging preview (`staging.room-tba.bulsu.tools`). Preview env must have **`DATABASE_URL`** (same Supabase as production) or the build fails at prerender.
 
 Feature branches remain appropriate for large or review-heavy work: `feat/…` → PR to `staging` → merge → delete branch.
 
@@ -319,7 +319,7 @@ When in doubt, ask the user: "Does this issue require external coordination, or 
 | API route / service        | `integration/http/*` or `integration/services/*`                                |
 | Map chrome / side panel UI | Vitest `@320px` component test + Playwright browse/admin spec when user-visible |
 | Editor / PATCH / 409       | Integration stale-version test + E2E when UI surfaces conflict                  |
-| `data` / AMIS import       | Fixture JSON unit test only: **never** live `, fetch` in CI                     |
+| `data` / class import      | Fixture JSON unit test only: **never** live `, fetch` in CI                     |
 | Subjective design / whimsy | Component layout guards + manual QA note in PR; do not skip all automation      |
 
 ### Issue acceptance criteria template
@@ -339,7 +339,7 @@ Check these off in the issue when the PR merges.
 
 ### What not to automate
 
-Partnerships, legal/MOUs, AMIS live fetch, subjective animation “feel,” prod-only data spot-checks: see [docs/testing.md § Manual only](docs/testing.md#manual-only).
+Partnerships, legal/MOUs, registrar live fetch, subjective animation “feel,” prod-only data spot-checks: see [docs/testing.md § Manual only](docs/testing.md#manual-only).
 
 ## Verify before done
 
@@ -398,7 +398,7 @@ When the agent session has **browser automation** (Cursor agentic browser, Playw
 | Map chrome at 320px / 768px viewport                                          | Subjective visual design judgment    |
 | Capture `pageerror` / console errors after navigation                         | Long editor save/conflict sessions   |
 | Dismiss landing modal, wait for bootstrap (`campus-browse-chips`, map canvas) | Production account-specific data     |
-| Staging or prod smoke after deploy (`room-tba.uplb.tools`)                  |                                      |
+| Staging or prod smoke after deploy (`room-tba.bulsu.tools`)                  |                                      |
 
 **Practices:**
 
@@ -472,46 +472,6 @@ Map and side-panel layout rules are detailed in glob-scoped Cursor rules; read t
 - Reverts should create new history entries instead of rewriting or deleting old history.
 - Every admin write should refresh the relevant sync key so clients can detect changed data.
 
-## AMIS class imports
-
-### CRS term IDs (source of truth)
-
-CRS/AMIS `term_id` values are **chronological within the academic year**: the number is not a semantic label:
-
-| CRS id   | Period       | Typical dates (AY 2025–2026) |
-| -------- | ------------ | ---------------------------- |
-| **1251** | 1st semester | Aug–Dec                      |
-| **1252** | 2nd semester | Jan–May                      |
-| **1253** | Midyear      | Jun–Jul                      |
-
-- **`terms.id` must equal the CRS id** you pass to `, term-id` / AMIS fetch. Fix labels and calendar dates in the `terms` row; **never move class rows between ids** to “fix” a naming mix-up.
-- Import commands: 2nd sem `, term-id 1252, fetch`; midyear `, term-id 1253, fetch`.
-- **Do not re-apply** [`drizzle/0012_reassign_second_sem_classes.sql`](drizzle/0012_reassign_second_sem_classes.sql): it assumed 1252 was mislabeled 2nd sem data. That was wrong. Term metadata is corrected in [`0013_fix_crs_term_labels.sql`](drizzle/0013_fix_crs_term_labels.sql). Migrations `0009`/`0010` had the same backwards assumption; do not copy their label/date mapping into new code.
-
-### Pitfalls (read before triaging “wrong term” bugs)
-
-1. **Do not infer term type from row count.** A term with 3k+ rows is not automatically “2nd sem”; a term with ~200 rows is not automatically “broken.” Check **schedule patterns** in `classes.schedule`:
-
-- **Midyear (1253):** intensive daily blocks: `MTWTHFS`, `MTWTHF`, `TTHS`, Saturday-heavy slots.
-- **2nd sem (1252):** regular semester: mostly `TTH`, `MWF`, single-day weekly slots.
-
-2. **Do not conflate CRS id with English name.** Early agents assumed “1252 sounds like midyear slot”: wrong. Always trust the chronological table above and what AMIS returns for that numeric id.
-3. **Thousands fetched, hundreds imported is normal.** AMIS returns every section type; Room TBA imports only **LEC/LAB with a matched room** (see below). A 12k fetch → ~3k import for 2nd sem is expected; a 6k fetch → ~120 for midyear can be expected too.
-4. **Two different “skipped row” buckets**: do not treat them as the same bug:
-
-- **By design:** THE (thesis), SPR (special problem), PRA (practicum), DSR (dissertation), IND, etc. usually have **no `facility_id`** in AMIS. Skipped on purpose; users are told on the room panel. See `src/lib/amis/room-scheduled-types.ts`.
-- **Data gap (#300):** LEC/LAB rows **with** a facility string that does not match `rooms.room_code` (aliases, typos, `PSLH-A` vs `PSLH A`). Needs alias work, not term-id surgery.
-
-5. **Validate before “re-import to fix term”.** Query sample schedules per `term_id`, confirm `/api/terms` labels match CRS table, then re-import the **correct CRS id** with `, replace`. Do not run 0012-style mass `UPDATE term_id`.
-
-### Workflow
-
-- **Fetch once, reuse cache:** `bun run import:amis-classes,, term-id <id>, fetch` saves sanitized rows to `data/amis-*-<id>.json` (gitignored). Re-import with the same command **without** `, fetch`: no AMIS hammering.
-- **Short-lived tokens:** `AMIS_BEARER_TOKEN` from a logged-in AMIS session expires in about an hour. Copy a fresh token right before `, fetch`; do not rely on a token saved in `.env` from yesterday. Cached JSON imports do not need a token. Never commit tokens or paste them into issues or chat logs.
-- **Never store or commit instructor names.** AMIS responses embed faculty/user PII. `sanitizeAmisRow()` strips it before any JSON is written. Do not commit `data/amis-*.json`, raw AMIS dumps, or DB exports that include `faculty`, `first_name`, `formatted_name`, etc.
-- The app DB stores only course code, section, type, title, schedule slots, room, and term: never instructor fields.
-- If unsanitized exports exist locally, run `bun run import:amis-classes,, scrub-exports`.
-
 ## Database and APIs
 
 - Supabase Postgres is the runtime source of truth via `DATABASE_URL` (not `NEON_CONNECTION_STRING`). Code, Drizzle, seeds, and the Astro env schema all use `DATABASE_URL`. On Vercel, name the env var `DATABASE_URL`.
@@ -523,7 +483,7 @@ CRS/AMIS `term_id` values are **chronological within the academic year**: the nu
 
 ## Vercel CLI and environment ops
 
-The project deploys on Vercel (`stimmie/saan-ang-room`, see `.vercel/project.json`). Production: `room-tba.uplb.tools`. Staging preview: `staging.room-tba.uplb.tools`. Git remote may redirect `smmariquit/room-tba` → **`uplbtools/room-tba`**: use `gh` against **`uplbtools/room-tba`** (`gh pr create`, `gh secret set`, `gh issue view`, etc.).
+The project deploys on Vercel (`stimmie/saan-ang-room`, see `.vercel/project.json`). Production: `room-tba.bulsu.tools`. Staging preview: `staging.room-tba.bulsu.tools`. Git remote is the BulSU fork **`bulsutools/room-tba`** (upstream: `uplbtools/room-tba`): use `gh` against **`bulsutools/room-tba`** (`gh pr create`, `gh secret set`, `gh issue view`, etc.).
 
 ### CLI default for agents
 
@@ -533,7 +493,7 @@ Maintainer sessions have **GitHub CLI** and **Vercel CLI** ready. Prefer the CLI
 | ----------------------- | --------------------------------------------------------------- | ----------------------------------------------------- |
 | Open/update PR          | `gh pr create`, `gh pr view`, `gh pr checks`                    | Asking user to open GitHub UI                         |
 | Issues                  | `gh issue view/create/edit`, `gh issue comment`                 | Manual issue paste-only                               |
-| GitHub Actions secrets  | `gh secret set`, `gh secret list, repo uplbtools/room-tba`      | “Add this in repo Settings”                           |
+| GitHub Actions secrets  | `gh secret set`, `gh secret list, repo bulsutools/room-tba`      | “Add this in repo Settings”                           |
 | Vercel env vars         | `vercel env ls`, `vercel env add … preview staging, yes, force` | Vercel UI only                                        |
 | Refresh local env hints | `vercel env pull.env.vercel, environment=preview, yes`          | Assuming empty pull means unset                       |
 | Inspect deploys         | `vercel ls`, `vercel inspect <url>`                             | :                                                     |
@@ -547,8 +507,8 @@ Maintainer sessions have **GitHub CLI** and **Vercel CLI** ready. Prefer the CLI
 
 | Git branch       | Vercel target    | URL (approx.)                   |
 | ---------------- | ---------------- | ------------------------------- |
-| `main`           | **Production**   | `room-tba.uplb.tools`         |
-| `staging`        | **Preview** only | `staging.room-tba.uplb.tools` |
+| `main`           | **Production**   | `room-tba.bulsu.tools`         |
+| `staging`        | **Preview** only | `staging.room-tba.bulsu.tools` |
 | feature branches | **Preview**      | `*.vercel.app`                  |
 
 Code reaches production **only** when `staging → main` is merged (release PR), then Vercel builds **`main`**. Confirm Vercel → Project → Settings → Git has **Production Branch = `main`**.
@@ -564,7 +524,7 @@ Local checks: `bun run check:vercel-env`, `bun run check:prod-branch` (set `VERC
 
 - **`DATABASE_URL` is mandatory** for `bun run build` (Astro SSG prerender hits Postgres). Required on **Production** and **Preview (all branches)**: not only `staging`.
 - Legacy **`NEON_CONNECTION_STRING`** may still appear in Vercel; **runtime code uses `DATABASE_URL` only**.
-- Optional server vars: `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `R2_*`. Supabase JS client uses separate `PUBLIC_SUPABASE_URL` + `PUBLIC_SUPABASE_PUBLISHABLE_KEY` (optional until Auth features need them). See `.env.example`.
+- Optional server vars: `ADMIN_SESSION_SECRET`, `TURNSTILE_SECRET_KEY` (required in production; auth fails closed without it), `R2_*`. No shared admin password: create/reset admins with `scripts/set-admin-user.ts`. `ADMIN_PASSWORD` is break-glass only (works solely while zero active admins exist). Supabase JS client uses separate `PUBLIC_SUPABASE_URL` + `PUBLIC_SUPABASE_PUBLISHABLE_KEY` (optional until Auth features need them). See `.env.example`.
 
 ### Commands (cheat sheet)
 
@@ -579,9 +539,9 @@ vercel ls
 vercel inspect <deployment-url>
 vercel deploy --prod --yes   # manual prod redeploy; only from main checkout
 
-gh secret set E2E_DATABASE_URL --repo uplbtools/room-tba --body "$E2E_DATABASE_URL"
-gh secret list --repo uplbtools/room-tba
-gh pr checks <number> --repo uplbtools/room-tba
+gh secret set E2E_DATABASE_URL --repo bulsutools/room-tba --body "$E2E_DATABASE_URL"
+gh secret list --repo bulsutools/room-tba
+gh pr checks <number> --repo bulsutools/room-tba
 ```
 
 ### Pitfalls
@@ -600,7 +560,7 @@ gh pr checks <number> --repo uplbtools/room-tba
 
 | Trap                                                 | Reality                                                                                                                                                                                                                                                                    |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Map renders flat (no 3D building extrusions) locally | `PUBLIC_MAPTILER_KEY` unset **or rejected** → `loadCampusMapStyle` returns the keyless fallback (OpenFreeMap positron, `FALLBACK_MAP_STYLE_URL`; bare OSM raster if that host is unreachable too). **Not a regression**; prod has the key; local `.env` usually doesn't. The prod key is domain-restricted to `*.uplb.tools`, so it 403s on localhost and `*.vercel.app` previews and you get the fallback there by design (#863). Verify prod on `room-tba.uplb.tools` (loads `api.maptiler.com/tiles/v3-openmaptiles`). |
+| Map renders flat (no 3D building extrusions) locally | `PUBLIC_MAPTILER_KEY` unset **or rejected** → `loadCampusMapStyle` returns the keyless fallback (OpenFreeMap positron, `FALLBACK_MAP_STYLE_URL`; bare OSM raster if that host is unreachable too). **Not a regression**; prod has the key; local `.env` usually doesn't. The prod key is domain-restricted to `*.bulsu.tools`, so it 403s on localhost and `*.vercel.app` previews and you get the fallback there by design (#863). Verify prod on `room-tba.bulsu.tools` (loads `api.maptiler.com/tiles/v3-openmaptiles`). |
 | Fork PR `verify` fails: `DATABASE_URL is missing`    | Fork PRs **can't read Actions secrets**; the build's prerender has no DB. For trivial fork docs, `gh pr merge --admin` (staging is unprotected). Real fork code needs a maintainer-run build.                                                                             |
 | Dependabot PR CI fails the same way                  | Dependabot uses the **Dependabot** secret store, not Actions; mirror the secret there, or the CI workflow skips secret-dependent jobs for `github.actor == 'dependabot[bot]'`.                                                                                            |
 
@@ -653,8 +613,8 @@ README-only overhauls are welcome; they still must pass `check:readme` and stay 
 ## Cursor Cloud specific instructions
 
 - Package manager is **Bun** (installed at `~/.bun/bin`). The startup update script runs `bun install, frozen-lockfile`. Use Bun, not npm, even though a npm lockfile may also be present.
-- **A reachable Postgres is required; no local DB fallback.** Runtime DB is **Supabase** (`*.supabase.co`); `src/lib/db.ts` connects via `DATABASE_URL` (see `astro:env/server` in `astro.config.mjs`). Local `.env` must point at Supabase, not a stale Neon URL. `ADMIN_PASSWORD` is needed for admin/editor features. Apply migrations in `drizzle/` before first run.
-- **Refreshing local `.env`:** Production/preview `DATABASE_URL` lives in Vercel env vars. When `.env` is empty or stale: `vercel env pull.env.vercel, environment=development, yes` (requires Vercel CLI linked to `stimmie/saan-ang-room`; room-tba.stimmie.dev; not a separate empty `room-tba` project; see `.vercel/project.json`), merge `DATABASE_URL` into `.env`, keep local `ADMIN_PASSWORD` if already set. `vercel env pull` often returns empty `""` for encrypted vars like `DATABASE_URL`; copy from Vercel UI (Settings → Environment Variables) or Supabase dashboard instead. Use the Supabase **session pooler** URL (`*.pooler.supabase.com`) for local dev. Or provide `DATABASE_URL` via Cursor Secrets.
+- **A reachable Postgres is required; no local DB fallback.** Runtime DB is **Supabase** (`*.supabase.co`); `src/lib/db.ts` connects via `DATABASE_URL` (see `astro:env/server` in `astro.config.mjs`). Local `.env` must point at Supabase, not a stale Neon URL. Admin/editor features need `ADMIN_SESSION_SECRET` and an account from `scripts/set-admin-user.ts`. Apply migrations in `drizzle/` before first run.
+- **Refreshing local `.env`:** Production/preview `DATABASE_URL` lives in Vercel env vars. When `.env` is empty or stale: `vercel env pull.env.vercel, environment=development, yes` (requires Vercel CLI linked to `stimmie/saan-ang-room`; room-tba.stimmie.dev; not a separate empty `room-tba` project; see `.vercel/project.json`), merge `DATABASE_URL` into `.env`, keep local `ADMIN_SESSION_SECRET` if already set. `vercel env pull` often returns empty `""` for encrypted vars like `DATABASE_URL`; copy from Vercel UI (Settings → Environment Variables) or Supabase dashboard instead. Use the Supabase **session pooler** URL (`*.pooler.supabase.com`) for local dev. Or provide `DATABASE_URL` via Cursor Secrets.
 - **`bun dev` without `DATABASE_URL`:** Server starts but SSR returns HTTP 500 (`EnvInvalidVariables: DATABASE_URL is missing`). Set a valid Supabase connection string in `.env` and restart.
 - **Optional R2:** Image upload (`/api/admin/upload`) needs `R2_*` vars (see `.env.example`, `wrangler.jsonc`). App runs without them; upload UI shows a not-configured message.
 - This is **Astro 7 SSR** (Vercel adapter). API routes under `src/pages/api/*` are server-rendered (`prerender = false`), and SSG entity pages (e.g. `/room/[slug]`) query the DB at build time; so `bun run build` fails without a working `DATABASE_URL`.

@@ -57,17 +57,17 @@ describe("vercelDeployUrl", () => {
     expect(url.startsWith("https://vercel.com/new/clone?")).toBe(true);
     const params = new URL(url).searchParams;
     expect(params.get("repository-url")).toBe(
-      "https://github.com/uplbtools/room-tba",
+      "https://github.com/bulsutools/room-tba",
     );
     expect(params.get("env")).toBe(
-      "DATABASE_URL,ADMIN_PASSWORD,ADMIN_SESSION_SECRET,ISR_BYPASS_TOKEN",
+      "DATABASE_URL,ADMIN_SESSION_SECRET,ISR_BYPASS_TOKEN,PUBLIC_TURNSTILE_SITE_KEY,TURNSTILE_SECRET_KEY",
     );
     expect(params.get("project-name")).toBe("ssu-room-tba");
   });
 
   test("URL-encodes the raw href", () => {
     expect(vercelDeployUrl("ssu")).toContain(
-      "repository-url=https%3A%2F%2Fgithub.com%2Fuplbtools%2Froom-tba",
+      "repository-url=https%3A%2F%2Fgithub.com%2Fbulsutools%2Froom-tba",
     );
   });
 });

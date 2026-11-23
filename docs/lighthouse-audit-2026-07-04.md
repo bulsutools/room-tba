@@ -6,7 +6,7 @@ Audit of the ten most recently updated production Vercel projects under `stimmie
 
 | Project | URL | Perf | A11y | BP | SEO |
 | --- | --- | ---: | ---: | ---: | ---: |
-| room-tba | room-tba.uplb.tools | 32 | 90 | 96 | 100 |
+| room-tba | room-tba.bulsu.tools | 32 | 90 | 96 | 100 |
 | uplbtools-me | www.uplbtools.me | 65 | 93 | 100 | 100 |
 | web-mobile | web.stimmie.dev | 71 | 100 | 96 | 100 |
 | stimmie-dev | www.stimmie.dev | 79 | 96 | 96 | 100 |
@@ -21,7 +21,7 @@ Audit of the ten most recently updated production Vercel projects under `stimmie
 
 | Repo | Commit scope | Production path |
 | --- | --- | --- |
-| uplbtools/room-tba | Search ARIA (`aria-haspopup` vs invalid `aria-expanded` on `searchbox`) | `staging` → `main` |
+| bulsutools/room-tba | Search ARIA (`aria-haspopup` vs invalid `aria-expanded` on `searchbox`) | `staging` → `main` |
 | uplbtools/uplbtools.me | Contrast, heading order, hero image dimensions | `main` |
 | smmariquit/web-mobile | Image dimensions, prerender `/projects/*` routes | `main` |
 | smmariquit/stimmie.dev | UTC marquee dates, divider contrast, scrapbook CLS reserve | `main` |
@@ -36,18 +36,18 @@ Audit of the ten most recently updated production Vercel projects under `stimmie
 
 | Area | Issue |
 | --- | --- |
-| room-tba map/PGlite TBT & perf score | [#482](https://github.com/uplbtools/room-tba/issues/482) |
+| room-tba map/PGlite TBT & perf score | [#482](https://github.com/bulsutools/room-tba/issues/482) |
 | LCP & image delivery | [uplbtools.me#3](https://github.com/uplbtools/uplbtools.me/issues/3), [the-crib#2](https://github.com/smmariquit/the-crib/issues/2), [hearthcraft#8](https://github.com/smmariquit/hearthcraft/issues/8) |
 | Render-blocking CSS / unused JS | [web-mobile#2](https://github.com/smmariquit/web-mobile/issues/2), [stimmie.dev#20](https://github.com/smmariquit/stimmie.dev/issues/20), [tutorials#6](https://github.com/smmariquit/tutorials/issues/6) |
 
 Re-run after deploy:
 
 ```sh
-npx lighthouse https://room-tba.uplb.tools --view
+npx lighthouse https://room-tba.bulsu.tools --view
 ```
 
 ## Notes
 
-- **room-tba perf (32)** in headless Lighthouse is partly environmental: WebGL init fails without GPU; real-user perf still needs bundle/code-split work ([#482](https://github.com/uplbtools/room-tba/issues/482)).
+- **room-tba perf (32)** in headless Lighthouse is partly environmental: WebGL init fails without GPU; real-user perf still needs bundle/code-split work ([#482](https://github.com/bulsutools/room-tba/issues/482)).
 - **web-mobile** `_payload.json` 404 on prefetched project routes required explicit Nitro prerender routes for `/projects/:slug`.
 - **tutorial** hard-coded `/_vercel/insights/script.js` 404s when Web Analytics is not enabled on the Vercel project; removed in favor of optional `@vercel/analytics` if needed later.

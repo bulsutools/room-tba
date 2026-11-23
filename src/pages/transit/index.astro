@@ -3,17 +3,20 @@ import AppRoot from "@ui/AppRoot.svelte";
 import Layout from "@layouts/Layout.astro";
 import { JEEPNEY_ROUTES } from "@constants/jeepney-routes";
 import { breadcrumbSchema, jsonLd, ogCardPath, webpageSchema } from "@lib/site";
-import { campusSite, campusTransit } from "../../campus.config";
+import { campusTransit } from "../../campus.config";
 
-const transitLabel = campusTransit.label;
-const transitLower = transitLabel.toLowerCase();
-const title = `${transitLabel} at ${campusSite.placeLabel} | Room TBA`;
-const description = `Browse ${campusSite.placeLabel} ${transitLower}, stops, fares, and map paths.`;
+if (!campusTransit.enabled) {
+  return new Response(null, { status: 404 });
+}
+
+const title = "BulSU Jeepney and Bus Routes | Room TBA";
+const description =
+  "Browse BulSU-area jeepney and bus routes with stops, fares and map paths.";
 const structuredData = jsonLd(
   webpageSchema({ title, description, path: "/transit/" }),
   breadcrumbSchema([
     { name: "Home", path: "/" },
-    { name: transitLabel, path: "/transit/" },
+    { name: "Jeepney and bus routes", path: "/transit/" },
   ]),
 );
 ---
@@ -23,17 +26,15 @@ const structuredData = jsonLd(
   description={description}
   canonicalPath="/transit/"
   imagePath={ogCardPath({
-    title: transitLabel,
-    subtitle:
-      JEEPNEY_ROUTES.map((route) => route.name).join(" · ") ||
-      `${campusSite.placeLabel} campus`,
-    kicker: `Transit at ${campusSite.placeLabel}`,
+    title: "BulSU Jeepney and Bus Routes",
+    subtitle: JEEPNEY_ROUTES.map((route) => route.name).join(", "),
+    kicker: "Transit at BulSU",
   })}
   {structuredData}
 >
   <main class="transit-page">
     <article class="sr-only">
-      <h1>{transitLabel.toLowerCase()}</h1>
+      <h1>BulSU jeepney and bus routes</h1>
       <p>{description}</p>
       <ul>
         {JEEPNEY_ROUTES.map((route) => <li>{route.name}: {route.description}</li>)}

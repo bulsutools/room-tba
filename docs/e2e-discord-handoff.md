@@ -1,7 +1,7 @@
 # E2E → Discord integration handoff
 
-**Audience:** agent wiring [uplbtools/discord-bot](https://github.com/uplbtools/discord-bot) to Room TBA Playwright CI. 
-**App repo:** `uplbtools/room-tba` 
+**Audience:** agent wiring [bulsutools/discord-bot](https://github.com/bulsutools/discord-bot) to Room TBA Playwright CI. 
+**App repo:** `bulsutools/room-tba` 
 **Branch status (2026-07-03):** workflow gating + `e2e-reusable.yml` live on **`feat/testing-pyramid`** (13 commits ahead of origin); **not merged to `staging`/`main` yet**. `ci-notify-discord.yml` **does not exist** in room-tba: treat as planned/discord-bot-side draft only.
 
 ---
@@ -130,7 +130,7 @@ Job-level filter inside reusable callers is not visible to `workflow_run`: use *
 ### Staging live URL (`playwright.staging.config.ts`)
 
 - **testDir:** `e2e/staging`
-- **baseURL:** `STAGING_BASE_URL` → `https://staging.room-tba.uplb.tools`
+- **baseURL:** `STAGING_BASE_URL` → `https://staging.room-tba.bulsu.tools`
 - **No webServer** (hits deployed staging)
 - **Count:** **6 tests** (1 skipped)
 
@@ -160,7 +160,7 @@ No brand-new spec **files** beyond the pyramid layout above; work is mostly **he
 
 ### Maintainer links
 
-- **Workflow run:** `https://github.com/uplbtools/room-tba/actions/runs/{run_id}`
+- **Workflow run:** `https://github.com/bulsutools/room-tba/actions/runs/{run_id}`
 - **Artifact download:** Actions run → Artifacts → `playwright-report-*` (zip with `index.html`)
 - **Trace viewer:** not available from CI unless you add `test-results/` artifact upload or blob report
 
@@ -188,7 +188,7 @@ Advisory job: Playwright step only (after reset + build); integration skipped.
 | **E2E advisory** failed on PR | `#development` | No | **Yes, one line** | `⚠️ E2E advisory failed (non-blocking) on PR #447: {run_url}` |
 | **E2E staging** failed on **push** to staging | `#development` | Yes | **Yes** | `❌ Staging E2E failed after merge to staging @ {short_sha}` |
 | **E2E staging** failed **nightly** cron | `#development` | Yes | **Digest-style** | `🌙 Nightly staging E2E failed on staging @ {short_sha}`: suppress if same `{sha}` already notified in last 24h |
-| **Staging smoke** failed | `#deploys` | No | **Yes** | `⚠️ Staging smoke failed (live URL): staging.room-tba.uplb.tools` |
+| **Staging smoke** failed | `#deploys` | No | **Yes** | `⚠️ Staging smoke failed (live URL): staging.room-tba.bulsu.tools` |
 | **Bundle advisory** failed | `#development` | No | Optional / muted | Only if you want bundle noise; recommend **silent** or weekly digest |
 | E2E passed after prior failure on same PR | `#development` |: | **Optional** | `✅ E2E recovered on PR #447`: only if bot tracks last conclusion per PR |
 | Draft PR |: |: | **Silent** | Workflows don’t run |
@@ -236,14 +236,14 @@ Uses existing envelope (`schemaVersion: 1`, `source: "github"`):
   "occurredAt": "2026-07-03T21:30:00.000Z",
   "idempotencyKey": "ci:e2e.failed:E2E:94728473342",
   "payload": {
-    "repo": "uplbtools/room-tba",
+    "repo": "bulsutools/room-tba",
     "workflow": "E2E",
-    "workflowUrl": "https://github.com/uplbtools/room-tba/actions/runs/94728473342",
+    "workflowUrl": "https://github.com/bulsutools/room-tba/actions/runs/94728473342",
     "conclusion": "failure",
     "branch": "feat/testing-pyramid",
     "commitSha": "abc1234",
     "prNumber": 447,
-    "prUrl": "https://github.com/uplbtools/room-tba/pull/447",
+    "prUrl": "https://github.com/bulsutools/room-tba/pull/447",
     "suite": "blocking",
     "failedStep": "Playwright blocking tests",
     "integrationRan": true,
@@ -269,7 +269,7 @@ Uses existing envelope (`schemaVersion: 1`, `source: "github"`):
 
 | Secret | Required | Purpose |
 |--------|----------|---------|
-| `NOTIFICATION_GATEWAY_URL` | Yes | e.g. `https://uplbtools-discord-bot.herokuapp.com/notifications` |
+| `NOTIFICATION_GATEWAY_URL` | Yes | e.g. `https://bulsutools-discord-bot.herokuapp.com/notifications` |
 | `NOTIFICATION_INGRESS_SECRET` | Yes | Header `x-notification-secret` (matches bot) |
 | `E2E_DATABASE_URL` | Already set | Playwright jobs |
 | `E2E_ADMIN_PASSWORD` | Already set | Playwright jobs |
@@ -334,7 +334,7 @@ Refine `if:` to skip cancelled runs and optionally skip advisory unless `conclus
 
 ## 7. Secrets & env checklist
 
-### GitHub Actions: `uplbtools/room-tba`
+### GitHub Actions: `bulsutools/room-tba`
 
 | Name | Playwright | Discord notify |
 |------|------------|----------------|
@@ -344,7 +344,7 @@ Refine `if:` to skip cancelled runs and optionally skip advisory unless `conclus
 | `NOTIFICATION_GATEWAY_URL` |: | ✅ new |
 | `NOTIFICATION_INGRESS_SECRET` |: | ✅ new |
 
-### Heroku: `uplbtools-discord-bot`
+### Heroku: `bulsutools-discord-bot`
 
 | Item | Action |
 |------|--------|

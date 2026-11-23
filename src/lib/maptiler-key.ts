@@ -39,7 +39,7 @@ export const FALLBACK_MAP_STYLE_URL =
  * Last resort when even the fallback host is unreachable (CI without egress,
  * a first load with no connection). Raster, no external style fetch.
  */
-const OFFLINE_FALLBACK_MAP_STYLE = {
+export const OFFLINE_FALLBACK_MAP_STYLE = {
   version: 8,
   sources: {
     osm: {

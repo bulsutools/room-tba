@@ -34,8 +34,8 @@ if (appData === null) {
 const { college, roomCount } = appData;
 
 const canonicalPath = `/college/${getCollegeSlug(college)}/`;
-const title = `${college.collegeName} | College at UPLB | Room TBA`;
-const description = `${college.collegeName} has ${roomCount} room${roomCount === 1 ? "" : "s"} listed at UPLB. Open the college view on Room TBA to browse linked rooms.`;
+const title = `${college.collegeName} | College at BulSU | Room TBA`;
+const description = `${college.collegeName} has ${roomCount} room${roomCount === 1 ? "" : "s"} listed at BulSU. Open the college view on Room TBA to browse linked rooms.`;
 const intro = `${college.collegeName} currently has ${roomCount} room${roomCount === 1 ? "" : "s"} listed in Room TBA. Open this page to jump straight into the college result view.`;
 
 const facts = [
@@ -58,7 +58,7 @@ const structuredData = jsonLd(
     image: ogImageUrl(),
     parentOrganization: {
       "@type": "CollegeOrUniversity",
-      name: "University of the Philippines Los Banos",
+      name: "Bulacan State University",
     },
   },
 );
@@ -70,10 +70,10 @@ const structuredData = jsonLd(
   {canonicalPath}
   ogCard={{
     title: college.collegeName,
-    subtitle: `${roomCount} room${roomCount === 1 ? "" : "s"} linked · UPLB Los Baños`,
-    kicker: "College at UPLB",
+    subtitle: `${roomCount} room${roomCount === 1 ? "" : "s"} linked, BulSU Malolos`,
+    kicker: "College at BulSU",
   }}
-  heading={`${college.collegeName} at UPLB`}
+  heading={`${college.collegeName} at BulSU`}
   {intro}
   {facts}
   breadcrumbs={[

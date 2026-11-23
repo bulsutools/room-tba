@@ -20,7 +20,7 @@ export function withTermQuery(
   const base =
     typeof window !== "undefined"
       ? window.location.origin
-      : "https://room-tba.uplb.tools";
+      : "https://room-tba.bulsu.tools";
   const url = new URL(path, base);
   url.searchParams.set(TERM_QUERY_PARAM, String(termId));
   return `${url.pathname}${url.search}`;

@@ -15,7 +15,7 @@ export type WikiProvenance = {
   editUrl: string;
 };
 
-const REPO_URL = "https://github.com/uplbtools/room-tba";
+const REPO_URL = "https://github.com/bulsutools/room-tba";
 const NOREPLY = /^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$/;
 
 /**

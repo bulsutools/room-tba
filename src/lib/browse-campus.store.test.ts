@@ -48,13 +48,13 @@ function panelStore() {
 }
 
 describe("openCampusBrowse", () => {
-  test("sets browse query, clears search input, and expands the drawer", () => {
+  test("sets browse query, names the list in the search bar, and expands the drawer", () => {
     const queryStore = mockQueryStore();
     const sidePanelStore = panelStore();
     openCampusBrowse(queryStore as never, sidePanelStore, "divisions");
     expect(queryStore.category).toBe("browse");
     expect(queryStore.queryValue).toBe("divisions");
-    expect(queryStore.inputValue).toBe("");
+    expect(queryStore.inputValue).toBe("Divisions");
     expect(sidePanelStore.collapsed).toBe(false);
   });
 
@@ -97,11 +97,11 @@ describe("openBrowseClasses", () => {
 describe("browse helper call sites keep the side panel wired", () => {
   const CALL_SITES: Array<{ file: string; helper: string }> = [
     {
-      file: "src/components/svelte/status-bar/AppMenu.svelte",
+      file: "src/components/svelte/map-chrome/MapFilterChips.svelte",
       helper: "openBrowseClasses",
     },
     {
-      file: "src/components/svelte/status-bar/AppMenu.svelte",
+      file: "src/components/svelte/modal/LandingModal.svelte",
       helper: "openCampusBrowse",
     },
     {
