@@ -35,6 +35,7 @@ const ENTITY_SYNC_TABLES: Partial<Record<ProposalEntityType, string[]>> = {
   create_organization: ["organizations"],
   jeepney_stop: ["jeepney_routes"],
   create_jeepney_stop: ["jeepney_routes"],
+  create_class: ["classes"],
 };
 
 export function syncTablesForEntityType(
@@ -136,6 +137,7 @@ export function applyPublishedEntity(
       return false;
     case "jeepney_stop":
     case "create_jeepney_stop":
+    case "create_class":
       return false;
     default:
       return false;
