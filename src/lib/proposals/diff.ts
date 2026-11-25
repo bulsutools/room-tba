@@ -30,6 +30,17 @@ export const FIELD_LABELS: Record<string, string> = {
   locations: "Locations",
   routeId: "Jeepney route",
   isActive: "Listed",
+  courseCode: "Course code",
+  section: "Section",
+  type: "Class type",
+  schedule: "Schedule",
+  roomName: "Room name",
+  courseTitle: "Course title",
+  termId: "Term",
+  professor: "Professor",
+  isOnline: "Online",
+  source: "Source",
+  studentHash: "Student hash",
   name: "Name",
   hours: "Hours",
   websiteLink: "Website",
@@ -65,8 +76,10 @@ export type FieldDiff = {
  */
 export type EntityNameResolver = (field: string, id: number) => string | null;
 
-// Keys with their own review summary (create_building bundled rooms).
-const SKIPPED_KEYS = new Set(["rooms"]);
+// Keys with their own review summary (create_building bundled rooms) or that
+// are internal bookkeeping, not reviewer-facing fields (create_class bridge
+// provenance keys #16).
+const SKIPPED_KEYS = new Set(["rooms", "dedupeKey", "naturalKey"]);
 
 /** One-line summary per event location so reviewers see what changes. */
 function formatLocations(value: unknown): string | null {

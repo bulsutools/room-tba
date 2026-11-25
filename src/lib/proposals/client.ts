@@ -484,6 +484,10 @@ function adminCreatePath(entityType: ProposalCreateType): string {
       return "/api/admin/organizations";
     case "create_jeepney_stop":
       return "/api/admin/transit/stops";
+    case "create_class":
+      // Bridge-only type (#16): no admin create endpoint; proposals publish
+      // through the review queue.
+      throw new Error("create_class has no direct-publish endpoint.");
   }
 }
 

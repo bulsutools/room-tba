@@ -91,6 +91,7 @@ import {
   type JeepneyStopCreateInput,
   type JeepneyStopWriteInput,
 } from "./transit-service";
+import { createClassSchedule } from "./class-service";
 import { allowEntityScopedProposalMerge } from "@lib/proposals/proposal-merge-policy";
 import {
   ProposalValidationError,
@@ -121,6 +122,10 @@ export const PROPOSAL_CREATE_TYPES = [
   "create_division",
   "create_organization",
   "create_jeepney_stop",
+  // ALAB schedule bridge (#16): class schedule contributions land here.
+  // Not offered in the Suggest-an-addition UI; only the signed
+  // /api/contributions/alab-schedule endpoint files these.
+  "create_class",
 ] as const;
 
 export const PROPOSAL_ENTITY_TYPES = [
@@ -219,6 +224,14 @@ export async function getEntityLabel(
         return typeof p.name === "string" && p.name.trim()
           ? `New jeepney stop: ${p.name.trim()}`
           : "New jeepney stop";
+      case "create_class": {
+        const courseCode =
+          typeof p["courseCode"] === "string" ? p["courseCode"].trim() : "";
+        const section =
+          typeof p["section"] === "string" ? p["section"].trim() : "";
+        const label = [courseCode, section].filter(Boolean).join(" ");
+        return label ? `New class: ${label}` : "New class";
+      }
     }
   }
 
@@ -1265,6 +1278,45 @@ async function applyProposalPatch(proposal: EditProposalRow, editedBy: string) {
           throw new ProposalActionError("Jeepney route no longer exists.", 409);
         }
         return stop;
+      }
+      case "create_class": {
+        const row = await createClassSchedule(
+          {
+            courseCode:
+              typeof patch["courseCode"] === "string"
+                ? patch["courseCode"]
+                : "",
+            section:
+              typeof patch["section"] === "string"
+                ? patch["section"]
+                : "",
+            type:
+              typeof patch["type"] === "string" ? patch["type"] : "",
+            schedule: Array.isArray(patch["schedule"])
+              ? patch["schedule"].filter(
+                  (slot): slot is string => typeof slot === "string",
+                )
+              : [],
+            roomCode:
+              typeof patch["roomCode"] === "string"
+                ? patch["roomCode"]
+                : null,
+            roomName:
+              typeof patch["roomName"] === "string"
+                ? patch["roomName"]
+                : null,
+            courseTitle:
+              typeof patch["courseTitle"] === "string"
+                ? patch["courseTitle"]
+                : null,
+            termId: Number(patch["termId"]),
+          },
+          editedBy,
+        );
+        if (!row) {
+          throw new ProposalActionError("Failed to create class row.", 500);
+        }
+        return row;
       }
     }
   }

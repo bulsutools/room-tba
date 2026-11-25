@@ -37,6 +37,7 @@ export const REVIEW_ENTITY_TYPE_OPTIONS: readonly {
   { value: "create_event", label: "New events" },
   { value: "create_organization", label: "New organizations" },
   { value: "create_jeepney_stop", label: "New jeepney stops" },
+  { value: "create_class", label: "New classes" },
 ];
 
 export type ReviewQueueFilters = {
