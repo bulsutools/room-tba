@@ -6,7 +6,7 @@ export type PlannedSection = {
   courseCode: string;
   section: string;
   type: string; // "LEC" | "LAB" | "SEM"
-  /** Snapshot of AMIS schedule strings, e.g. ["MW 07:00AM-08:00AM"] or ["TBA"]. */
+  /** Snapshot of registrar schedule strings, e.g. ["MW 07:00AM-08:00AM"] or ["TBA"]. */
   schedule: string[];
   roomCode: string | null;
   courseTitle: string | null;

@@ -26,16 +26,16 @@ const items = buildings
     return {
       href,
       label: building.buildingName,
-      description: `${roomCount} room${roomCount === 1 ? "" : "s"} listed${building.directions ? " · includes directions" : ""}`,
+      description: `${roomCount} room${roomCount === 1 ? "" : "s"} listed${building.directions ? ", includes directions" : ""}`,
       copyUrl: absoluteUrl(href),
       copyLabel: `Copy link to ${building.buildingName}`,
     };
   });
 
-const title = "UPLB buildings | Room TBA";
+const title = "BulSU buildings | Room TBA";
 const description = defaultTerm?.label
-  ? `Browse building pages on Room TBA to find UPLB rooms, map context, and class schedules for ${defaultTerm.label}.`
-  : "Browse building pages on Room TBA to find UPLB rooms, map context, and available building directions.";
+  ? `Browse building pages on Room TBA to find BulSU rooms, map context, and class schedules for ${defaultTerm.label}.`
+  : "Browse building pages on Room TBA to find BulSU rooms, map context, and available building directions.";
 const structuredData = jsonLd(
   webpageSchema({ title, description, path: "/building/" }),
   breadcrumbSchema([
@@ -49,7 +49,7 @@ const structuredData = jsonLd(
   title={title}
   description={description}
   canonicalPath="/building/"
-  heading="UPLB building pages"
+  heading="BulSU building pages"
   intro="Browse crawlable building pages for Room TBA. Each page opens the building result view and lists the rooms mapped to that building."
   {items}
   structuredData={structuredData}

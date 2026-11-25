@@ -1,7 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { campusTransit } from "../../src/campus.config";
 import { waitForAppBoot } from "../helpers/app";
 
-test.describe("transit jeepney @advisory", () => {
+// Campus transit is disabled on this fork.
+const describeTransit = campusTransit.enabled
+  ? test.describe
+  : test.describe.skip;
+
+describeTransit("transit jeepney @advisory", () => {
   test("transit filter chip reachable", async ({ page }) => {
     await page.goto("/");
     await waitForAppBoot(page);

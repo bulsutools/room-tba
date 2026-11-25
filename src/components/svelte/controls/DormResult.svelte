@@ -1,4 +1,5 @@
 <script lang="ts">
+  import EntityActionScroll from "./EntityActionScroll.svelte";
   import {
     adminAuthStore,
     mapEditStore,
@@ -7,20 +8,16 @@
     toastStore,
   } from "@lib/store.svelte";
   import { getAppActions, getAppData } from "@lib/context";
-  import Users from "@lucide/svelte/icons/users";
   import Mail from "@lucide/svelte/icons/mail";
   import Phone from "@lucide/svelte/icons/phone";
   import Building2 from "@lucide/svelte/icons/building-2";
   import EntityGoogleMapsLink from "./EntityGoogleMapsLink.svelte";
+  import EntityPrintableMapLink from "./EntityPrintableMapLink.svelte";
   import EntityStreetAddress from "./EntityStreetAddress.svelte";
   import EntityDirectionsChip from "./EntityDirectionsChip.svelte";
-  import BadgeCheck from "@lucide/svelte/icons/badge-check";
-  import KeyRound from "@lucide/svelte/icons/key-round";
-  import CircleDollarSign from "@lucide/svelte/icons/circle-dollar-sign";
   import Maximize2 from "@lucide/svelte/icons/maximize-2";
   import X from "@lucide/svelte/icons/x";
   import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
-  import { CAMPUS_CURFEW } from "@constants/campus-curfew";
   import type { DormData } from "@lib/types";
   import {
     getStoredProposalForEntity,
@@ -37,15 +34,14 @@
   import EntityEditorToggle from "@ui/editor/EntityEditorToggle.svelte";
   import DormEditorPanel from "@ui/controls/DormEditorPanel.svelte";
   import EntityLastUpdated from "../EntityLastUpdated.svelte";
-  import EntityShareCopyLink from "./EntityShareCopyLink.svelte";
+  import EntityShareButton from "./EntityShareButton.svelte";
+  import EntitySaveButton from "./EntitySaveButton.svelte";
+  import PlaceSheetHeader from "./PlaceSheetHeader.svelte";
+  import { expandCampusAbbreviations } from "@lib/place-facts";
   import EntityBackToList from "./EntityBackToList.svelte";
   import EntityExternalLink from "./EntityExternalLink.svelte";
+  import BuildingPhoto from "./BuildingPhoto.svelte";
   import { getDormShareUrl } from "@lib/share-links";
-  import {
-    getKuboDormCta,
-    kuboDormDirectory,
-    loadKuboDormDirectory,
-  } from "@lib/kubo-dorms";
   type DormEditableField =
     | "dormName"
     | "shortName"
@@ -108,36 +104,18 @@
   let mergingEntity = $state(false);
   const canPublish = $derived(adminAuthStore.canPublish);
   const dormShareUrl = $derived(dorm ? getDormShareUrl(dorm) : "");
-  const kuboDormCta = $derived(
-    dorm ? getKuboDormCta($kuboDormDirectory, dorm.id, dorm.dormName) : null,
-  );
   const dormImageUrl = $derived(
-    dorm?.imageUrl ? getDormImageUrl(dorm.imageUrl) : null,
+    dorm?.imageUrl ?? null,
   );
   let imageViewer = $state<HTMLDialogElement>();
 
-  function getDormImageUrl(imageUrl: string) {
-    try {
-      const url = new URL(imageUrl);
-      if (url.hostname === "media.kubo.community") {
-        url.pathname = url.pathname.replace(/\.thumb(?=\.webp$)/i, "");
-      }
-      return url.toString();
-    } catch {
-      return imageUrl;
-    }
-  }
-
-  $effect(() => {
-    if (dorm) void loadKuboDormDirectory();
-  });
 
   const fieldLabels: Record<DormEditableField, string> = {
     dormName: "Dorm name",
     shortName: "Short name",
     description: "Description",
     gender: "Gender policy",
-    isUpManaged: "UP-managed status",
+    isUpManaged: "University-managed status",
     capacity: "Capacity",
     priceRange: "Price range",
     managingOffice: "Managing office",
@@ -160,7 +138,6 @@
         amenities.length > 0 ||
         dorm.isUpManaged ||
         dorm.facebookLink ||
-        kuboDormCta ||
         (!dorm.isUpManaged && dorm.priceRange)),
     ),
   );
@@ -178,19 +155,23 @@
           : null,
   );
 
-  const genderColor = $derived(
-    dorm?.gender === "male"
-      ? "hsl(210, 65%, 50%)"
-      : dorm?.gender === "female"
-        ? "hsl(330, 65%, 50%)"
-        : "hsl(150, 55%, 40%)",
-  );
-
   /** Only show shortName when it's a real abbreviation, not just the first word */
   const showShortName = $derived.by(() => {
     if (!dorm?.shortName) return false;
     const first = dorm.dormName.split(/\s+/)[0].toLowerCase();
     return dorm.shortName.toLowerCase() !== first;
+  });
+
+  /** "Co-ed, 120 beds, PHP 3,000 a month": the dorm's facts in one line. */
+  const dormFacts = $derived.by(() => {
+    if (!dorm) return null;
+    const bits = [
+      genderLabel,
+      dorm.capacity ? `${dorm.capacity} beds` : null,
+      // "~P1,250/night solo, inquire for monthly" keeps its first clause.
+      dorm.priceRange?.split(" — ")[0]?.trim() || null,
+    ].filter(Boolean);
+    return bits.length > 0 ? bits.join(", ") : null;
   });
 
   function linesToList(text: string) {
@@ -413,7 +394,7 @@
     if (field === "dormName") {
       const trimmedName = nameDraft.trim();
       if (trimmedName.length === 0) {
-        fieldError = `${current.dormName} name cannot be empty.`;
+        fieldError = `${current.dormName} name can't be empty.`;
         return;
       }
       body.dormName = trimmedName;
@@ -476,7 +457,7 @@
 
       const outcome = handlePersistEntityResult<DormData>(result, {
         syncFromServer: syncDormFromServer,
-        fallbackError: `${current.dormName} ${fieldLabel(field)} could not be saved.`,
+        fallbackError: `${current.dormName} ${fieldLabel(field)} couldn't be saved.`,
       });
 
       if (outcome.error) {
@@ -508,7 +489,7 @@
       }, 1800);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Network error";
-      fieldError = `${current.dormName} ${fieldLabel(field)} failed to save: ${reason}`;
+      fieldError = `${current.dormName} ${fieldLabel(field)} failed to save (${reason}).`;
     } finally {
       savingField = null;
     }
@@ -540,7 +521,7 @@
         if (result.latest) syncDormFromServer(result.latest as DormData);
         fieldError =
           result.error ??
-          `${current.dormName} could not be merged into ${mergePrompt.candidate.dormName}.`;
+          `${current.dormName} couldn't be merged into ${mergePrompt.candidate.dormName}.`;
         return;
       }
 
@@ -555,7 +536,7 @@
       editing = false;
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Network error";
-      fieldError = `Merge failed: ${reason}`;
+      fieldError = `Merge failed (${reason}).`;
     } finally {
       mergingEntity = false;
     }
@@ -592,7 +573,7 @@
     if (!fieldIsUnchanged("dormName", current)) {
       const trimmedName = nameDraft.trim();
       if (trimmedName.length === 0) {
-        fieldError = `${current.dormName} name cannot be empty.`;
+        fieldError = `${current.dormName} name can't be empty.`;
         return;
       }
       patch.dormName = trimmedName;
@@ -644,7 +625,7 @@
 
       const outcome = handlePersistEntityResult<DormData>(result, {
         syncFromServer: syncDormFromServer,
-        fallbackError: `${current.dormName} could not be saved.`,
+        fallbackError: `${current.dormName} couldn't be saved.`,
       });
 
       if (outcome.error) {
@@ -667,7 +648,7 @@
       }, 1800);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Network error";
-      fieldError = `${current.dormName} failed to save: ${reason}`;
+      fieldError = `${current.dormName} failed to save (${reason}).`;
     } finally {
       savingField = null;
     }
@@ -676,74 +657,44 @@
 
 <div class="entity-detail">
   {#if dorm}
-    <header class="entity-header">
-      <EntityBackToList tab="dorms" label="Back to dormitories" />
-      <div class="entity-header__title-row">
-        <h2 class="entity-header__title">
-          {dorm.dormName}
-          {#if showShortName}
-            <span class="entity-header__abbrev">{dorm.shortName}</span>
-          {/if}
-        </h2>
-      </div>
-
-      <div class="entity-meta-row">
-        {#if dorm.isUpManaged}
-          <span class="entity-meta-chip up-badge">
-            <BadgeCheck size={12} />
-            UP-managed
-          </span>
-        {:else}
-          <span class="entity-meta-chip private-badge">
-            <KeyRound size={12} />
-            Private
-          </span>
+    <EntityBackToList tab="dorms" label="Back to dormitories" />
+    <PlaceSheetHeader
+      title={dorm.dormName}
+      label={dorm.isUpManaged ? "University-managed dorm" : "Private dorm"}
+      facts={dormFacts}
+      closeLabel="Close dorm details"
+    >
+      {#snippet titleSuffix()}
+        {#if showShortName}
+          <span class="entity-header__abbrev">{dorm.shortName}</span>
         {/if}
-        {#if genderLabel}
-          <span
-            class="entity-meta-chip gender-badge"
-            style:--badge-color={genderColor}
-          >
-            <Users size={12} />
-            {genderLabel}
-          </span>
-        {/if}
-        {#if dorm.capacity}
-          <span class="entity-meta-chip capacity-badge">
-            <Building2 size={12} />
-            {dorm.capacity} beds
-          </span>
-        {/if}
-        {#if dorm.priceRange}
-          <span class="entity-meta-chip price-badge">
-            <CircleDollarSign size={12} aria-hidden="true" />
-            {dorm.priceRange}
-          </span>
-        {/if}
-      </div>
-
-      <div class="entity-actions">
+      {/snippet}
+      {#if dorm.lon && dorm.lat}
+        <EntityDirectionsChip
+          primary
+          lat={dorm.lat}
+          lon={dorm.lon}
+          destinationLabel={dorm.dormName}
+        />
+      {/if}
+      <EntityActionScroll>
+        <EntitySaveButton
+          place={{
+            category: "dorm",
+            value: dorm.dormName,
+            label: dorm.dormName,
+            subtitle: dorm.isUpManaged ? "University-managed dorm" : "Private dorm",
+            lat: dorm.lat,
+            lon: dorm.lon,
+          }}
+        />
+        <EntityShareButton url={dormShareUrl} entityLabel={dorm.dormName} />
         {#if dorm.lon && dorm.lat}
-          <EntityDirectionsChip
-            lat={dorm.lat}
-            lon={dorm.lon}
-            destinationLabel={dorm.dormName}
-          />
           <EntityGoogleMapsLink
             lat={dorm.lat}
             lon={dorm.lon}
             name={dorm.dormName}
             ariaLabel={`Open ${dorm.dormName} in Google Maps`}
-          />
-        {/if}
-        <EntityShareCopyLink url={dormShareUrl} entityLabel={dorm.dormName} />
-        {#if kuboDormCta}
-          <EntityExternalLink
-            href={kuboDormCta.href}
-            label={kuboDormCta.label}
-            ariaLabel={kuboDormCta.ariaLabel}
-            class="entity-footer__link--button entity-footer__link--kubo"
-            iconSrc="/kubo-logo.png"
           />
         {/if}
         <EntityEditorToggle
@@ -754,8 +705,8 @@
           variant="toolbar"
           onclick={() => (editing = !editing)}
         />
-      </div>
-    </header>
+      </EntityActionScroll>
+    </PlaceSheetHeader>
 
     {#if !editing}
       <div class="entity-body entity-body--compact">
@@ -763,12 +714,15 @@
           <EntityStreetAddress lat={dorm.lat} lon={dorm.lon} />
         {/if}
         {#if dorm.description}
-          <p class="entity-directions__text">{dorm.description}</p>
+          <p class="entity-directions__text">
+            {expandCampusAbbreviations(dorm.description)}
+          </p>
         {/if}
         <EntityLastUpdated
           updatedAt={dorm.updatedAt}
           entityType="dorm"
           entityId={dorm.id}
+          entityName={dorm.dormName}
         />
       </div>
     {/if}
@@ -805,6 +759,15 @@
         </button>
         <img src={dormImageUrl} alt={dorm.dormName} />
       </dialog>
+    {:else if !editing}
+      <!-- ponytail: the dorm's own photo keeps its full-size viewer; the
+           Street View / Commons gallery covers dorms without one. -->
+      <BuildingPhoto
+        kind="dorm"
+        name={dorm.dormName}
+        lat={dorm.lat}
+        lon={dorm.lon}
+      />
     {/if}
 
     {#if editing}
@@ -853,7 +816,7 @@
             entityKind="dorm"
             sourceLabel={dorm.dormName}
             candidateLabel={mergePrompt.candidate.dormName}
-            detail="Merge event links and metadata into the kept dorm;"
+            detail="Event links and metadata move to the kept dorm. Merge"
             merging={mergingEntity}
             disabled={savingField !== null}
             onconfirm={confirmDormMerge}
@@ -916,25 +879,13 @@
           </div>
         {/if}
 
-        {#if dorm.isUpManaged}
-          <section class="entity-curfew" aria-labelledby="dorm-curfew-heading">
-            <h3 id="dorm-curfew-heading" class="entity-section-heading">
-              Curfew &amp; permits
-            </h3>
-            <p>
-              Curfew is {CAMPUS_CURFEW.hours}. {CAMPUS_CURFEW.latePermit}
-              <a href="/wiki/campus-curfew">Read the full policy.</a>
-            </p>
-          </section>
-        {/if}
-
         {#if dorm.isUpManaged || dorm.facebookLink || (!dorm.isUpManaged && dorm.priceRange)}
           <div class="entity-dorm-details__links">
             {#if dorm.isUpManaged}
               <EntityExternalLink
-                href="https://uplbosa.org"
-                label="UPLB OSA website"
-                ariaLabel="Open UPLB OSA website (opens in new tab)"
+                href="https://www.bulsu.edu.ph"
+                label="BulSU OSA website"
+                ariaLabel="Open BulSU OSA website (opens in new tab)"
               />
             {:else if dorm.priceRange}
               <span class="price-disclaimer">
@@ -953,6 +904,16 @@
         {/if}
       </section>
     {/if}
+    {#if !editing && dorm.lat && dorm.lon}
+      <div class="entity-footer">
+        <EntityPrintableMapLink
+          lat={dorm.lat}
+          lon={dorm.lon}
+          name={dorm.dormName}
+          inline
+        />
+      </div>
+    {/if}
   {:else}
     <div class="no-results">Dorm not found.</div>
   {/if}
@@ -963,54 +924,17 @@
   @import "../editor/entity-editor.css";
   @import "../map-chrome/map-chrome.css";
 
-  /* Each badge only sets its tone; .entity-meta-chip derives border + wash. */
-  .gender-badge {
-    color: color-mix(in srgb, var(--badge-color) 85%, black);
-  }
-
-  .capacity-badge {
-    color: hsl(0, 0%, 30%);
-  }
-
-  .up-badge {
-    color: hsl(5, 53%, 32%);
-  }
-
-  .private-badge {
-    color: hsl(210, 55%, 36%);
-  }
-
-  .price-badge {
-    color: hsl(150, 45%, 27%);
-  }
-
   .price-disclaimer {
     display: inline-flex;
     align-items: center;
     gap: 0.2rem;
     font-size: 0.6875rem;
-    color: hsl(35, 80%, 45%);
+    color: var(--theme-amber-text, hsl(35, 80%, 45%));
     font-weight: 500;
   }
 
-  .entity-curfew {
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  .entity-curfew p {
-    margin: 0;
-    font-size: 0.8125rem;
-    line-height: 1.45;
-  }
-
-  .entity-curfew a {
-    color: hsl(5, 53%, 32%);
-    font-weight: 600;
-  }
-
   .no-results {
-    color: #666;
+    color: var(--theme-text-2, #666);
     font-size: 0.875rem;
     text-align: center;
     padding: 1rem 0;

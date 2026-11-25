@@ -1,6 +1,6 @@
 # NotificationEvent contract
 
-Shared with [uplbtools/discord-bot](https://github.com/uplbtools/discord-bot). See `src/lib/notifications/types.ts`.
+Shared with [bulsutools/discord-bot](https://github.com/bulsutools/discord-bot). See `src/lib/notifications/types.ts`.
 
 Producers emit versioned JSON; the Discord bot routes to channels. Room TBA uses `NotificationAdapter`: `HttpNotificationAdapter` when `NOTIFICATION_GATEWAY_URL` + `NOTIFICATION_INGRESS_SECRET` are set, else `NoOpNotificationAdapter`.
 

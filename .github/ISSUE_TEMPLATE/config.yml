@@ -1,14 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Discord
-    url: https://discord.gg/SrVDgfcrVt
-    about: Chat with the team and report issues
-  - name: Messenger (contribute)
-    url: https://room-tba.uplb.tools/messenger/contribute
-    about: Message the team about data fixes or volunteering
   - name: Contributing guide
-    url: https://github.com/uplbtools/room-tba/blob/staging/CONTRIBUTING.md
+    url: https://github.com/bulsutools/room-tba/blob/staging/CONTRIBUTING.md
     about: Pick your path (report data, QA, or code)
   - name: Room TBA repo
-    url: https://github.com/uplbtools/room-tba
+    url: https://github.com/bulsutools/room-tba
     about: Open issues and pull requests on GitHub

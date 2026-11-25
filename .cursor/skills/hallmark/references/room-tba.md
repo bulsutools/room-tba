@@ -25,7 +25,7 @@ From [AGENTS.md](../../../AGENTS.md) editor UX + [map-layout.mdc](../../rules/ma
 - **320px + 768px:** verify map chrome, browse chips, side panel header rows. Browse-chip row clips past ~5 chips; wide controls get their own row.
 - **One feedback surface:** if the editor toolbar shows state, no duplicate toast.
 - **Entry zones only** for map chrome; no new fixed overlays in `Map.svelte` except pins and edit dock.
-- **Brand locked:** UPLB maroon (`hsl(5, 53%, 32%)` family) is identity. Hallmark theme rotation does not apply; preserve existing tokens in `src/styles/`.
+- **Brand locked:** BulSU maroon (`hsl(5, 53%, 32%)` family) is identity. Hallmark theme rotation does not apply; preserve existing tokens in `src/styles/`.
 
 ## Uppercase labels
 

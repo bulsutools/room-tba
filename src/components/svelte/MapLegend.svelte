@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Info from "@lucide/svelte/icons/info";
-  import Layers from "@lucide/svelte/icons/layers";
   import X from "@lucide/svelte/icons/x";
   import IconButton from "@ui/IconButton.svelte";
   import "./map-chrome/map-chrome.css";
@@ -23,15 +22,6 @@
   };
 
   let { embedded = false, trigger = "icon" }: Props = $props();
-
-  /** Org/place pins answer to the toggle AND a zoom gate, so "Shown" alone
-   * would lie when the user is zoomed out past it. */
-  function legendState(on: boolean): string {
-    if (!on) return "Hidden — tap to toggle.";
-    return mapViewStore.poiPinsZoomVisible
-      ? "Shown — tap to toggle."
-      : "Shown when you zoom in — tap to toggle.";
-  }
 
   const panelId = "legend";
   const open = $derived(floatingControlPanelStore.openPanel === panelId);
@@ -59,7 +49,7 @@
     {
       key: "dorm",
       label: "Dorm",
-      description: "UP-managed or private dorm.",
+      description: "Campus-managed or private dorm.",
     },
     {
       key: "landmark",
@@ -67,8 +57,13 @@
       description: "Memorials, sights, and campus points of interest.",
     },
     {
+      key: "organization",
+      label: "Org, unit or office",
+      description: "Student organization, campus unit, or office.",
+    },
+    {
       key: "establishment",
-      label: "Service / establishment",
+      label: "Service or establishment",
       description: "Food, services, and transport points.",
     },
     {
@@ -181,7 +176,7 @@
           <section class="legend-section" aria-labelledby="legend-events">
             <h3 id="legend-events" class="legend-section-title">Events</h3>
             {#if eventsEmpty}
-              <p class="legend-empty-note">No events on the map yet.</p>
+              <p class="legend-empty-note">There are no events on the map yet.</p>
             {:else}
               <div class="legend-list">
                 {#each eventItems as item (item.key)}
@@ -222,41 +217,6 @@
           </div>
         </section>
 
-        <section class="legend-section" aria-labelledby="legend-layers">
-          <h3 id="legend-layers" class="legend-section-title">Layers</h3>
-          <div class="legend-list">
-            <button
-              type="button"
-              class="legend-item legend-toggle"
-              class:legend-toggle--off={!mapViewStore.showOrgs}
-              aria-pressed={mapViewStore.showOrgs}
-              onclick={() => mapViewStore.toggleOrgs()}
-            >
-              <span class="legend-swatch organization" aria-hidden="true"></span>
-              <span class="legend-copy">
-                <span class="legend-label">Orgs, units &amp; offices</span>
-                <span class="legend-description">
-                  {legendState(mapViewStore.showOrgs)}
-                </span>
-              </span>
-            </button>
-            <button
-              type="button"
-              class="legend-item legend-toggle"
-              class:legend-toggle--off={!mapViewStore.showPlaces}
-              aria-pressed={mapViewStore.showPlaces}
-              onclick={() => mapViewStore.togglePlaces()}
-            >
-              <span class="legend-swatch establishment" aria-hidden="true"></span>
-              <span class="legend-copy">
-                <span class="legend-label">Landmarks &amp; establishments</span>
-                <span class="legend-description">
-                  {legendState(mapViewStore.showPlaces)}
-                </span>
-              </span>
-            </button>
-          </div>
-        </section>
       </div>
     </div>
   {/if}
@@ -275,7 +235,7 @@
       aria-controls="map-icon-legend"
     >
       {#if trigger === "chip"}
-        <Layers size={18} aria-hidden="true" />
+        <Info size={18} aria-hidden="true" />
       {:else}
         <Info />
       {/if}
@@ -300,44 +260,60 @@
     gap: 0.375rem;
   }
 
+  /* Inside the Layers sheet the legend is a static key: sentence-case group
+     labels, 24px swatches and 16px labels on the same grid as the rows
+     above it. Descriptions stay in the floating panel only. */
   .map-legend.embedded .legend-sections {
-    gap: 0.5rem;
+    gap: 0.75rem;
   }
 
   .map-legend.embedded .legend-section {
     gap: 0.25rem;
   }
 
+  .map-legend.embedded .legend-section-title {
+    padding: 0;
+    color: var(--theme-text-2, hsl(0, 0%, 35%));
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1.25rem;
+    text-transform: none;
+  }
+
   .map-legend.embedded .legend-list {
-    gap: 0.25rem;
+    gap: 0;
   }
 
   .map-legend.embedded .legend-item {
-    gap: 0.5rem;
-    padding: 0.3125rem 0.5rem;
+    gap: 1rem;
+    min-height: 2.5rem;
+    padding: 0.25rem 0;
+    background: none;
   }
 
   .map-legend.embedded .legend-swatch {
-    width: 1.125rem;
-    height: 1.125rem;
-    font-size: 0.625rem;
-  }
-
-  .map-legend.embedded .legend-label {
+    width: 1.5rem;
+    height: 1.5rem;
     font-size: 0.75rem;
   }
 
+  .map-legend.embedded .legend-label {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
   .map-legend.embedded .legend-description {
-    font-size: 0.625rem;
-    line-height: 1.2;
+    display: none;
   }
 
   .legend-empty-note {
     margin: 0;
     padding: 0 0.25rem;
-    color: hsl(0, 0%, 45%);
-    font-size: 0.75rem;
-    line-height: 1.35;
+    color: var(--theme-text-2, hsl(0, 0%, 45%));
+    font-size: 0.875rem;
+    line-height: 1.4;
   }
 
   .map-legend {
@@ -359,11 +335,11 @@
     height: 3rem;
     align-items: center;
     justify-content: center;
-    border: 1.5px solid var(--map-chrome-border-accent, hsl(5, 40%, 42%));
+    border: 1.5px solid var(--map-chrome-border-accent, var(--theme-accent-text, hsl(5, 40%, 42%)));
     border-radius: 50%;
-    background-color: var(--map-chrome-surface, rgba(255, 255, 255, 0.98));
+    background-color: var(--map-chrome-surface, var(--theme-surface-translucent, rgba(255, 255, 255, 0.98)));
     backdrop-filter: blur(10px);
-    color: hsl(5, 53%, 32%);
+    color: var(--theme-accent-text, hsl(5, 53%, 32%));
     cursor: pointer;
     box-shadow: var(
       --map-chrome-shadow,
@@ -377,18 +353,18 @@
   }
 
   .legend-btn:hover {
-    background-color: hsl(0, 0%, 99%);
-    border-color: hsl(5, 53%, 32%);
+    background-color: var(--theme-surface, hsl(0, 0%, 99%));
+    border-color: var(--theme-accent-text, hsl(5, 53%, 32%));
   }
 
   .legend-btn:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
     outline-offset: 2px;
   }
 
   .legend-btn.active {
-    border-color: hsl(5, 53%, 32%);
-    background-color: hsl(5, 53%, 32%);
+    border-color: var(--theme-accent-text, hsl(5, 53%, 32%));
+    background-color: var(--theme-accent-fill, hsl(5, 53%, 32%));
     color: white;
     box-shadow:
       inset 0 0 0 1px hsla(0, 0%, 100%, 0.2),
@@ -404,7 +380,7 @@
     flex-direction: column;
     gap: 0.625rem;
     border-radius: 0.875rem;
-    background-color: white;
+    background-color: var(--theme-surface, white);
     padding: 0.75rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     overflow: hidden;
@@ -416,7 +392,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.125rem 0.25rem;
-    color: hsl(0, 0%, 20%);
+    color: var(--theme-text, hsl(0, 0%, 20%));
     font-size: 0.875rem;
     font-weight: 600;
   }
@@ -444,7 +420,7 @@
   .legend-section-title {
     margin: 0;
     padding: 0 0.25rem;
-    color: hsl(0, 0%, 45%);
+    color: var(--theme-text-2, hsl(0, 0%, 45%));
     font-size: 0.6875rem;
     font-weight: 800;
     letter-spacing: 0.04em;
@@ -471,7 +447,7 @@
     min-width: 0;
     max-width: 100%;
     border-radius: 0.625rem;
-    background-color: hsl(0, 0%, 98%);
+    background-color: var(--theme-surface, hsl(0, 0%, 98%));
     padding: 0.45rem 0.625rem;
   }
 
@@ -491,7 +467,7 @@
   }
 
   .legend-swatch.building {
-    background-color: hsl(5, 53%, 32%);
+    background-color: var(--theme-accent-fill, hsl(5, 53%, 32%));
   }
 
   .legend-swatch.dorm {
@@ -511,34 +487,7 @@
   }
 
   .legend-swatch.establishment {
-    background-color: hsl(334, 54%, 43%);
-  }
-
-  .legend-toggle {
-    all: unset;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    min-width: 0;
-    max-width: 100%;
-    border-radius: 0.625rem;
-    background-color: hsl(0, 0%, 98%);
-    padding: 0.45rem 0.625rem;
-    cursor: pointer;
-  }
-
-  .legend-toggle:hover,
-  .legend-toggle:focus-visible {
-    background-color: hsl(5, 30%, 95%);
-  }
-
-  .legend-toggle--off {
-    opacity: 0.55;
-  }
-
-  .legend-toggle--off .legend-swatch {
-    filter: grayscale(1);
+    background-color: var(--theme-accent-fill, hsl(334, 54%, 43%));
   }
 
   .legend-swatch.jeepney-stop {
@@ -550,27 +499,27 @@
   }
 
   .legend-swatch.event-active {
-    background-color: #7b1113;
+    background-color: var(--theme-accent-fill, #7b1113);
   }
 
   .legend-swatch.event-upcoming {
-    border-color: #d8b9ba;
-    background-color: #f8fafc;
-    color: #7b1113;
+    border-color: var(--theme-accent-border, #d8b9ba);
+    background-color: var(--theme-surface, #f8fafc);
+    color: var(--theme-accent-text, #7b1113);
   }
 
   .legend-swatch.event-past {
-    border-color: #d4d4d8;
-    background-color: #f4f4f5;
-    color: #71717a;
+    border-color: var(--theme-border, #d4d4d8);
+    background-color: var(--theme-surface-2, #f4f4f5);
+    color: var(--theme-text-2, #71717a);
   }
 
   .legend-swatch.event-route-stop {
-    background-color: #7b1113;
+    background-color: var(--theme-accent-fill, #7b1113);
   }
 
   .legend-swatch.event-linked {
-    background-color: hsl(5, 53%, 32%);
+    background-color: var(--theme-accent-fill, hsl(5, 53%, 32%));
     box-shadow:
       0 0 0 0.14rem rgba(250, 204, 21, 0.88),
       0 2px 0.25rem rgba(0, 0, 0, 0.28);
@@ -584,14 +533,14 @@
   }
 
   .legend-label {
-    color: hsl(0, 0%, 15%);
+    color: var(--theme-text, hsl(0, 0%, 15%));
     font-size: 0.8125rem;
     font-weight: 700;
     line-height: 1.2;
   }
 
   .legend-description {
-    color: hsl(0, 0%, 45%);
+    color: var(--theme-text-2, hsl(0, 0%, 45%));
     font-size: 0.6875rem;
     line-height: 1.25;
   }

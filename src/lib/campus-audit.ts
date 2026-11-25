@@ -175,11 +175,11 @@ export const STRUCTURAL_TOKENS = new Set([
   "campus",
   "office",
   "university",
-  "uplb",
+  "bulsu",
   "up",
 ]);
 
-/** All-caps acronyms in a name, e.g. "…Registrar (OUR)" -> "OUR". */
+/** All-caps acronyms in a name, e.g. "…Registrar (REG)" -> "REG". */
 function parentheticalAcronyms(name: string): string[] {
   const out: string[] = [];
   for (const m of name.matchAll(/\(([^)]{2,24})\)/g)) {
@@ -253,7 +253,7 @@ const MIN_NAME_COVERAGE = 1 / 3;
  * a finding.
  *
  * Acronyms only match when they appear uppercase in the raw phrase, which is
- * what stops "OUR" (Office of the University Registrar) matching the English
+ * what stops a registrar acronym like "REG" matching the English
  * word in ordinary prose.
  */
 export function resolveReference(
@@ -275,7 +275,7 @@ export function resolveReference(
     const distinctive = index.distinctive[i];
     const hits = distinctive.filter((t) => phraseTokens.has(t)).length;
     const acronymHit = index.acronyms[i].some((a) => upper.has(a));
-    // Nothing in the name is rare ("Old Makiling School"): fall back to
+    // Nothing in the name is rare ("Old Science Building"): fall back to
     // requiring the whole name to appear.
     const wholeNameHit =
       distinctive.length === 0 &&

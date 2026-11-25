@@ -6,14 +6,14 @@
 
 **Saan sa BulSU Malolos ang \___?**
 
-[![Live app](https://img.shields.io/badge/open-bulsu--room--tba.vercel.app-maroon?style=for-the-badge)](https://bulsu-room-tba.vercel.app)
+[![Live app](https://img.shields.io/badge/open-room--tba.bulsu.tools-maroon?style=for-the-badge)](https://room-tba.bulsu.tools)
 [![MIT](https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square)](LICENSE)
 [![Bun](https://img.shields.io/badge/bun-1.3+-black?style=flat-square&logo=bun)](https://bun.sh)
 [![Astro](https://img.shields.io/badge/Astro-7-BC52EE?style=flat-square&logo=astro)](https://astro.build)
 
 _Buildings, colleges, and "where is Federizo?" on the BulSU Malolos Campus 1 + Campus 2 map._
 
-[Open the map](https://bulsu-room-tba.vercel.app) · [Report wrong data](https://github.com/bulsutools/room-tba/issues/new/choose) · [Upstream Room TBA](https://github.com/uplbtools/room-tba)
+[Open the map](https://room-tba.bulsu.tools) · [Report wrong data](https://github.com/bulsutools/room-tba/issues/new/choose) · [Upstream Room TBA](https://github.com/bulsutools/room-tba)
 
 </div>
 
@@ -25,7 +25,7 @@ _Buildings, colleges, and "where is Federizo?" on the BulSU Malolos Campus 1 + C
 
 No account needed to browse. Editors fix pins in the same app (`/?editor=login`).
 
-> **Data note:** Seed file keeps **colleges only**. Building/place pins start empty — add them in the map editor. Room schedules need a registrar importer later (AMIS/UPLB scripts do not apply). Wrong data? [Open an issue](https://github.com/bulsutools/room-tba/issues/new/choose).
+> **Data note:** Seed file keeps **colleges only**. Building/place pins start empty — add them in the map editor. Room schedules need a registrar importer later (the upstream course-system scripts do not apply). Wrong data? [Open an issue](https://github.com/bulsutools/room-tba/issues/new/choose).
 
 ---
 
@@ -48,7 +48,7 @@ No account needed to browse. Editors fix pins in the same app (`/?editor=login`)
 | Move building pins | Map edit mode (pencil) |
 | Add landmarks / services | **Add something to the map** or side-panel editor |
 | Fix building/college copy | Side panel → Edit |
-| Add jeepney routes | `src/constants/jeepney-routes.ts` + DB seed, or editor when wired |
+| Add jeepney routes | `data/transit/routes.json` + `bun run scripts/seed-bulsu-transit.ts` ([#7](https://github.com/bulsutools/room-tba/issues/7) pending) |
 
 Login: **`/?editor=login`**. First login with `ADMIN_PASSWORD` bootstraps user `admin`.
 
@@ -102,10 +102,10 @@ Dry-run: `bun run seed:bulsu -- --dry-run`
 | Surface | Where |
 | --- | --- |
 | Building / place pins | Map editor (seed file leaves these empty on purpose) |
-| Jeepney routes | `src/constants/jeepney-routes.ts` (empty today) |
+| Jeepney routes | `data/transit/routes.json` (empty until #7 field data lands) |
 | College / building copy | Side panel editor |
 | Photos | Event/image upload when R2 is configured |
-| Class schedules | Future registrar importer (not AMIS) |
+| Class schedules | Future registrar importer (not the upstream course system) |
 
 ### Commands worth knowing
 
@@ -146,6 +146,6 @@ Multi-campus / multi-tenant exploration (deferred): [docs/multi-campus-handoff.m
 
 Fork of [uplbtools/room-tba](https://github.com/uplbtools/room-tba) by [Simonee Ezekiel Mariquit](https://stimmie.dev) and contributors.
 
-This fork: [bulsutools](https://github.com/bulsutools) — campus tool, not an official BulSU product.
+Maintained by [bulsutools](https://github.com/bulsutools) — campus tool, not an official BulSU product.
 
 Upstream license: [MIT](LICENSE).

@@ -4,9 +4,17 @@
   let {
     open = true,
     onDismiss,
-  }: { open?: boolean; onDismiss?: () => void } = $props();
+    peekFitTo,
+    fullScreen,
+  }: {
+    open?: boolean;
+    onDismiss?: () => void;
+    peekFitTo?: string;
+    fullScreen?: boolean;
+  } = $props();
 </script>
 
-<BottomSheet {open} {onDismiss}>
+<BottomSheet {open} {onDismiss} {peekFitTo} {fullScreen}>
   <p>Sheet content</p>
+  <div class="entity-actions">Actions</div>
 </BottomSheet>

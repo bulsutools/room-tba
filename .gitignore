@@ -47,7 +47,7 @@ classes.json
 .vercel/
 server/**/*
 
-data/AMIS subjects.json
+data/imported-classes.json
 data/amis-*.json
 data/final-exams-*.json
 data/transit-geometry-cache/
@@ -59,3 +59,6 @@ data/transit-geometry-cache/
 graphify-out/
 public/_astro/maplibre-gl-worker.mjs
 public/_astro/maplibre-gl-shared.mjs
+data/transit-basemap-cache/
+
+.wrangler/

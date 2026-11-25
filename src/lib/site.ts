@@ -35,7 +35,7 @@ export function ogCardPath(opts: {
 }
 
 /** Normalize a search term / alias for matching: NFKD, lowercase, and strip
- * everything that is not a letter or digit (so "PhySci", "CAS A1", and "CASA1"
+ * everything that is not a letter or digit (so "SciHall", "CAS A1", and "CASA1"
  * collapse to comparable keys). Used for the alias synonym map (#155). */
 export function normalizeAlias(value: string) {
   return value

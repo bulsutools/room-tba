@@ -1,4 +1,13 @@
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+// This fork ships campusTerrain.enabled = false; the store tests exercise the
+// terrain state machine itself, so force the flag on for this file only.
+vi.mock("@constants/map-terrain", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@constants/map-terrain")>();
+  return { ...actual, TERRAIN_ENABLED: true };
+});
+
 import {
   Building3DStore,
   MapToolsStore,
@@ -108,19 +117,29 @@ describe("MapViewStore", () => {
     expect(store.showPlaces).toBe(true);
   });
 
-  test("highlightMyBuildings toggles and leaves events-only mode", () => {
+  test("highlightMyBuildings is on by default and remembers turning off", () => {
+    localStorage.removeItem("highlight-my-buildings");
+    const store = new MapViewStore();
+    expect(store.highlightMyBuildings).toBe(true);
+    store.toggleHighlightMyBuildings();
+    expect(store.highlightMyBuildings).toBe(false);
+    expect(new MapViewStore().highlightMyBuildings).toBe(false);
+    store.toggleHighlightMyBuildings();
+    expect(new MapViewStore().highlightMyBuildings).toBe(true);
+  });
+
+  test("highlightMyBuildings leaves events-only mode when turned on", () => {
+    localStorage.setItem("highlight-my-buildings", "false");
     const store = new MapViewStore();
     store.toggleEventsOnly();
     store.toggleHighlightMyBuildings();
     expect(store.highlightMyBuildings).toBe(true);
     expect(store.eventsOnly).toBe(false);
-    store.toggleHighlightMyBuildings();
-    expect(store.highlightMyBuildings).toBe(false);
+    localStorage.removeItem("highlight-my-buildings");
   });
 
   test("showAll clears the class-building highlight", () => {
     const store = new MapViewStore();
-    store.toggleHighlightMyBuildings();
     store.showAll();
     expect(store.highlightMyBuildings).toBe(false);
   });

@@ -9,7 +9,7 @@ export default defineConfig({
   retries: 1,
   use: {
     baseURL:
-      process.env.STAGING_BASE_URL ?? "https://staging.room-tba.uplb.tools",
+      process.env.STAGING_BASE_URL ?? "https://staging.room-tba.bulsu.tools",
     trace: "on-first-retry",
   },
 });

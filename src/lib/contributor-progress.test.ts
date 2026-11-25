@@ -7,6 +7,7 @@ import {
   hasBuildingPin,
   isNonEmptyText,
   missingFieldLabel,
+  progressLevel,
   progressPercent,
   summarizeFieldCounts,
   topBuildingsByGap,
@@ -21,7 +22,7 @@ describe("contributor-progress", () => {
   it("builds room completeness from directions, schedule, and position", () => {
     const row = buildRoomProgressRow({
       id: 1,
-      code: "PSLH 4",
+      code: "LH 4",
       buildingId: 9,
       directions: "Near the stairs",
       classCount: 2,
@@ -34,8 +35,8 @@ describe("contributor-progress", () => {
       position: false,
     });
     expect(row.missingFields).toEqual(["position"]);
-    expect(missingFieldLabel("PSLH 4", "position")).toBe(
-      "PSLH 4 — floor plan pin missing",
+    expect(missingFieldLabel("LH 4", "position")).toBe(
+      "LH 4 is missing its floor plan pin",
     );
   });
 
@@ -65,6 +66,12 @@ describe("contributor-progress", () => {
       position: { filled: 1, total: 2 },
     });
     expect(progressPercent(1, 2)).toBe(50);
+  });
+
+  it("bands coverage so a 6% bar does not look like a full one", () => {
+    expect(progressLevel(6)).toBe("low");
+    expect(progressLevel(50)).toBe("mid");
+    expect(progressLevel(100)).toBe("high");
   });
 
   it("ranks buildings with the largest gaps first", () => {

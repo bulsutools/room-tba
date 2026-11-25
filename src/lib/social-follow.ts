@@ -1,5 +1,5 @@
 /**
- * One-time "follow the UPLB Tools accounts" suggestion.
+ * One-time "follow the BulSU Tools accounts" suggestion.
  *
  * The whole point of this module is the frequency cap: the app asks once. Both
  * outcomes retire the prompt for good — dismissing it because the reader said

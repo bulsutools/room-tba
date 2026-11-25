@@ -1,6 +1,7 @@
 <script lang="ts">
   import X from "@lucide/svelte/icons/x";
   import { travelTimeStore } from "@lib/store.svelte";
+  import { trackOverlay } from "@lib/track-overlay.svelte";
   import {
     ISOCHRONE_CAP_MINUTES,
     VIRIDIS_STOPS,
@@ -8,6 +9,11 @@
 
   const gradient = `linear-gradient(90deg, ${VIRIDIS_STOPS.join(", ")})`;
   const ticks = ["0", "10", "20", `${ISOCHRONE_CAP_MINUTES}+ min`];
+
+  // Back turns the tool off before it reaches anything under it.
+  trackOverlay("travel-time", () => travelTimeStore.active, () =>
+    travelTimeStore.disable(),
+  );
 </script>
 
 <section class="travel-time-legend" aria-label="Walking time legend">
@@ -16,7 +22,7 @@
     <button
       type="button"
       class="travel-time-legend__close"
-      aria-label="Turn off travel time"
+      aria-label="Turn off walking time"
       onclick={() => travelTimeStore.disable()}
     >
       <X size={14} aria-hidden="true" />
@@ -30,7 +36,7 @@
     <p class="travel-time-legend__hint">Computing walking times…</p>
   {:else if travelTimeStore.status === "error"}
     <p class="travel-time-legend__hint">
-      Could not load the path network. Check your connection and tap again.
+      Couldn't load the path network. Check your connection and tap again.
     </p>
   {:else}
     <div
@@ -57,9 +63,10 @@
     width: min(16rem, calc(100vw - 1rem));
     align-self: flex-start;
     box-sizing: border-box;
-    border: 1px solid var(--map-chrome-border, hsl(5 10% 68%));
+    border: 1px solid var(--map-chrome-border, var(--theme-border-strong, hsl(5 10% 68%)));
     border-radius: var(--map-chrome-radius, 1rem);
-    background-color: var(--map-chrome-surface, hsl(5 20% 97%));
+    background-color: var(--map-chrome-surface, var(--theme-surface, hsl(5 20% 97%)));
+    color: var(--theme-text, hsl(0, 0%, 12%));
     backdrop-filter: blur(10px);
     padding: 0.5rem 0.625rem;
     box-shadow: var(
@@ -97,11 +104,11 @@
   }
 
   .travel-time-legend__close:hover {
-    background-color: hsl(5, 20%, 90%);
+    background-color: var(--theme-accent-soft, hsl(5, 20%, 90%));
   }
 
   .travel-time-legend__close:focus-visible {
-    outline: 2px solid hsl(5, 53%, 32%);
+    outline: 2px solid var(--theme-accent-text, hsl(5, 53%, 32%));
     outline-offset: 1px;
   }
 
@@ -109,7 +116,7 @@
     margin: 0;
     font-size: 0.6875rem;
     line-height: 1.35;
-    color: hsl(0, 0%, 35%);
+    color: var(--theme-text-2, hsl(0, 0%, 35%));
   }
 
   .travel-time-legend__ramp {
@@ -121,12 +128,12 @@
     display: flex;
     justify-content: space-between;
     font-size: 0.625rem;
-    color: hsl(0, 0%, 35%);
+    color: var(--theme-text-2, hsl(0, 0%, 35%));
   }
 
   .travel-time-legend__attribution {
     margin: 0;
     font-size: 0.625rem;
-    color: hsl(0, 0%, 45%);
+    color: var(--theme-text-2, hsl(0, 0%, 45%));
   }
 </style>
