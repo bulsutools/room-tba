@@ -17,7 +17,7 @@ import { db } from "@lib/db";
 import {
   buildRoomLookup,
   matchRoomId,
-} from "@lib/amis/import-classes";
+} from "@lib/class-import/import-classes";
 import { recordEditorHistory, refreshSyncKey } from "./admin-service";
 
 export type ClassScheduleCreateInput = {
